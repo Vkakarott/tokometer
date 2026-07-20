@@ -1,0 +1,10 @@
+{
+  "name": "tokesp-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test 'test/**/*.test.ts'",
+    "dev": "node --watch src/main.ts"
+  }
+}
