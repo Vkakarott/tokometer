@@ -6,16 +6,37 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(
     HardwareConfig::OLED_RST_PIN
 );
 
+static const char* wifiStatusText(WifiStatus status);
+static void drawConnectionFrame(WifiStatus status);
+
 void initializeDisplay() {
     display.begin();
     display.clearBuffer();
     display.sendBuffer();
 }
 
-void drawFrame() {
+void drawFrame(const AppState& appState) {
     display.clearBuffer();
-
-    display.drawFrame(0, 0, 128, 64);
-
+    drawConnectionFrame(appState.wifiStatus);
     display.sendBuffer();
+}
+
+static const char* wifiStatusText(WifiStatus status) {
+    switch (status) {
+        case WifiStatus::Connected:
+            return "WiFi conectado";
+        case WifiStatus::Connecting:
+            return "Conectando...";
+        case WifiStatus::Disconnected:
+            return "WiFi desconectado";
+        case WifiStatus::Failed:
+            return "Falha no WiFi";
+    }
+
+    return "WiFi desconhecido";
+}
+
+static void drawConnectionFrame(WifiStatus status) {
+    display.setFont(u8g2_font_6x10_tf);
+    display.drawStr(6, 14, wifiStatusText(status));
 }

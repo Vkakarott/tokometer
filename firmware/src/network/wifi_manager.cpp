@@ -19,6 +19,6 @@ WifiStatus updateWifi() {
         case WL_DISCONNECTED:
             return WifiStatus::Disconnected;
         default:
-            return WifiStatus::Connection;
+            return WifiStatus::Connecting;
     }
 }

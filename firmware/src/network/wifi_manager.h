@@ -2,7 +2,7 @@
 
 enum class WifiStatus {
     Disconnected,
-    Connection,
+    Connecting,
     Connected,
     Failed
 };

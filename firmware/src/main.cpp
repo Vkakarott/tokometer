@@ -4,6 +4,9 @@
 #include "config/hardware_config.h"
 #include "display/display_manager.h"
 #include "network/wifi_manager.h"
+#include "state/app_state.h"
+
+AppState appState;
 
 void setup() {
     Serial.begin(115200);
@@ -19,6 +22,7 @@ void setup() {
 
 void loop() {
     const WifiStatus status = updateWifi();
-    drawFrame();
+    appState.wifiStatus = status;
+    drawFrame(appState);
     delay(100);
 }
