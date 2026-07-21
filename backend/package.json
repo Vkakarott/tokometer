@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test 'test/**/*.test.ts'",
-    "dev": "node --watch src/main.ts"
+    "dev": "node --watch --env-file=.env src/main.ts"
   },
   "dependencies": {
     "fastify": "^5.10.0"

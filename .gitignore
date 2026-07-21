@@ -5,3 +5,7 @@
 .vscode/ipch
 firmware/src/config/secrets.h
 .superpowers/
+backend/.env
+backend/state.json
+backend/state.json.tmp
+node_modules
