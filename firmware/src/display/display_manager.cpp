@@ -1,5 +1,6 @@
 #include "display_manager.h"
 #include "../config/hardware_config.h"
+#include "assets/wifi_icon.h"
 
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(
     U8G2_R0,
@@ -17,14 +18,18 @@ void initializeDisplay() {
 
 void drawFrame(const AppState& appState) {
     display.clearBuffer();
-    drawConnectionFrame(appState.wifiStatus);
+    if (appState.wifiStatus != WifiStatus::Connected) {
+        drawConnectionFrame(appState.wifiStatus);
+    } else {
+        display.drawXBMP(56, 8, 48, 48, epd_bitmap_72264);
+    }
     display.sendBuffer();
 }
 
 static const char* wifiStatusText(WifiStatus status) {
     switch (status) {
         case WifiStatus::Connected:
-            return "WiFi conectado";
+            return "WiFi conectado!";
         case WifiStatus::Connecting:
             return "Conectando...";
         case WifiStatus::Disconnected:
