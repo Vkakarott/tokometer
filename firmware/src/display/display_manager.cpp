@@ -21,7 +21,7 @@ void drawFrame(const AppState& appState) {
     if (appState.wifiStatus != WifiStatus::Connected) {
         drawConnectionFrame(appState.wifiStatus);
     } else {
-        display.drawXBMP(56, 8, 48, 48, epd_bitmap_72264);
+        display.drawXBMP(80, 16, 32, 32, epd_bitmap_72264);
     }
     display.sendBuffer();
 }
