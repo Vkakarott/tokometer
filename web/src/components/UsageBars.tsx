@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import type { UsageView, WindowView } from '../api';
 
 const WINDOW_LABELS: Record<WindowView['id'], string> = {
@@ -18,23 +19,23 @@ const formatAge = (ageSeconds: number): string => {
   return `há ${Math.round(ageSeconds / 3600)}h`;
 };
 
-function Bar({ window }: { window: WindowView }) {
-  const unknown = window.usedPercentage === null;
+function Bar({ window: windowView }: { window: WindowView }): JSX.Element {
+  const unknown = windowView.usedPercentage === null;
   return (
     <div className="bar">
       <div className="bar-head">
-        <span>{WINDOW_LABELS[window.id]}</span>
-        <span>{unknown ? '—' : `${Math.round(window.usedPercentage ?? 0)}%`}</span>
+        <span>{WINDOW_LABELS[windowView.id]}</span>
+        <span>{unknown ? '—' : `${Math.round(windowView.usedPercentage ?? 0)}%`}</span>
       </div>
       <div className="bar-track">
-        <div className="bar-fill" style={{ width: unknown ? '0%' : `${window.usedPercentage}%` }} />
+        <div className="bar-fill" style={{ width: unknown ? '0%' : `${windowView.usedPercentage}%` }} />
       </div>
-      <small>{unknown ? 'Janela reiniciou, aguardando novo dado' : formatReset(window.resetsAt)}</small>
+      <small>{unknown ? 'Janela reiniciou, aguardando novo dado' : formatReset(windowView.resetsAt)}</small>
     </div>
   );
 }
 
-export function UsageBars({ usage }: { usage: UsageView }) {
+export function UsageBars({ usage }: { usage: UsageView }): JSX.Element {
   if (!usage.hasData) {
     return (
       <p className="empty">

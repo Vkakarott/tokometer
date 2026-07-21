@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { JSX } from 'react';
 import { fetchUsage, type UsageView } from './api';
 import { UsageBars } from './components/UsageBars';
 import { PairForm } from './components/PairForm';
@@ -6,7 +7,7 @@ import './App.css';
 
 const POLL_MS = 15_000;
 
-function App() {
+function App(): JSX.Element {
   const [usage, setUsage] = useState<UsageView | null>(null);
   const [failed, setFailed] = useState(false);
 

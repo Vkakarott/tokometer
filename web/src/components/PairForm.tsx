@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { JSX } from 'react';
 import { approvePairing } from '../api';
 
 type Status = { kind: 'idle' | 'sending' | 'done' } | { kind: 'error'; message: string };
@@ -8,7 +9,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   unknown: 'Código não encontrado. Confira o que está no display.',
 };
 
-export function PairForm() {
+export function PairForm(): JSX.Element {
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
 

@@ -5,9 +5,14 @@
   "type": "module",
   "scripts": {
     "test": "node --test 'test/**/*.test.ts'",
-    "dev": "node --watch --env-file=.env src/main.ts"
+    "dev": "node --watch --env-file=.env src/main.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "fastify": "^5.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2"
   }
 }

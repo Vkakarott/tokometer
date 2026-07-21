@@ -53,3 +53,9 @@ test('never reports a negative age when clocks disagree', () => {
   const view = buildUsageView(snapshot(), NOW - 50, 900);
   assert.equal(view.ageSeconds, 0);
 });
+
+test('at exactly resetsAt the window is not yet rolled over', () => {
+  const view = buildUsageView(snapshot(), NOW + 3600, 999_999);
+  const fiveHour = view.windows.find((w) => w.id === 'five_hour');
+  assert.equal(fiveHour?.usedPercentage, 23.5, 'boundary is exclusive: > not >=');
+});

@@ -1242,7 +1242,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
 cd backend && npm test
 ```
 
-Esperado: `# pass 40`, `# fail 0`.
+Esperado: `# pass 39`, `# fail 0`.
 
 - [ ] **Step 10: Commit**
 
@@ -2114,7 +2114,7 @@ git commit -m "docs: add device api contract and project readme"
 
 ## Verificação final
 
-- [ ] `cd backend && npm test` → `# pass 40`, `# fail 0`
+- [ ] `cd backend && npm test` → `# pass 39`, `# fail 0`
 - [ ] `./collector/test/payload.test.sh` → `all payload tests passed`
 - [ ] `cd web && npx tsc -b && npm run lint` → sem erros
 - [ ] Task 9, Step 3 completo — todos os 9 passos do `curl` com a saída esperada

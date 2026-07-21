@@ -18,7 +18,7 @@ test('redeem returns a token once approved', () => {
 
   const result = store.redeem(record.deviceCode, NOW);
   assert.equal(result.status, 'approved');
-  assert.ok(result.status === 'approved' && result.accessToken.length >= 32);
+  assert.ok(result.status === 'approved' && result.accessToken.length >= 43);
 });
 
 test('a code is single-use: the second redeem no longer knows it', () => {

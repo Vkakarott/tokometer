@@ -32,6 +32,7 @@ npm run dev
 
 # web
 cd web && npm install && npm run dev
+# o /web é servido pelo Vite dev server; o backend não serve o artefato buildado — é ferramenta de dev/LAN.
 
 # collector: veja collector/README.md
 ```
