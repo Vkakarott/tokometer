@@ -1,14 +1,20 @@
-#include "display_manager.h"
-#include "../config/hardware_config.h"
-#include "assets/wifi_icon.h"
+#include "display/display_manager.h"
+
+#include <U8g2lib.h>
+
+#include "config/hardware_config.h"
+#include "display/frame_context.h"
+#include "display/screen_renderer.h"
+#include "timekeeping/ntp_clock.h"
+
+namespace {
 
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(
     U8G2_R0,
     HardwareConfig::OLED_RST_PIN
 );
 
-static const char* wifiStatusText(WifiStatus status);
-static void drawConnectionFrame(WifiStatus status);
+}  // namespace
 
 void initializeDisplay() {
     display.begin();
@@ -16,32 +22,13 @@ void initializeDisplay() {
     display.sendBuffer();
 }
 
-void drawFrame(const AppState& appState) {
+void drawFrame(const AppState &state, uint32_t nowMs) {
+    FrameContext context;
+    context.nowMs = nowMs;
+    context.nowSeconds = currentEpochSeconds();
+    formatClockTime(context.clockText, sizeof context.clockText);
+
     display.clearBuffer();
-    if (appState.wifiStatus != WifiStatus::Connected) {
-        drawConnectionFrame(appState.wifiStatus);
-    } else {
-        display.drawXBMP(80, 16, 32, 32, epd_bitmap_72264);
-    }
+    renderScreen(display, state, context);
     display.sendBuffer();
-}
-
-static const char* wifiStatusText(WifiStatus status) {
-    switch (status) {
-        case WifiStatus::Connected:
-            return "WiFi conectado!";
-        case WifiStatus::Connecting:
-            return "Conectando...";
-        case WifiStatus::Disconnected:
-            return "WiFi desconectado";
-        case WifiStatus::Failed:
-            return "Falha no WiFi";
-    }
-
-    return "WiFi desconhecido";
-}
-
-static void drawConnectionFrame(WifiStatus status) {
-    display.setFont(u8g2_font_6x10_tf);
-    display.drawStr(6, 14, wifiStatusText(status));
 }
