@@ -19,16 +19,27 @@ const formatAge = (ageSeconds: number): string => {
   return `há ${Math.round(ageSeconds / 3600)}h`;
 };
 
+const percentage = (value: number): number => Math.max(0, Math.min(100, value));
+
 function Bar({ window: windowView }: { window: WindowView }): JSX.Element {
   const unknown = windowView.usedPercentage === null;
+  const usedPercentage = unknown ? 0 : percentage(windowView.usedPercentage ?? 0);
   return (
     <div className="bar">
       <div className="bar-head">
         <span>{WINDOW_LABELS[windowView.id]}</span>
-        <span>{unknown ? '—' : `${Math.round(windowView.usedPercentage ?? 0)}%`}</span>
+        <strong>{unknown ? '--%' : `${Math.round(usedPercentage)}%`}</strong>
       </div>
-      <div className="bar-track">
-        <div className="bar-fill" style={{ width: unknown ? '0%' : `${windowView.usedPercentage}%` }} />
+      <div
+        className="bar-track"
+        role="progressbar"
+        aria-label={WINDOW_LABELS[windowView.id]}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={unknown ? undefined : usedPercentage}
+        aria-valuetext={unknown ? 'Sem dado válido' : `${Math.round(usedPercentage)}% usado`}
+      >
+        <div className="bar-fill" style={{ width: `${usedPercentage}%` }} />
       </div>
       <small>{unknown ? 'Janela reiniciou, aguardando novo dado' : formatReset(windowView.resetsAt)}</small>
     </div>

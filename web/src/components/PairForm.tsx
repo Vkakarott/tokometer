@@ -9,6 +9,13 @@ const ERROR_MESSAGES: Record<string, string> = {
   unknown: 'Código não encontrado. Confira o que está no display.',
 };
 
+const normalizeCode = (value: string): string => value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+
+const formatCode = (value: string): string => {
+  const normalized = normalizeCode(value).slice(0, 8);
+  return normalized.length > 4 ? `${normalized.slice(0, 4)}-${normalized.slice(4)}` : normalized;
+};
+
 export function PairForm(): JSX.Element {
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
@@ -17,7 +24,7 @@ export function PairForm(): JSX.Element {
     event.preventDefault();
     setStatus({ kind: 'sending' });
     try {
-      await approvePairing(code);
+      await approvePairing(normalizeCode(code));
       setStatus({ kind: 'done' });
       setCode('');
     } catch (error) {
@@ -32,16 +39,25 @@ export function PairForm(): JSX.Element {
       <input
         id="user-code"
         value={code}
-        onChange={(event) => setCode(event.target.value)}
+        onChange={(event) => {
+          setCode(formatCode(event.target.value));
+          setStatus({ kind: 'idle' });
+        }}
         placeholder="K7QM-3F9A"
         autoComplete="off"
+        inputMode="text"
+        maxLength={9}
         spellCheck={false}
+        aria-describedby="pair-help pair-status"
       />
-      <button type="submit" disabled={status.kind === 'sending' || code.length < 8}>
+      <p className="pair-help" id="pair-help">Use os oito caracteres exibidos na tela do dispositivo.</p>
+      <button className="button" type="submit" disabled={status.kind === 'sending' || normalizeCode(code).length !== 8}>
         Aprovar
       </button>
-      {status.kind === 'done' && <p className="ok">Dispositivo pareado.</p>}
-      {status.kind === 'error' && <p className="err">{status.message}</p>}
+      <p className={status.kind === 'done' ? 'form-status ok' : status.kind === 'error' ? 'form-status err' : 'form-status'} id="pair-status" aria-live="polite">
+        {status.kind === 'done' && 'Dispositivo pareado com sucesso.'}
+        {status.kind === 'error' && status.message}
+      </p>
     </form>
   );
 }
