@@ -44,7 +44,16 @@ cd web && npm install && npm run dev
 cd backend && npm test
 ./collector/test/payload.test.sh
 cd web && npm run build && npm run lint
+
+# firmware (na raiz, com PlatformIO)
+pio test -e native
+pio run -e heltec_wifi_lora_32_V2
 ```
+
+Antes de gravar o ESP32, `API_BASE_URL` em
+`firmware/src/config/api_config.h` e `TOKESP_VERIFICATION_URI` no
+`backend/.env` precisam usar o IP LAN atual da máquina. Uma reserva DHCP no
+roteador evita que ele mude.
 
 ## Limitações conhecidas
 
