@@ -1,12 +1,77 @@
 # tokEsp collector
 
-Empurra o consumo da assinatura Claude para o backend do tokEsp.
+Envia o consumo da assinatura Claude para o backend do tokEsp.
 
-## Instalação
+## Como funciona
 
-1. `mkdir -p ~/.config/tokesp && cp config.example.sh ~/.config/tokesp/config.sh`
-2. Edite `~/.config/tokesp/config.sh` com a URL e o token do backend.
-3. Adicione ao `~/.claude/settings.json`:
+`usage_poll.sh` consulta o mesmo uso da conta que a tela `/usage` do Claude
+Code mostra e envia ao backend. Como lê a conta, o número acompanha qualquer
+cliente: extensão do VS Code, `claude` no terminal e claude.ai.
+
+Ele roda em dois momentos:
+
+- **Hook `Stop` do Claude Code:** depois de cada resposta, inclusive no chat da
+  extensão do VS Code.
+- **launchd a cada 2 minutos:** mantém o número em dia enquanto você não usa o
+  Claude Code.
+
+> **Riscos que você aceita ao usar:**
+> - A rota de uso (`api.anthropic.com/api/oauth/usage`) é **interna do Claude
+>   Code e não documentada**. Pode mudar ou deixar de funcionar sem aviso.
+> - O script lê o token de login do Claude Code no Keychain do macOS. O token só
+>   é enviado para a Anthropic e nunca aparece na linha de comando.
+
+## Instalação (macOS)
+
+Rode os comandos a partir desta pasta (`collector/`).
+
+1. Configure URL e token do backend:
+
+   ```bash
+   mkdir -p ~/.config/tokesp && cp config.example.sh ~/.config/tokesp/config.sh
+   # edite ~/.config/tokesp/config.sh; na mesma máquina do backend use http://localhost:8080
+   ```
+
+2. Adicione o hook ao `~/.claude/settings.json` (vale para a extensão e o CLI):
+
+   ```json
+   {
+     "hooks": {
+       "Stop": [
+         {
+           "hooks": [
+             { "type": "command", "command": "/caminho/absoluto/para/collector/usage_poll.sh --detach" }
+           ]
+         }
+       ]
+     }
+   }
+   ```
+
+3. Instale o agendamento:
+
+   ```bash
+   sed -e "s#__COLLECTOR_DIR__#$(pwd)#g" -e "s#__HOME__#$HOME#g" \
+     launchd/com.tokesp.usage-poll.plist > ~/Library/LaunchAgents/com.tokesp.usage-poll.plist
+   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tokesp.usage-poll.plist
+   ```
+
+Na primeira execução o macOS pode pedir acesso ao item
+"Claude Code-credentials": escolha **Sempre permitir**. Erros ficam em
+`~/Library/Logs/tokesp-usage-poll.log`.
+
+Para remover o agendamento:
+`launchctl bootout gui/$(id -u)/com.tokesp.usage-poll`.
+
+## Alternativa sem credenciais: statusline
+
+`statusline.sh` usa só dados documentados, mas **só o `claude` no terminal roda
+statusline**. A extensão do VS Code não envia nada, e o número só muda quando
+uma sessão do terminal recebe resposta. Em troca, ele também envia a contagem
+de tokens da janela de contexto.
+
+**Use uma fonte ou a outra, nunca as duas:** a statusline envia o número da
+última resposta daquela sessão e sobrescreveria o valor mais novo da conta.
 
 ```json
 {
@@ -18,39 +83,20 @@ Empurra o consumo da assinatura Claude para o backend do tokEsp.
 }
 ```
 
-`refreshInterval` é em **segundos**: o script roda de novo a cada minuto
-enquanto a sessão está ociosa.
-
-O collector só envia quando os valores mudam em relação ao último envio aceito
-pelo backend. Reenviar o mesmo número com horário novo faria um dado velho
-parecer atual. Sessões que ainda não receberam resposta da API também não
-enviam nada, para não apagar o último dado. O controle fica em
-`~/.cache/tokesp/last-sent`; apague esse arquivo para forçar um novo envio
-(por exemplo, depois de zerar o `state.json` do backend).
-
-Além dos limites de 5 horas e 7 dias, o collector envia a contagem de tokens
-da janela de contexto atual quando o Claude Code disponibiliza esses campos.
-Essa contagem é uma métrica da sessão, não do consumo da assinatura.
-
-## Se você já usa um statusline
-
-Este script substitui o seu. Para manter os dois, chame o seu script no final
-de `statusline.sh` em vez do bloco `jq` de saída.
+`refreshInterval` é em **segundos**. A statusline só envia quando os valores
+mudam em relação ao último envio aceito, e sessões ainda sem resposta da API
+não enviam nada. O controle fica em `~/.cache/tokesp/last-sent`; apague esse
+arquivo para forçar um novo envio.
 
 ## Usar em outra máquina
 
-Copie a pasta `collector/`, repita os 3 passos acima com a mesma URL e token.
-Várias máquinas podem reportar ao mesmo tempo: os limites são da conta, então
-todas mandam o mesmo número e a mais recente ganha.
+Copie a pasta `collector/` e repita a instalação com a mesma URL e token. Os
+limites são da conta, então todas as máquinas mandam o mesmo número.
 
 ## Limitações
 
-- `rate_limits` só existe para assinantes **Pro/Max**, e só **após a primeira
-  resposta da API** na sessão. Antes disso o array de janelas vai vazio.
-- Requer Claude Code **>= 2.1.92**.
-- O número reflete sua última interação com o Claude Code, não "agora".
-- Só o `claude` no terminal roda o statusline. A extensão do VS Code não
-  envia nada: o uso dela conta no percentual, mas só aparece quando uma sessão
-  do terminal recebe a próxima resposta da API.
-- Claude Desktop não tem statusline. O percentual já inclui o uso do Desktop
-  (o limite é da assinatura), mas só atualiza enquanto o Claude Code roda.
+- Os limites só existem para assinantes **Pro/Max**.
+- O token de login expira. Se o Claude Code ficar fechado por muito tempo, o
+  envio para até ele abrir de novo; web e OLED mostram o aviso de dado antigo.
+- Com `usage_poll.sh`, o web não mostra a contagem de contexto: esse dado só
+  existe na statusline.

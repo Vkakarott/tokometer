@@ -3,12 +3,14 @@
 Mostra quanto da sua assinatura Claude Pro/Max já foi consumida nas janelas de
 5 horas e 7 dias — num dashboard web e num display OLED.
 
-O dado vem do statusline do Claude Code, não de uma API: **não existe endpoint
-público de consumo de assinatura**. O Claude Code empurra; o backend guarda; o
-web e o ESP32 leem.
+**Não existe endpoint público de consumo de assinatura.** O collector lê o uso
+da conta pela mesma rota interna que a tela `/usage` do Claude Code usa, depois
+de cada resposta (hook `Stop`, inclusive no VS Code) e a cada 2 minutos. Essa
+rota não é documentada e pode mudar; veja `collector/README.md`. O collector
+empurra; o backend guarda; o web e o ESP32 leem.
 
 ```
-Claude Code ──statusline──► backend API ──► web (/ e /pair)
+Claude Code ──collector──► backend API ──► web (/ e /pair)
                                    └──────► ESP32 (Bearer, via device flow)
 ```
 
@@ -17,7 +19,7 @@ Claude Code ──statusline──► backend API ──► web (/ e /pair)
 | Pasta | O que é |
 |---|---|
 | `backend/` | Node + TypeScript. Guarda o snapshot e expõe a API para web e device. |
-| `collector/` | Script de statusline do Claude Code. A fonte do dado. |
+| `collector/` | Envia o uso da conta ao backend (hook `Stop` + launchd). A fonte do dado. |
 | `web/` | Vite + React. Dashboard e aprovação de pareamento. |
 | `firmware/` | ESP32 (Heltec WiFi LoRa 32 V2). Consome `docs/device-api.md`. |
 
@@ -44,6 +46,8 @@ cd web && npm install && npm run dev
 cd backend && npm test
 ./collector/test/payload.test.sh
 ./collector/test/statusline.test.sh
+./collector/test/usage.test.sh
+./collector/test/usage_poll.test.sh
 cd web && npm run build && npm run lint
 
 # firmware (na raiz, com PlatformIO)
