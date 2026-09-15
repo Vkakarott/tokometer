@@ -5,7 +5,7 @@ import { approvePairing } from '../api';
 type Status = { kind: 'idle' | 'sending' | 'done' } | { kind: 'error'; message: string };
 
 const ERROR_MESSAGES: Record<string, string> = {
-  expired: 'Código expirado. Reinicie o dispositivo para gerar um novo.',
+  expired: 'Código expirado. Aguarde alguns segundos: o display mostra um novo código sozinho.',
   unknown: 'Código não encontrado. Confira o que está no display.',
 };
 
