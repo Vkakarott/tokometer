@@ -32,7 +32,19 @@ Rode os comandos a partir desta pasta (`collector/`).
    # edite ~/.config/tokesp/config.sh; na mesma máquina do backend use http://localhost:8080
    ```
 
-2. Adicione o hook ao `~/.claude/settings.json` (vale para a extensão e o CLI):
+2. Instale o script e o agendamento:
+
+   ```bash
+   ./install-usage-poll.sh
+   ```
+
+   Ele copia `usage_poll.sh` e `usage.jq` para `~/.local/share/tokesp`: a
+   proteção de privacidade do macOS impede agentes do launchd de executar
+   arquivos dentro de `~/Documents`. Rode de novo sempre que atualizar o
+   collector.
+
+3. Adicione o hook ao `~/.claude/settings.json` (vale para a extensão e o CLI),
+   apontando para a cópia instalada:
 
    ```json
    {
@@ -40,20 +52,12 @@ Rode os comandos a partir desta pasta (`collector/`).
        "Stop": [
          {
            "hooks": [
-             { "type": "command", "command": "/caminho/absoluto/para/collector/usage_poll.sh --detach" }
+             { "type": "command", "command": "/Users/<voce>/.local/share/tokesp/usage_poll.sh --detach" }
            ]
          }
        ]
      }
    }
-   ```
-
-3. Instale o agendamento:
-
-   ```bash
-   sed -e "s#__COLLECTOR_DIR__#$(pwd)#g" -e "s#__HOME__#$HOME#g" \
-     launchd/com.tokesp.usage-poll.plist > ~/Library/LaunchAgents/com.tokesp.usage-poll.plist
-   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tokesp.usage-poll.plist
    ```
 
 Na primeira execução o macOS pode pedir acesso ao item
