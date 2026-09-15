@@ -13,12 +13,20 @@ Empurra o consumo da assinatura Claude para o backend do tokEsp.
   "statusLine": {
     "type": "command",
     "command": "/caminho/absoluto/para/collector/statusline.sh",
-    "refreshInterval": 60000
+    "refreshInterval": 60
   }
 }
 ```
 
-`refreshInterval` mantém o push acontecendo enquanto a sessão está ociosa.
+`refreshInterval` é em **segundos**: o script roda de novo a cada minuto
+enquanto a sessão está ociosa.
+
+O collector só envia quando os valores mudam em relação ao último envio aceito
+pelo backend. Reenviar o mesmo número com horário novo faria um dado velho
+parecer atual. Sessões que ainda não receberam resposta da API também não
+enviam nada, para não apagar o último dado. O controle fica em
+`~/.cache/tokesp/last-sent`; apague esse arquivo para forçar um novo envio
+(por exemplo, depois de zerar o `state.json` do backend).
 
 Além dos limites de 5 horas e 7 dias, o collector envia a contagem de tokens
 da janela de contexto atual quando o Claude Code disponibiliza esses campos.
@@ -41,5 +49,8 @@ todas mandam o mesmo número e a mais recente ganha.
   resposta da API** na sessão. Antes disso o array de janelas vai vazio.
 - Requer Claude Code **>= 2.1.92**.
 - O número reflete sua última interação com o Claude Code, não "agora".
+- Só o `claude` no terminal roda o statusline. A extensão do VS Code não
+  envia nada: o uso dela conta no percentual, mas só aparece quando uma sessão
+  do terminal recebe a próxima resposta da API.
 - Claude Desktop não tem statusline. O percentual já inclui o uso do Desktop
   (o limite é da assinatura), mas só atualiza enquanto o Claude Code roda.

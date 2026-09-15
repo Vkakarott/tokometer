@@ -43,6 +43,7 @@ cd web && npm install && npm run dev
 ```bash
 cd backend && npm test
 ./collector/test/payload.test.sh
+./collector/test/statusline.test.sh
 cd web && npm run build && npm run lint
 
 # firmware (na raiz, com PlatformIO)
