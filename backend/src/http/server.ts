@@ -16,7 +16,9 @@ export type ServerDeps = {
 };
 
 export function buildServer(deps: ServerDeps): FastifyInstance {
-  const server = Fastify({ logger: false });
+  // No type coercion: Ajv's default would turn a null percentage into 0 and let
+  // clients show a confident 0% for a window that is actually unknown.
+  const server = Fastify({ logger: false, ajv: { customOptions: { coerceTypes: false } } });
   registerIngest(server, deps);
   registerUsage(server, deps);
   registerDevice(server, deps);

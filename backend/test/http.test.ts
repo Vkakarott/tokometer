@@ -64,6 +64,31 @@ test('rejects ingest with a malformed body', async () => {
   assert.equal(response.statusCode, 400);
 });
 
+test('rejects ingest with a null percentage instead of storing 0', async () => {
+  const server = build();
+  const response = await server.inject({
+    method: 'POST',
+    url: '/ingest',
+    headers: { authorization: 'Bearer collector-secret' },
+    payload: { ...payload, windows: [{ id: 'five_hour', usedPercentage: null, resetsAt: NOW + 3600 }] },
+  });
+  assert.equal(response.statusCode, 400);
+
+  const usage = await server.inject({ method: 'GET', url: '/usage/web' });
+  assert.equal(usage.json().hasData, false);
+});
+
+test('rejects ingest with a numeric string percentage', async () => {
+  const server = build();
+  const response = await server.inject({
+    method: 'POST',
+    url: '/ingest',
+    headers: { authorization: 'Bearer collector-secret' },
+    payload: { ...payload, windows: [{ id: 'five_hour', usedPercentage: '42', resetsAt: NOW + 3600 }] },
+  });
+  assert.equal(response.statusCode, 400);
+});
+
 test('rejects usage without a device token', async () => {
   const server = build();
   assert.equal((await server.inject({ method: 'GET', url: '/usage' })).statusCode, 401);
