@@ -49,6 +49,20 @@ test('reports no data when Claude Code has not answered yet', () => {
   assert.equal(view.hasData, false, 'empty windows is not the same as 0%');
 });
 
+test('keeps context data even before subscription limits arrive', () => {
+  const view = buildUsageView(
+    snapshot({
+      windows: [],
+      context: { inputTokens: 12_500, outputTokens: 2_400, windowSize: 200_000, usedPercentage: 7.45 },
+    }),
+    NOW + 10,
+    900,
+  );
+  assert.equal(view.hasData, false);
+  assert.equal(view.context?.inputTokens, 12_500);
+  assert.equal(view.ageSeconds, 10);
+});
+
 test('never reports a negative age when clocks disagree', () => {
   const view = buildUsageView(snapshot(), NOW - 50, 900);
   assert.equal(view.ageSeconds, 0);

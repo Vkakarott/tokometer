@@ -6,7 +6,7 @@ Base URL sem barra no final, ex.: `http://192.168.1.10:8080`.
 ## 1. Parear (uma vez por device)
 
 O device **nunca** recebe um token gravado por humano. Ele pede um código,
-mostra na tela, e o humano aprova no `/web`.
+mostra na tela, e o humano aprova em `/pair`.
 
 ### `POST /device/code`
 
@@ -62,12 +62,22 @@ Resposta `200`:
   ],
   "ageSeconds": 42,
   "stale": false,
-  "hasData": true
+  "hasData": true,
+  "context": {
+    "inputTokens": 12500,
+    "outputTokens": 2400,
+    "windowSize": 200000,
+    "usedPercentage": 7.45
+  }
 }
 ```
 
 `401` significa que o backend não conhece mais este token: apague-o do
 armazenamento e recomece o pareamento.
+
+`context` é opcional e descreve a janela da sessão atual do Claude Code. Ele
+não mede o consumo da assinatura; o firmware pode ignorá-lo até ter uma tela
+para essa métrica.
 
 ## 3. As três regras que o display precisa respeitar
 
@@ -89,6 +99,8 @@ significa "na última interação", nunca "agora".
 - **Polling do `/usage`:** 30s é um bom começo.
 - **`hardware_id`:** derive do MAC (`ESP.getEfuseMac()`) — estável entre boots,
   único por placa, nada a configurar.
+- **URL base:** configure `API_BASE_URL` em `firmware/src/config/api_config.h`
+  com o IP LAN da máquina que executa o backend.
 - **Token:** guarde na NVS (`Preferences.h`), não no `secrets.h`. Isso permite
   rotacionar sem reflashar e é onde um captive portal escreveria depois.
 - **TLS:** o backend hoje é HTTP puro em LAN. Mantenha o cliente HTTP atrás de

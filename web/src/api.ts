@@ -6,8 +6,16 @@ export type WindowView = {
   resetsAt: number;
 };
 
+export type ContextUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  windowSize: number;
+  usedPercentage: number;
+};
+
 export type UsageView = {
   windows: WindowView[];
+  context: ContextUsage | null;
   ageSeconds: number;
   stale: boolean;
   hasData: boolean;

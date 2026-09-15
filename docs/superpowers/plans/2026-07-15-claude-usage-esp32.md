@@ -1,5 +1,8 @@
 # tokEsp — Backend, collector e web — Implementation Plan
 
+> Histórico: plano de implementação concluído. Use o `README.md`,
+> `docs/device-api.md` e os READMEs de cada componente como referência operacional atual.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Entregar o backend, o collector e o `/web` que expõem o consumo da assinatura Claude Pro/Max, com um endpoint `/usage` autenticado pronto para o ESP32 consumir.

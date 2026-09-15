@@ -15,6 +15,9 @@ npm run dev
 O Vite encaminha chamadas iniciadas por `/api` para o backend. A tela de uso
 fica em `/` e o endereço para parear o dispositivo é `/pair`.
 
+O painel mostra separadamente os limites da assinatura e os tokens da janela
+de contexto da sessão mais recente do Claude Code.
+
 ## Verificar
 
 ```bash

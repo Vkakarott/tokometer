@@ -20,6 +20,10 @@ Empurra o consumo da assinatura Claude para o backend do tokEsp.
 
 `refreshInterval` mantém o push acontecendo enquanto a sessão está ociosa.
 
+Além dos limites de 5 horas e 7 dias, o collector envia a contagem de tokens
+da janela de contexto atual quando o Claude Code disponibiliza esses campos.
+Essa contagem é uma métrica da sessão, não do consumo da assinatura.
+
 ## Se você já usa um statusline
 
 Este script substitui o seu. Para manter os dois, chame o seu script no final

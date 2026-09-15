@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import type { UsageView, WindowView } from '../api';
+import { ContextUsage } from './ContextUsage';
 
 const WINDOW_LABELS: Record<WindowView['id'], string> = {
   five_hour: 'Últimas 5 horas',
@@ -47,24 +48,22 @@ function Bar({ window: windowView }: { window: WindowView }): JSX.Element {
 }
 
 export function UsageBars({ usage }: { usage: UsageView }): JSX.Element {
-  if (!usage.hasData) {
-    return (
-      <p className="empty">
-        Sem dados ainda. Abra o Claude Code e envie uma mensagem — o consumo aparece
-        depois da primeira resposta. Requer assinatura Pro ou Max.
-      </p>
-    );
-  }
-
   return (
     <section className={usage.stale ? 'usage stale' : 'usage'}>
-      {usage.windows.map((window) => (
-        <Bar key={window.id} window={window} />
-      ))}
-      <small className="age">
-        Atualizado {formatAge(usage.ageSeconds)}
-        {usage.stale ? ' — o Claude Code pode estar fechado' : ''}
-      </small>
+      {usage.hasData ? (
+        usage.windows.map((window) => <Bar key={window.id} window={window} />)
+      ) : (
+        <p className="empty">
+          Sem dados dos limites ainda. Abra o Claude Code e envie uma mensagem.
+        </p>
+      )}
+      {usage.context !== null && <ContextUsage context={usage.context} />}
+      {(usage.hasData || usage.context !== null) && (
+        <small className="age">
+          Atualizado {formatAge(usage.ageSeconds)}
+          {usage.stale ? ' — o Claude Code pode estar fechado' : ''}
+        </small>
+      )}
     </section>
   );
 }

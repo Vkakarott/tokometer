@@ -22,6 +22,7 @@ const payload = {
   source: 'laptop',
   observedAt: NOW,
   windows: [{ id: 'five_hour', usedPercentage: 23.5, resetsAt: NOW + 3600 }],
+  context: { inputTokens: 12_500, outputTokens: 2_400, windowSize: 200_000, usedPercentage: 7.45 },
 };
 
 test('rejects ingest without a token', async () => {
@@ -132,6 +133,7 @@ test('walks the full pairing flow and then serves usage to the device', async ()
   assert.equal(body.hasData, true);
   assert.equal(body.ageSeconds, 0);
   assert.equal(body.windows[0].usedPercentage, 23.5);
+  assert.equal(body.context.inputTokens, 12_500);
 });
 
 test('reports expired_token once the code TTL passes', async () => {

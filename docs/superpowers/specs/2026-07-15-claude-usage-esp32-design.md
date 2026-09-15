@@ -1,5 +1,8 @@
 # tokEsp — Display físico de consumo da assinatura Claude
 
+> Histórico: este documento registra as decisões de desenho originais. Para o
+> comportamento e as rotas atuais, consulte o `README.md` e `docs/device-api.md`.
+
 **Data:** 2026-07-15
 **Status:** Aprovado, pendente de plano de implementação
 

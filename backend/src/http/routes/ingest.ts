@@ -23,6 +23,16 @@ const bodySchema = {
         },
       },
     },
+    context: {
+      type: 'object',
+      required: ['inputTokens', 'outputTokens', 'windowSize', 'usedPercentage'],
+      properties: {
+        inputTokens: { type: 'number', minimum: 0 },
+        outputTokens: { type: 'number', minimum: 0 },
+        windowSize: { type: 'number', minimum: 1 },
+        usedPercentage: { type: 'number', minimum: 0, maximum: 100 },
+      },
+    },
   },
 } as const;
 

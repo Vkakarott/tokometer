@@ -24,6 +24,10 @@ expect "both windows present" \
   "$(run '{"rate_limits":{"five_hour":{"used_percentage":23.5,"resets_at":1800003600},"seven_day":{"used_percentage":41.2,"resets_at":1800086400}}}')" \
   '{"observedAt":1800000000,"provider":"claude-code","source":"testhost","windows":[{"id":"five_hour","resetsAt":1800003600,"usedPercentage":23.5},{"id":"seven_day","resetsAt":1800086400,"usedPercentage":41.2}]}'
 
+expect "context tokens are included when available" \
+  "$(run '{"context_window":{"total_input_tokens":12500,"total_output_tokens":2400,"context_window_size":200000,"used_percentage":7.45}}')" \
+  '{"context":{"inputTokens":12500,"outputTokens":2400,"usedPercentage":7.45,"windowSize":200000},"observedAt":1800000000,"provider":"claude-code","source":"testhost","windows":[]}'
+
 expect "rate_limits absent yields empty windows, not an error" \
   "$(run '{"model":{"display_name":"Opus"}}')" \
   '{"observedAt":1800000000,"provider":"claude-code","source":"testhost","windows":[]}'

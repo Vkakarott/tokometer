@@ -24,6 +24,8 @@
   --text-muted: #52666a;
   --text-strong: #17212b;
   --border: #d5e0e2;
+  --context: #3d5a80;
+  --context-track: #d9e2ef;
   --track: #dbe7e8;
   --track-border: #c8d8da;
   --warning: #b05a00;
@@ -76,6 +78,8 @@ a:focus-visible {
     --text-muted: #b5c5c7;
     --text-strong: #f3f7f7;
     --border: #34464b;
+    --context: #93b7e3;
+    --context-track: #2d4056;
     --track: #2a3d42;
     --track-border: #3c5257;
     --warning: #ffb454;

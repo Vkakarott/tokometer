@@ -8,15 +8,15 @@ público de consumo de assinatura**. O Claude Code empurra; o backend guarda; o
 web e o ESP32 leem.
 
 ```
-Claude Code ──statusline──► backend ──► /web
-                               └──────► ESP32 (Bearer, via device flow)
+Claude Code ──statusline──► backend API ──► web (/ e /pair)
+                                   └──────► ESP32 (Bearer, via device flow)
 ```
 
 ## Componentes
 
 | Pasta | O que é |
 |---|---|
-| `backend/` | Node + TypeScript. Guarda o snapshot, serve web e device. |
+| `backend/` | Node + TypeScript. Guarda o snapshot e expõe a API para web e device. |
 | `collector/` | Script de statusline do Claude Code. A fonte do dado. |
 | `web/` | Vite + React. Dashboard e aprovação de pareamento. |
 | `firmware/` | ESP32 (Heltec WiFi LoRa 32 V2). Consome `docs/device-api.md`. |
@@ -27,12 +27,13 @@ Claude Code ──statusline──► backend ──► /web
 # backend
 cd backend && npm install && cp .env.example .env
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-# cole em TOKESP_COLLECTOR_TOKEN no .env
+# cole o valor em TOKESP_COLLECTOR_TOKEN no .env
+# ajuste TOKESP_VERIFICATION_URI para http://<IP-DA-MAQUINA>:5173/pair
 npm run dev
 
 # web
 cd web && npm install && npm run dev
-# o /web é servido pelo Vite dev server; o backend não serve o artefato buildado — é ferramenta de dev/LAN.
+# o painel fica em / e o pareamento em /pair; o backend não serve o artefato buildado.
 
 # collector: veja collector/README.md
 ```
@@ -42,7 +43,7 @@ cd web && npm install && npm run dev
 ```bash
 cd backend && npm test
 ./collector/test/payload.test.sh
-cd web && npx tsc -b && npm run lint
+cd web && npm run build && npm run lint
 ```
 
 ## Limitações conhecidas
@@ -52,8 +53,12 @@ cd web && npx tsc -b && npm run lint
   Claude Code estiver fechado, o dado congela — daí o campo `stale`.
 - Claude Desktop não tem statusline. O uso dele **conta** no percentual (o
   limite é da assinatura), mas só aparece quando o Claude Code roda de novo.
+- A contagem de contexto é uma métrica da sessão atual, separada do consumo da
+  assinatura.
 
 ## Docs
 
 - `docs/superpowers/specs/2026-07-15-claude-usage-esp32-design.md` — desenho e o porquê
 - `docs/device-api.md` — contrato para o firmware
+- `collector/README.md` — configuração do statusline
+- `web/README.md` — execução do painel web

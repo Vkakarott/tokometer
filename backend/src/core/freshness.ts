@@ -13,16 +13,34 @@ export function buildUsageView(
   nowSeconds: number,
   staleAfterSeconds: number,
 ): UsageView {
-  if (snapshot === null || snapshot.windows.length === 0) {
-    return { windows: [], ageSeconds: 0, stale: false, hasData: false };
+  if (snapshot === null) {
+    return {
+      windows: [],
+      context: null,
+      ageSeconds: 0,
+      stale: false,
+      hasData: false,
+    };
   }
 
   const ageSeconds = Math.max(0, nowSeconds - snapshot.observedAt);
+  const stale = ageSeconds > staleAfterSeconds;
+
+  if (snapshot.windows.length === 0) {
+    return {
+      windows: [],
+      context: snapshot.context ?? null,
+      ageSeconds,
+      stale,
+      hasData: false,
+    };
+  }
 
   return {
     windows: snapshot.windows.map((window) => viewWindow(window, nowSeconds)),
+    context: snapshot.context ?? null,
     ageSeconds,
-    stale: ageSeconds > staleAfterSeconds,
+    stale,
     hasData: true,
   };
 }
