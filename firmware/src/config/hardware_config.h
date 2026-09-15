@@ -12,7 +12,4 @@ constexpr uint8_t OLED_RST_PIN = 16;
 constexpr uint8_t PRG_BUTTON_PIN = 0;
 constexpr uint32_t BUTTON_DEBOUNCE_MS = 30;
 
-constexpr bool ENABLE_SERIAL_DEBUG = false;
-constexpr bool ENABLE_RX_VISUAL_DIAG = true;
-
 }
