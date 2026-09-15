@@ -3,10 +3,14 @@
     provider: "claude-code",
     source: $src,
     observedAt: $now,
+    # A window without both values is dropped rather than sent as null: the
+    # backend rejects nulls, and one bad window must not discard the other.
     windows: [
       (.rate_limits.five_hour // empty
+        | select(.used_percentage != null and .resets_at != null)
         | { id: "five_hour", usedPercentage: .used_percentage, resetsAt: .resets_at }),
       (.rate_limits.seven_day // empty
+        | select(.used_percentage != null and .resets_at != null)
         | { id: "seven_day", usedPercentage: .used_percentage, resetsAt: .resets_at })
     ]
   }

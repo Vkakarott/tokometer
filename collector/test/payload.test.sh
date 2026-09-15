@@ -40,5 +40,13 @@ expect "zero percent is preserved, not dropped as falsy" \
   "$(run '{"rate_limits":{"five_hour":{"used_percentage":0,"resets_at":1800003600}}}')" \
   '{"observedAt":1800000000,"provider":"claude-code","source":"testhost","windows":[{"id":"five_hour","resetsAt":1800003600,"usedPercentage":0}]}'
 
+expect "window with null percentage is dropped, the other is kept" \
+  "$(run '{"rate_limits":{"five_hour":{"used_percentage":null,"resets_at":1800003600},"seven_day":{"used_percentage":41.2,"resets_at":1800086400}}}')" \
+  '{"observedAt":1800000000,"provider":"claude-code","source":"testhost","windows":[{"id":"seven_day","resetsAt":1800086400,"usedPercentage":41.2}]}'
+
+expect "window without resets_at is dropped" \
+  "$(run '{"rate_limits":{"five_hour":{"used_percentage":10}}}')" \
+  '{"observedAt":1800000000,"provider":"claude-code","source":"testhost","windows":[]}'
+
 [ "$FAILURES" -eq 0 ] || exit 1
 echo "all payload tests passed"
