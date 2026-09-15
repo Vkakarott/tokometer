@@ -3,7 +3,7 @@
 #include <cstdint>
 
 // LAN IP of the machine running the backend. `localhost` does not work on the ESP32.
-constexpr char API_BASE_URL[] = "http://10.252.7.226:8080";
+constexpr char API_BASE_URL[] = "http://192.168.1.29:8080";
 
 namespace ApiConfig {
 
