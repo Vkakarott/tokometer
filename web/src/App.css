@@ -74,6 +74,17 @@
   box-shadow: var(--surface-shadow);
 }
 
+.provider-panels {
+  display: grid;
+  gap: 20px;
+}
+
+@media (min-width: 720px) {
+  .provider-panels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .panel-heading {
   display: flex;
   align-items: flex-start;

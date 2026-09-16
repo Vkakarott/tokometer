@@ -21,10 +21,18 @@ export type UsageView = {
   hasData: boolean;
 };
 
-export async function fetchUsage(): Promise<UsageView> {
+export type ProviderId = 'claude' | 'codex';
+
+export const PROVIDER_ORDER: readonly ProviderId[] = ['claude', 'codex'];
+
+export type ProvidersView = {
+  providers: Record<ProviderId, UsageView>;
+};
+
+export async function fetchUsage(): Promise<ProvidersView> {
   const response = await fetch('/api/usage/web');
   if (!response.ok) throw new Error(`usage request failed: ${response.status}`);
-  return (await response.json()) as UsageView;
+  return (await response.json()) as ProvidersView;
 }
 
 export async function approvePairing(userCode: string): Promise<void> {

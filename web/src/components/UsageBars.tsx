@@ -47,21 +47,21 @@ function Bar({ window: windowView }: { window: WindowView }): JSX.Element {
   );
 }
 
-export function UsageBars({ usage }: { usage: UsageView }): JSX.Element {
+export function UsageBars({ usage, providerName }: { usage: UsageView; providerName: string }): JSX.Element {
   return (
     <section className={usage.stale ? 'usage stale' : 'usage'}>
       {usage.hasData ? (
         usage.windows.map((window) => <Bar key={window.id} window={window} />)
       ) : (
         <p className="empty">
-          Sem dados dos limites ainda. Abra o Claude Code e envie uma mensagem.
+          Sem dados ainda. Confira se o collector do {providerName} está instalado e rodando.
         </p>
       )}
       {usage.context !== null && <ContextUsage context={usage.context} />}
       {(usage.hasData || usage.context !== null) && (
         <small className="age">
           Atualizado {formatAge(usage.ageSeconds)}
-          {usage.stale ? ' — o Claude Code pode estar fechado' : ''}
+          {usage.stale ? ` — o collector do ${providerName} pode estar parado` : ''}
         </small>
       )}
     </section>

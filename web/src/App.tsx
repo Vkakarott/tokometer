@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { JSX } from 'react';
-import { fetchUsage, type UsageView } from './api';
-import { UsageBars } from './components/UsageBars';
+import { fetchUsage, type ProvidersView } from './api';
 import { PairForm } from './components/PairForm';
+import { UsageSection } from './components/UsageSection';
 import './App.css';
 
 const POLL_MS = 15_000;
 
 function App(): JSX.Element {
-  const [usage, setUsage] = useState<UsageView | null>(null);
+  const [usage, setUsage] = useState<ProvidersView | null>(null);
   const [failed, setFailed] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const isPairingPage = window.location.pathname.replace(/\/+$/, '') === '/pair';
@@ -70,35 +70,11 @@ function App(): JSX.Element {
       </header>
       <main>
         <section className="page-heading">
-          <p className="eyebrow">Assinatura Claude</p>
+          <p className="eyebrow">Assinaturas Claude e Codex</p>
           <h1>Consumo atual</h1>
-          <p>A leitura vem da última resposta recebida pelo Claude Code.</p>
+          <p>Lido direto de cada conta. Atualização automática a cada 15 segundos.</p>
         </section>
-        <section className="panel" aria-labelledby="usage-title">
-          <div className="panel-heading">
-            <div>
-              <h2 id="usage-title">Limites da conta</h2>
-              <p>Atualização automática a cada 15 segundos.</p>
-            </div>
-            {usage !== null && (
-              <span className={usage.stale ? 'usage-status stale' : 'usage-status'}>
-                {usage.stale ? 'Dado antigo' : 'Atualizado'}
-              </span>
-            )}
-          </div>
-          {failed ? (
-            <div className="error-state" role="alert">
-              <span>Não foi possível consultar o backend.</span>
-              <button className="button" type="button" onClick={() => setRefreshKey((key) => key + 1)}>
-                Tentar novamente
-              </button>
-            </div>
-          ) : usage === null ? (
-            <p className="loading-state" role="status">Carregando consumo...</p>
-          ) : (
-            <UsageBars usage={usage} />
-          )}
-        </section>
+        <UsageSection view={usage} failed={failed} onRetry={() => setRefreshKey((key) => key + 1)} />
       </main>
     </div>
   );
