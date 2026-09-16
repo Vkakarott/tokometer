@@ -4,6 +4,7 @@
 #include <WiFiClient.h>
 
 #include "config/api_config.h"
+#include "network/host_resolver.h"
 
 namespace {
 
@@ -11,7 +12,10 @@ HttpResponse send(const char *path, const char *bearerToken, const char *jsonBod
     WiFiClient client;
     HTTPClient http;
     HttpResponse response;
-    if (!http.begin(client, String(API_BASE_URL) + path)) return response;
+
+    const String baseUrl = backendBaseUrl();
+    if (baseUrl.isEmpty()) return response;
+    if (!http.begin(client, baseUrl + path)) return response;
 
     http.setConnectTimeout(ApiConfig::HTTP_CONNECT_TIMEOUT_MS);
     http.setTimeout(ApiConfig::HTTP_READ_TIMEOUT_MS);
@@ -27,6 +31,8 @@ HttpResponse send(const char *path, const char *bearerToken, const char *jsonBod
     if (response.status > 0) {
         response.body = http.getString();
     } else {
+        // The machine may have moved to another address: resolve again next time.
+        forgetResolvedHost();
         log_w("%s failed: %s", path, HTTPClient::errorToString(response.status).c_str());
     }
     http.end();

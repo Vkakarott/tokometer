@@ -1,7 +1,9 @@
 # Contrato do device (ESP32)
 
 O que o firmware precisa implementar para consumir o backend do tokEsp.
-Base URL sem barra no final, ex.: `http://192.168.1.10:8080`.
+Base URL sem barra no final, ex.: `http://minha-maquina.local:43110` — o
+firmware resolve o nome por mDNS a cada falha, então o backend pode trocar de
+IP sem regravação.
 
 ## 1. Parear (uma vez por device)
 
@@ -99,11 +101,14 @@ significa "na última interação", nunca "agora".
 - **Polling do `/usage`:** 30s é um bom começo.
 - **`hardware_id`:** derive do MAC (`ESP.getEfuseMac()`) — estável entre boots,
   único por placa, nada a configurar.
-- **URL base:** configure `API_BASE_URL` em `firmware/src/config/api_config.h`
-  com o IP LAN da máquina que executa o backend.
+- **URL base:** configure `API_HOST` (nome Bonjour da máquina, ex.:
+  `minha-maquina.local`) e `API_PORT` em `firmware/src/config/api_config.h`. O
+  ESP32 resolve o nome por mDNS (`ESPmDNS`) e guarda o endereço; se uma
+  requisição falha, ele resolve de novo no próximo ciclo.
 - **Token:** guarde na NVS (`Preferences.h`), não no `secrets.h`. Isso permite
   rotacionar sem reflashar e é onde um captive portal escreveria depois.
 - **TLS:** o backend hoje é HTTP puro em LAN. Mantenha o cliente HTTP atrás de
   um wrapper fino para que trocar `WiFiClient` por `WiFiClientSecure` fique
   localizado num arquivo.
-- **`localhost` não funciona no ESP32.** Use o IP da máquina na LAN.
+- **`localhost` não funciona no ESP32.** Use o nome `.local` da máquina (ou o
+  IP da LAN, se a sua rede bloquear mDNS).

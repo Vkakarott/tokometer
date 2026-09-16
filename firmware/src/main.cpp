@@ -5,6 +5,7 @@
 #include "config/hardware_config.h"
 #include "display/display_manager.h"
 #include "input/button.h"
+#include "network/host_resolver.h"
 #include "network/wifi_manager.h"
 #include "state/app_state.h"
 #include "timekeeping/ntp_clock.h"
@@ -28,6 +29,7 @@ void setup() {
     initializeDisplay();
     initializeButton();
     initializeWifi();
+    initializeHostResolver();
     initializeClock();
     initializeApp(appState);
 }
