@@ -1,16 +1,18 @@
 # tokEsp
 
-Mostra quanto da sua assinatura Claude Pro/Max já foi consumida nas janelas de
-5 horas e 7 dias — num dashboard web e num display OLED.
+Mostra quanto das suas assinaturas **Claude** (Pro/Max) e **Codex** (ChatGPT)
+já foi consumido nas janelas de 5 horas e 7 dias — num dashboard web e num
+display OLED.
 
-**Não existe endpoint público de consumo de assinatura.** O collector lê o uso
-da conta pela mesma rota interna que a tela `/usage` do Claude Code usa, depois
-de cada resposta (hook `Stop`, inclusive no VS Code) e a cada 2 minutos. Essa
-rota não é documentada e pode mudar; veja `collector/README.md`. O collector
-empurra; o backend guarda; o web e o ESP32 leem.
+**Não existe endpoint público de consumo de assinatura.** Os collectors leem o
+uso de cada conta pelas mesmas rotas internas que o Claude Code e o Codex usam,
+a cada 2 minutos (e, no Claude, também depois de cada resposta pelo hook
+`Stop`). Essas rotas não são documentadas e podem mudar; veja
+`collector/README.md`. O collector empurra; o backend guarda por provedor; o
+web e o ESP32 leem.
 
 ```
-Claude Code ──collector──► backend API ──► web (/ e /pair)
+Claude / Codex ──collector──► backend API ──► web (/ e /pair)
                                    └──────► ESP32 (Bearer, via device flow)
 ```
 
@@ -19,7 +21,7 @@ Claude Code ──collector──► backend API ──► web (/ e /pair)
 | Pasta | O que é |
 |---|---|
 | `backend/` | Node + TypeScript. Guarda o snapshot e expõe a API para web e device. |
-| `collector/` | Envia o uso da conta ao backend (hook `Stop` + launchd). A fonte do dado. |
+| `collector/` | Envia o uso das contas Claude e Codex ao backend (hook `Stop` + launchd). A fonte do dado. |
 | `web/` | Vite + React. Dashboard e aprovação de pareamento. |
 | `firmware/` | ESP32 (Heltec WiFi LoRa 32 V2). Consome `docs/device-api.md`. |
 
