@@ -7,7 +7,9 @@ CONFIG_FILE="${TOKESP_CONFIG:-$HOME/.config/tokesp/config.sh}"
 # shellcheck source=/dev/null
 [ -f "$CONFIG_FILE" ] && . "$CONFIG_FILE"
 
-DEFAULT_BACKOFF_SECONDS=300
+# Anthropic answers 429 with "Retry-After: 0" and keeps refusing right after, so
+# a short wait is never honored as is.
+MIN_BACKOFF_SECONDS=300
 MAX_BACKOFF_SECONDS=3600
 
 log() {
@@ -39,13 +41,14 @@ backing_off() {
   [ "$(date +%s)" -lt "$until" ]
 }
 
-# $1: response headers file. Honors Retry-After (capped), or waits a default.
+# $1: response headers file. Honors Retry-After within MIN..MAX backoff.
 start_backoff() {
   local wait
   wait=$(awk 'tolower($1) == "retry-after:" { gsub(/\r/, "", $2); print $2 }' "$1" 2>/dev/null | tail -1)
   case "$wait" in
-    '' | *[!0-9]*) wait=$DEFAULT_BACKOFF_SECONDS ;;
+    '' | *[!0-9]*) wait=$MIN_BACKOFF_SECONDS ;;
   esac
+  [ "$wait" -lt "$MIN_BACKOFF_SECONDS" ] && wait=$MIN_BACKOFF_SECONDS
   [ "$wait" -gt "$MAX_BACKOFF_SECONDS" ] && wait=$MAX_BACKOFF_SECONDS
   echo $(($(date +%s) + wait)) > "$BACKOFF_FILE"
   log "rate limited, retrying in ${wait}s"

@@ -91,8 +91,8 @@ expect "--detach returns immediately" "$(( $(date +%s) - started < 2 ))" 1
 sleep 1
 expect "--detach still pushes in the background" "$(count pushes.log)" 2
 
-FAKE_USAGE_STATUS=429 FAKE_RETRY_AFTER=120 "$SCRIPT" 2>"$WORK/errors.log"
-expect "rate limit honors Retry-After" "$(grep -c 'rate limited, retrying in 120s' "$WORK/errors.log")" 1
+FAKE_USAGE_STATUS=429 FAKE_RETRY_AFTER=900 "$SCRIPT" 2>"$WORK/errors.log"
+expect "rate limit honors a long Retry-After" "$(grep -c 'rate limited, retrying in 900s' "$WORK/errors.log")" 1
 fetches_before="$(count fetches.log)"
 "$SCRIPT" 2>/dev/null
 expect "no request is made while rate limited" "$(count fetches.log)" "$fetches_before"
@@ -101,7 +101,11 @@ echo 0 > "$TOKESP_STATE_DIR/last-fetch.backoff"
 expect "requests resume once the wait is over" "$(count fetches.log)" "$((fetches_before + 1))"
 
 FAKE_USAGE_STATUS=429 "$SCRIPT" 2>"$WORK/errors.log"
-expect "rate limit without Retry-After waits the default" "$(grep -c 'rate limited, retrying in 300s' "$WORK/errors.log")" 1
+expect "rate limit without Retry-After waits the minimum" "$(grep -c 'rate limited, retrying in 300s' "$WORK/errors.log")" 1
+
+echo 0 > "$TOKESP_STATE_DIR/last-fetch.backoff"
+FAKE_USAGE_STATUS=429 FAKE_RETRY_AFTER=0 "$SCRIPT" 2>"$WORK/errors.log"
+expect "Retry-After: 0 still waits the minimum" "$(grep -c 'rate limited, retrying in 300s' "$WORK/errors.log")" 1
 
 # pgrep never matches itself, unlike `ps | grep`, whose own argument holds the token.
 if pgrep -f "oauth-test-token" >/dev/null; then
