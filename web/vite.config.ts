@@ -19,4 +19,10 @@ export default defineConfig({
       },
     },
   },
+  // The installed service runs `vite preview`, which inherits host, allowed
+  // hosts and proxy from `server` but not the port.
+  preview: {
+    port: 43111,
+    strictPort: true,
+  },
 })

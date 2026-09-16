@@ -42,6 +42,30 @@ cd web && npm install && npm run dev   # porta 43111
 # collector: veja collector/README.md
 ```
 
+## Rodar como serviço (macOS)
+
+Para backend e web subirem sozinhos com o Mac e reiniciarem se caírem:
+
+```bash
+./services/install-services.sh
+```
+
+O script gera o build do web, copia backend e web para
+`~/.local/share/tokesp` e carrega os agentes `com.tokesp.backend` e
+`com.tokesp.web` no launchd. A cópia é necessária porque o macOS impede agentes
+do launchd de ler arquivos dentro de `~/Documents`. Rode de novo depois de
+mudar o código; o `state.json` instalado (pareamentos e último consumo) é
+preservado. Logs em `~/Library/Logs/tokesp-backend.log` e
+`~/Library/Logs/tokesp-web.log`.
+
+Pare o `npm run dev` antes de instalar: as portas 43110 e 43111 são as mesmas.
+Para remover:
+
+```bash
+launchctl bootout gui/$(id -u)/com.tokesp.backend
+launchctl bootout gui/$(id -u)/com.tokesp.web
+```
+
 ## Testes
 
 ```bash
