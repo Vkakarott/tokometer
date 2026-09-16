@@ -54,22 +54,32 @@ O código é **de uso único** e vale 5 minutos.
 
 Header: `Authorization: Bearer <access_token>`
 
-Resposta `200`:
+Resposta `200`, com um bloco por provedor. **Os dois provedores sempre vêm**:
+um provedor que nunca enviou nada chega com `hasData: false`.
 
 ```json
 {
-  "windows": [
-    { "id": "five_hour", "usedPercentage": 23.5, "resetsAt": 1738425600 },
-    { "id": "seven_day", "usedPercentage": null, "resetsAt": 1738857600 }
-  ],
-  "ageSeconds": 42,
-  "stale": false,
-  "hasData": true,
-  "context": {
-    "inputTokens": 12500,
-    "outputTokens": 2400,
-    "windowSize": 200000,
-    "usedPercentage": 7.45
+  "providers": {
+    "claude": {
+      "windows": [
+        { "id": "five_hour", "usedPercentage": 23.5, "resetsAt": 1738425600 },
+        { "id": "seven_day", "usedPercentage": null, "resetsAt": 1738857600 }
+      ],
+      "ageSeconds": 42,
+      "stale": false,
+      "hasData": true,
+      "context": null
+    },
+    "codex": {
+      "windows": [
+        { "id": "five_hour", "usedPercentage": 38, "resetsAt": 1738443600 },
+        { "id": "seven_day", "usedPercentage": 54, "resetsAt": 1738989136 }
+      ],
+      "ageSeconds": 10,
+      "stale": false,
+      "hasData": true,
+      "context": null
+    }
   }
 }
 ```
@@ -77,9 +87,9 @@ Resposta `200`:
 `401` significa que o backend não conhece mais este token: apague-o do
 armazenamento e recomece o pareamento.
 
-`context` é opcional e descreve a janela da sessão atual do Claude Code. Ele
-não mede o consumo da assinatura; o firmware pode ignorá-lo até ter uma tela
-para essa métrica.
+`context` só existe para o Claude, e só quando o collector usa a statusline.
+Ele descreve a janela da sessão atual, não o consumo da assinatura; o firmware
+pode ignorá-lo.
 
 ## 3. As três regras que o display precisa respeitar
 

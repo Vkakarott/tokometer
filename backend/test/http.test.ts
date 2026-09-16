@@ -75,7 +75,44 @@ test('rejects ingest with a null percentage instead of storing 0', async () => {
   assert.equal(response.statusCode, 400);
 
   const usage = await server.inject({ method: 'GET', url: '/usage/web' });
-  assert.equal(usage.json().hasData, false);
+  assert.equal(usage.json().providers.claude.hasData, false);
+});
+
+test('rejects ingest from an unknown collector', async () => {
+  const server = build();
+  const response = await server.inject({
+    method: 'POST',
+    url: '/ingest',
+    headers: { authorization: 'Bearer collector-secret' },
+    payload: { ...payload, provider: 'gemini' },
+  });
+  assert.equal(response.statusCode, 400);
+});
+
+test('serves claude and codex side by side without mixing them', async () => {
+  const server = build();
+  const ingest = (body: object) =>
+    server.inject({
+      method: 'POST',
+      url: '/ingest',
+      headers: { authorization: 'Bearer collector-secret' },
+      payload: body,
+    });
+
+  await ingest(payload);
+  const codex = await ingest({
+    provider: 'codex',
+    source: 'laptop',
+    observedAt: NOW,
+    windows: [{ id: 'five_hour', usedPercentage: 38, resetsAt: NOW + 18_000 }],
+  });
+  assert.equal(codex.statusCode, 204);
+
+  const { providers } = (await server.inject({ method: 'GET', url: '/usage/web' })).json();
+  assert.equal(providers.claude.windows[0].usedPercentage, 23.5);
+  assert.equal(providers.claude.context.inputTokens, 12_500);
+  assert.equal(providers.codex.windows[0].usedPercentage, 38);
+  assert.equal(providers.codex.context, null);
 });
 
 test('rejects ingest with a numeric string percentage', async () => {
@@ -154,11 +191,12 @@ test('walks the full pairing flow and then serves usage to the device', async ()
     headers: { authorization: `Bearer ${access_token}` },
   });
   assert.equal(usage.statusCode, 200);
-  const body = usage.json();
-  assert.equal(body.hasData, true);
-  assert.equal(body.ageSeconds, 0);
-  assert.equal(body.windows[0].usedPercentage, 23.5);
-  assert.equal(body.context.inputTokens, 12_500);
+  const { providers } = usage.json();
+  assert.equal(providers.claude.hasData, true);
+  assert.equal(providers.claude.ageSeconds, 0);
+  assert.equal(providers.claude.windows[0].usedPercentage, 23.5);
+  assert.equal(providers.claude.context.inputTokens, 12_500);
+  assert.equal(providers.codex.hasData, false);
 });
 
 test('reports expired_token once the code TTL passes', async () => {
@@ -186,5 +224,6 @@ test('serves the web view without a token', async () => {
   const server = build();
   const response = await server.inject({ method: 'GET', url: '/usage/web' });
   assert.equal(response.statusCode, 200);
-  assert.equal(response.json().hasData, false);
+  assert.equal(response.json().providers.claude.hasData, false);
+  assert.equal(response.json().providers.codex.hasData, false);
 });

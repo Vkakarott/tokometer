@@ -1,4 +1,11 @@
-import type { Snapshot, UsageView, WindowView } from './types.ts';
+import {
+  PROVIDER_IDS,
+  type ProviderId,
+  type ProvidersView,
+  type Snapshot,
+  type UsageView,
+  type WindowView,
+} from './types.ts';
 
 const viewWindow = (window: Snapshot['windows'][number], nowSeconds: number): WindowView => ({
   id: window.id,
@@ -43,4 +50,16 @@ export function buildUsageView(
     stale,
     hasData: true,
   };
+}
+
+/** Every known provider appears, so a missing one reads as "no data", never as absent. */
+export function buildProvidersView(
+  snapshotFor: (provider: ProviderId) => Snapshot | null,
+  nowSeconds: number,
+  staleAfterSeconds: number,
+): ProvidersView {
+  const entries = PROVIDER_IDS.map(
+    (provider) => [provider, buildUsageView(snapshotFor(provider), nowSeconds, staleAfterSeconds)] as const,
+  );
+  return { providers: Object.fromEntries(entries) as Record<ProviderId, UsageView> };
 }

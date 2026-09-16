@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildUsageView } from '../src/core/freshness.ts';
+import { buildProvidersView, buildUsageView } from '../src/core/freshness.ts';
 import type { Snapshot } from '../src/core/types.ts';
 
 const NOW = 1_800_000_000;
@@ -66,6 +66,26 @@ test('keeps context data even before subscription limits arrive', () => {
 test('never reports a negative age when clocks disagree', () => {
   const view = buildUsageView(snapshot(), NOW - 50, 900);
   assert.equal(view.ageSeconds, 0);
+});
+
+test('lists every provider, reporting no data for one that never reported', () => {
+  const view = buildProvidersView(
+    (provider) => (provider === 'claude' ? snapshot() : null),
+    NOW,
+    900,
+  );
+  assert.equal(view.providers.claude.hasData, true);
+  assert.equal(view.providers.codex.hasData, false, 'a silent provider is "no data", not 0%');
+});
+
+test('computes freshness per provider', () => {
+  const view = buildProvidersView(
+    (provider) => snapshot({ observedAt: provider === 'claude' ? NOW : NOW - 1000 }),
+    NOW,
+    900,
+  );
+  assert.equal(view.providers.claude.stale, false);
+  assert.equal(view.providers.codex.stale, true);
 });
 
 test('at exactly resetsAt the window is not yet rolled over', () => {

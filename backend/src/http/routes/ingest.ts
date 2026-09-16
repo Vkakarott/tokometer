@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type { Snapshot } from '../../core/types.ts';
+import { PROVIDER_BY_COLLECTOR, type Snapshot } from '../../core/types.ts';
 import { logger } from '../../logger.ts';
 import { requireBearer } from '../auth.ts';
 import type { ServerDeps } from '../server.ts';
@@ -8,7 +8,7 @@ const bodySchema = {
   type: 'object',
   required: ['provider', 'source', 'observedAt', 'windows'],
   properties: {
-    provider: { type: 'string' },
+    provider: { type: 'string', enum: Object.keys(PROVIDER_BY_COLLECTOR) },
     source: { type: 'string' },
     observedAt: { type: 'number' },
     windows: {
@@ -43,8 +43,9 @@ export function registerIngest(server: FastifyInstance, deps: ServerDeps): void 
     if (identity === null) return reply.code(401).send({ error: 'unauthorized' });
 
     const snapshot = request.body as Snapshot;
-    deps.snapshots.put(identity, snapshot);
-    logger.info('snapshot ingested', { identity, source: snapshot.source });
+    const provider = PROVIDER_BY_COLLECTOR[snapshot.provider];
+    deps.snapshots.put(identity, provider, snapshot);
+    logger.info('snapshot ingested', { identity, provider, source: snapshot.source });
     return reply.code(204).send();
   });
 }

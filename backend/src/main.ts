@@ -4,10 +4,10 @@ import { TokenRegistry } from './core/identity.ts';
 import { buildServer } from './http/server.ts';
 import { loadJson, saveJson } from './store/jsonFile.ts';
 import { logger } from './logger.ts';
-import type { Snapshot } from './core/types.ts';
 
 type PersistedState = {
-  snapshots: Record<string, Snapshot>;
+  // Unknown on purpose: SnapshotStore.fromJSON also migrates the pre-provider format.
+  snapshots: Record<string, unknown>;
   deviceTokens: Record<string, string>;
 };
 
