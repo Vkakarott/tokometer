@@ -30,11 +30,11 @@ Claude Code ──collector──► backend API ──► web (/ e /pair)
 cd backend && npm install && cp .env.example .env
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 # cole o valor em TOKESP_COLLECTOR_TOKEN no .env
-# ajuste TOKESP_VERIFICATION_URI para http://<IP-DA-MAQUINA>:5173/pair
-npm run dev
+# ajuste TOKESP_VERIFICATION_URI para http://<NOME-DA-MAQUINA>.local:43111/pair
+npm run dev   # porta 43110
 
 # web
-cd web && npm install && npm run dev
+cd web && npm install && npm run dev   # porta 43111
 # o painel fica em / e o pareamento em /pair; o backend não serve o artefato buildado.
 
 # collector: veja collector/README.md
@@ -55,10 +55,11 @@ pio test -e native
 pio run -e heltec_wifi_lora_32_V2
 ```
 
-Antes de gravar o ESP32, `API_BASE_URL` em
-`firmware/src/config/api_config.h` e `TOKESP_VERIFICATION_URI` no
-`backend/.env` precisam usar o IP LAN atual da máquina. Uma reserva DHCP no
-roteador evita que ele mude.
+Antes de gravar o ESP32, `API_HOST` em `firmware/src/config/api_config.h` e
+`TOKESP_VERIFICATION_URI` no `backend/.env` precisam usar o nome Bonjour da
+máquina (`scutil --get LocalHostName` no macOS, ex.: `minha-maquina.local`). O
+firmware resolve esse nome por mDNS a cada falha, então trocar de IP não exige
+regravar a placa.
 
 ## Limitações conhecidas
 

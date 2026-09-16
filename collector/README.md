@@ -29,7 +29,7 @@ Rode os comandos a partir desta pasta (`collector/`).
 
    ```bash
    mkdir -p ~/.config/tokesp && cp config.example.sh ~/.config/tokesp/config.sh
-   # edite ~/.config/tokesp/config.sh; na mesma máquina do backend use http://localhost:8080
+   # edite ~/.config/tokesp/config.sh; na mesma máquina do backend use http://localhost:43110
    ```
 
 2. Instale o script e o agendamento:
