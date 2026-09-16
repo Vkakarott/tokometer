@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Template: replace __COLLECTOR_DIR__ and __HOME__ before installing (see collector/README.md). -->
+<!-- Template filled by install-usage-poll.sh: __LABEL__, __PROGRAM__ and __LOG__. -->
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.tokesp.usage-poll</string>
+  <string>__LABEL__</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>__COLLECTOR_DIR__/usage_poll.sh</string>
+    <string>__PROGRAM__</string>
   </array>
   <key>StartInterval</key>
   <integer>120</integer>
   <key>RunAtLoad</key>
   <true/>
   <key>StandardErrorPath</key>
-  <string>__HOME__/Library/Logs/tokesp-usage-poll.log</string>
+  <string>__LOG__</string>
 </dict>
 </plist>

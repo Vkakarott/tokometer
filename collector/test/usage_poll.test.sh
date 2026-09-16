@@ -13,13 +13,16 @@ cat > "$WORK/bin/security" <<'EOF'
 [ -n "${FAKE_SECURITY_FAIL:-}" ] && exit 44
 printf '{"claudeAiOauth":{"accessToken":"oauth-test-token"}}'
 EOF
-# Fake curl: serves the usage route and records ingest bodies.
+# Fake curl: serves the usage route with FAKE_USAGE_STATUS and records ingest bodies.
 cat > "$WORK/bin/curl" <<'EOF'
 #!/usr/bin/env bash
-body=""; url=""
+body=""; url=""; out=""; format=""; headers=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -d) body="$2"; shift ;;
+    -o) out="$2"; shift ;;
+    -w) format="$2"; shift ;;
+    -D) headers="$2"; shift ;;
     http*) url="$1" ;;
   esac
   shift
@@ -27,8 +30,13 @@ done
 case "$url" in
   */api/oauth/usage)
     echo fetch >> "$FAKE_LOG_DIR/fetches.log"
-    [ -n "${FAKE_USAGE_FAIL:-}" ] && exit 22
-    printf '%s' "$FAKE_USAGE_BODY" ;;
+    status="${FAKE_USAGE_STATUS:-200}"
+    [ "$status" = 200 ] && printf '%s' "$FAKE_USAGE_BODY" > "$out"
+    if [ -n "$headers" ]; then
+      printf 'HTTP/1.1 %s\r\n' "$status" > "$headers"
+      [ -n "${FAKE_RETRY_AFTER:-}" ] && printf 'retry-after: %s\r\n' "$FAKE_RETRY_AFTER" >> "$headers"
+    fi
+    [ -n "$format" ] && printf '%s' "$status" ;;
   */ingest)
     printf '%s\n' "$body" >> "$FAKE_LOG_DIR/pushes.log" ;;
 esac
@@ -67,8 +75,9 @@ expect "pushed windows carry the account values" \
 TOKESP_MIN_INTERVAL_SECONDS=3600 "$SCRIPT" 2>/dev/null
 expect "a burst within the minimum interval does not refetch" "$(count fetches.log)" 1
 
-FAKE_USAGE_FAIL=1 "$SCRIPT" 2>/dev/null
+FAKE_USAGE_STATUS=500 "$SCRIPT" 2>"$WORK/errors.log"
 expect "failed usage request pushes nothing" "$(count pushes.log)" 1
+expect "failed usage request logs the HTTP status" "$(grep -c 'HTTP 500' "$WORK/errors.log")" 1
 
 FAKE_SECURITY_FAIL=1 "$SCRIPT" 2>/dev/null
 expect "missing Keychain token neither fetches nor pushes" "$(count fetches.log)" 2
@@ -82,7 +91,20 @@ expect "--detach returns immediately" "$(( $(date +%s) - started < 2 ))" 1
 sleep 1
 expect "--detach still pushes in the background" "$(count pushes.log)" 2
 
-if ps -axo command | grep -q "oauth-test-token"; then
+FAKE_USAGE_STATUS=429 FAKE_RETRY_AFTER=120 "$SCRIPT" 2>"$WORK/errors.log"
+expect "rate limit honors Retry-After" "$(grep -c 'rate limited, retrying in 120s' "$WORK/errors.log")" 1
+fetches_before="$(count fetches.log)"
+"$SCRIPT" 2>/dev/null
+expect "no request is made while rate limited" "$(count fetches.log)" "$fetches_before"
+echo 0 > "$TOKESP_STATE_DIR/last-fetch.backoff"
+"$SCRIPT" 2>/dev/null
+expect "requests resume once the wait is over" "$(count fetches.log)" "$((fetches_before + 1))"
+
+FAKE_USAGE_STATUS=429 "$SCRIPT" 2>"$WORK/errors.log"
+expect "rate limit without Retry-After waits the default" "$(grep -c 'rate limited, retrying in 300s' "$WORK/errors.log")" 1
+
+# pgrep never matches itself, unlike `ps | grep`, whose own argument holds the token.
+if pgrep -f "oauth-test-token" >/dev/null; then
   echo "FAIL - token visible in process list"; FAILURES=$((FAILURES + 1))
 else
   echo "ok - token is not passed on the command line"

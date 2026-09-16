@@ -48,6 +48,8 @@ cd backend && npm test
 ./collector/test/statusline.test.sh
 ./collector/test/usage.test.sh
 ./collector/test/usage_poll.test.sh
+./collector/test/codex_usage.test.sh
+./collector/test/codex_usage_poll.test.sh
 cd web && npm run build && npm run lint
 
 # firmware (na raiz, com PlatformIO)
