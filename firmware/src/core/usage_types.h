@@ -19,3 +19,10 @@ struct UsageView {
     bool stale = false;
     bool hasData = false;
 };
+
+// Usage of every provider the backend reports. A provider the backend never
+// heard from arrives with hasData == false, never as 0%.
+struct ProvidersUsage {
+    UsageView claude;
+    UsageView codex;
+};

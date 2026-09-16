@@ -11,4 +11,4 @@ enum class UsageFetchStatus {
 
 bool requestPairCode(PairCode &out);
 TokenPoll pollPairToken(const char *deviceCode);
-UsageFetchStatus fetchUsage(const char *accessToken, UsageView &out);
+UsageFetchStatus fetchUsage(const char *accessToken, ProvidersUsage &out);

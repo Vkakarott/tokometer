@@ -7,11 +7,17 @@ namespace {
 
 // The backend's age is frozen at fetch time: keep it growing between polls, and
 // treat the data as stale while the backend is unreachable.
-UsageView liveUsage(const AppState &state, uint32_t nowMs) {
-    UsageView view = state.usage;
+UsageView liveView(UsageView view, const AppState &state, uint32_t nowMs) {
     view.ageSeconds += (nowMs - state.usageFetchedAtMs) / 1000;
     view.stale = view.stale || state.lastFetchFailed;
     return view;
+}
+
+ProvidersUsage liveUsage(const AppState &state, uint32_t nowMs) {
+    return ProvidersUsage{
+        liveView(state.usage.claude, state, nowMs),
+        liveView(state.usage.codex, state, nowMs),
+    };
 }
 
 uint32_t pairingSecondsLeft(const AppState &state, uint32_t nowMs) {

@@ -111,7 +111,7 @@ void forgetToken(AppState &state) {
     state.actionDelayMs = 0;
 }
 
-void storeUsage(AppState &state, const UsageView &view, uint32_t nowMs) {
+void storeUsage(AppState &state, const ProvidersUsage &view, uint32_t nowMs) {
     state.usage = view;
     state.hasUsage = true;
     state.lastFetchFailed = false;
@@ -133,7 +133,7 @@ void updateUsage(AppState &state, uint32_t nowMs) {
         return;
     }
 
-    UsageView view;
+    ProvidersUsage view;
     const UsageFetchStatus status = fetchUsage(state.accessToken, view);
     scheduleAction(state, nowMs, ApiConfig::USAGE_POLL_INTERVAL_MS);
 

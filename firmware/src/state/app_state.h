@@ -15,10 +15,11 @@ enum class AppScreen {
     Error
 };
 
+// Order is the PRG cycle and the index saved in NVS: keep it stable.
 enum class UsageLayout : uint8_t {
-    Diagonal,
-    Cards,
-    Focus
+    CodexDiagonal,
+    ClaudeCards,
+    Comparison
 };
 
 constexpr uint8_t USAGE_LAYOUT_COUNT = 3;
@@ -26,7 +27,7 @@ constexpr uint8_t USAGE_LAYOUT_COUNT = 3;
 struct AppState {
     WifiStatus wifiStatus = WifiStatus::Disconnected;
     AppScreen screen = AppScreen::ConnectingWifi;
-    UsageLayout layout = UsageLayout::Diagonal;
+    UsageLayout layout = UsageLayout::CodexDiagonal;
 
     bool hasToken = false;
     char accessToken[sizeof(TokenPoll::accessToken)] = "";
@@ -37,7 +38,7 @@ struct AppState {
 
     bool hasUsage = false;
     bool lastFetchFailed = false;
-    UsageView usage;
+    ProvidersUsage usage;
     uint32_t usageFetchedAtMs = 0;
 
     const char *errorMessage = "";

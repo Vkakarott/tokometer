@@ -37,7 +37,7 @@ TokenPoll pollPairToken(const char *deviceCode) {
     return parseTokenPoll(response.status, response.body.c_str());
 }
 
-UsageFetchStatus fetchUsage(const char *accessToken, UsageView &out) {
+UsageFetchStatus fetchUsage(const char *accessToken, ProvidersUsage &out) {
     const HttpResponse response = httpGetAuthorized("/usage", accessToken);
     if (response.status == 401) return UsageFetchStatus::Unauthorized;
     if (response.status != 200) return UsageFetchStatus::Failed;

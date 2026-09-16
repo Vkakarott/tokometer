@@ -8,76 +8,97 @@
 void setUp() {}
 void tearDown() {}
 
-static void test_parse_usage_reads_both_windows() {
-    const char *json = R"({"windows":[
-        {"id":"five_hour","usedPercentage":23.5,"resetsAt":1738425600},
-        {"id":"seven_day","usedPercentage":61,"resetsAt":1738857600}
-    ],"ageSeconds":42,"stale":false,"hasData":true})";
-    UsageView view;
+static void test_parse_usage_reads_both_providers() {
+    const char *json = R"({"providers":{
+        "claude":{"windows":[
+            {"id":"five_hour","usedPercentage":23.5,"resetsAt":1738425600},
+            {"id":"seven_day","usedPercentage":61,"resetsAt":1738857600}
+        ],"ageSeconds":42,"stale":false,"hasData":true,"context":null},
+        "codex":{"windows":[
+            {"id":"five_hour","usedPercentage":38,"resetsAt":1738443600}
+        ],"ageSeconds":10,"stale":true,"hasData":true,"context":null}
+    }})";
+    ProvidersUsage usage;
 
-    TEST_ASSERT_TRUE(parseUsage(json, view));
-    TEST_ASSERT_TRUE(view.hasData);
-    TEST_ASSERT_FALSE(view.stale);
-    TEST_ASSERT_EQUAL_UINT32(42, view.ageSeconds);
-    TEST_ASSERT_TRUE(view.fiveHour.present && view.fiveHour.known);
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 23.5f, view.fiveHour.usedPercentage);
-    TEST_ASSERT_TRUE(view.fiveHour.resetsAt == 1738425600);
-    TEST_ASSERT_TRUE(view.sevenDay.known);
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 61.0f, view.sevenDay.usedPercentage);
+    TEST_ASSERT_TRUE(parseUsage(json, usage));
+    TEST_ASSERT_TRUE(usage.claude.hasData);
+    TEST_ASSERT_FALSE(usage.claude.stale);
+    TEST_ASSERT_EQUAL_UINT32(42, usage.claude.ageSeconds);
+    TEST_ASSERT_TRUE(usage.claude.fiveHour.present && usage.claude.fiveHour.known);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 23.5f, usage.claude.fiveHour.usedPercentage);
+    TEST_ASSERT_TRUE(usage.claude.fiveHour.resetsAt == 1738425600);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 61.0f, usage.claude.sevenDay.usedPercentage);
+
+    TEST_ASSERT_TRUE(usage.codex.hasData);
+    TEST_ASSERT_TRUE(usage.codex.stale);
+    TEST_ASSERT_EQUAL_UINT32(10, usage.codex.ageSeconds);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 38.0f, usage.codex.fiveHour.usedPercentage);
+    TEST_ASSERT_FALSE(usage.codex.sevenDay.present);
 }
 
 static void test_parse_usage_null_percentage_is_unknown() {
-    const char *json = R"({"windows":[{"id":"five_hour","usedPercentage":null,"resetsAt":1}],
-        "ageSeconds":0,"stale":false,"hasData":true})";
-    UsageView view;
+    const char *json = R"({"providers":{
+        "claude":{"windows":[{"id":"five_hour","usedPercentage":null,"resetsAt":1}],
+            "ageSeconds":0,"stale":false,"hasData":true},
+        "codex":{"windows":[],"ageSeconds":0,"stale":false,"hasData":false}}})";
+    ProvidersUsage usage;
 
-    TEST_ASSERT_TRUE(parseUsage(json, view));
-    TEST_ASSERT_TRUE(view.fiveHour.present);
-    TEST_ASSERT_FALSE(view.fiveHour.known);
-}
-
-static void test_parse_usage_missing_window_is_absent() {
-    const char *json = R"({"windows":[{"id":"five_hour","usedPercentage":10,"resetsAt":1}],
-        "ageSeconds":0,"stale":true,"hasData":true})";
-    UsageView view;
-
-    TEST_ASSERT_TRUE(parseUsage(json, view));
-    TEST_ASSERT_TRUE(view.stale);
-    TEST_ASSERT_FALSE(view.sevenDay.present);
+    TEST_ASSERT_TRUE(parseUsage(json, usage));
+    TEST_ASSERT_TRUE(usage.claude.fiveHour.present);
+    TEST_ASSERT_FALSE(usage.claude.fiveHour.known);
+    TEST_ASSERT_FALSE(usage.codex.hasData);
 }
 
 static void test_parse_usage_without_data() {
-    const char *json = R"({"windows":[],"context":null,"ageSeconds":0,"stale":false,"hasData":false})";
-    UsageView view;
+    const char *json = R"({"providers":{
+        "claude":{"windows":[],"context":null,"ageSeconds":0,"stale":false,"hasData":false},
+        "codex":{"windows":[],"context":null,"ageSeconds":0,"stale":false,"hasData":false}}})";
+    ProvidersUsage usage;
 
-    TEST_ASSERT_TRUE(parseUsage(json, view));
-    TEST_ASSERT_FALSE(view.hasData);
+    TEST_ASSERT_TRUE(parseUsage(json, usage));
+    TEST_ASSERT_FALSE(usage.claude.hasData);
+    TEST_ASSERT_FALSE(usage.codex.hasData);
 }
 
 static void test_parse_usage_ignores_context() {
-    const char *json = R"({"windows":[],"ageSeconds":5,"stale":false,"hasData":false,
-        "context":{"inputTokens":12500,"outputTokens":2400,"windowSize":200000,"usedPercentage":7.45}})";
-    UsageView view;
+    const char *json = R"({"providers":{
+        "claude":{"windows":[],"ageSeconds":5,"stale":false,"hasData":false,
+            "context":{"inputTokens":12500,"outputTokens":2400,"windowSize":200000,"usedPercentage":7.45}},
+        "codex":{"windows":[],"ageSeconds":0,"stale":false,"hasData":false}}})";
+    ProvidersUsage usage;
 
-    TEST_ASSERT_TRUE(parseUsage(json, view));
-    TEST_ASSERT_EQUAL_UINT32(5, view.ageSeconds);
+    TEST_ASSERT_TRUE(parseUsage(json, usage));
+    TEST_ASSERT_EQUAL_UINT32(5, usage.claude.ageSeconds);
 }
 
 static void test_parse_usage_clamps_percentage() {
-    const char *json = R"({"windows":[{"id":"five_hour","usedPercentage":130,"resetsAt":1}],
-        "ageSeconds":0,"stale":false,"hasData":true})";
-    UsageView view;
+    const char *json = R"({"providers":{
+        "codex":{"windows":[{"id":"five_hour","usedPercentage":130,"resetsAt":1}],
+            "ageSeconds":0,"stale":false,"hasData":true}}})";
+    ProvidersUsage usage;
 
-    TEST_ASSERT_TRUE(parseUsage(json, view));
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 100.0f, view.fiveHour.usedPercentage);
+    TEST_ASSERT_TRUE(parseUsage(json, usage));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 100.0f, usage.codex.fiveHour.usedPercentage);
+}
+
+static void test_parse_usage_missing_provider_block_is_no_data() {
+    const char *json = R"({"providers":{
+        "claude":{"windows":[{"id":"five_hour","usedPercentage":10,"resetsAt":1}],
+            "ageSeconds":0,"stale":false,"hasData":true}}})";
+    ProvidersUsage usage;
+
+    TEST_ASSERT_TRUE(parseUsage(json, usage));
+    TEST_ASSERT_TRUE(usage.claude.hasData);
+    TEST_ASSERT_FALSE(usage.codex.hasData);
 }
 
 static void test_parse_usage_rejects_invalid_payloads() {
-    UsageView view;
+    ProvidersUsage usage;
 
-    TEST_ASSERT_FALSE(parseUsage("not json", view));
-    TEST_ASSERT_FALSE(parseUsage(R"({"windows":[]})", view));
-    TEST_ASSERT_FALSE(parseUsage(R"({"error":"unauthorized"})", view));
+    TEST_ASSERT_FALSE(parseUsage("not json", usage));
+    TEST_ASSERT_FALSE(parseUsage(R"({"error":"unauthorized"})", usage));
+    TEST_ASSERT_FALSE(parseUsage(R"({"windows":[],"ageSeconds":0,"stale":false,"hasData":false})", usage));
+    TEST_ASSERT_FALSE(parseUsage(R"({"providers":{"claude":{"windows":[]}}})", usage));
 }
 
 static void test_parse_pair_code() {
@@ -146,12 +167,12 @@ static void test_encode_request_rejects_small_buffer() {
 
 int main() {
     UNITY_BEGIN();
-    RUN_TEST(test_parse_usage_reads_both_windows);
+    RUN_TEST(test_parse_usage_reads_both_providers);
     RUN_TEST(test_parse_usage_null_percentage_is_unknown);
-    RUN_TEST(test_parse_usage_missing_window_is_absent);
     RUN_TEST(test_parse_usage_without_data);
     RUN_TEST(test_parse_usage_ignores_context);
     RUN_TEST(test_parse_usage_clamps_percentage);
+    RUN_TEST(test_parse_usage_missing_provider_block_is_no_data);
     RUN_TEST(test_parse_usage_rejects_invalid_payloads);
     RUN_TEST(test_parse_pair_code);
     RUN_TEST(test_parse_pair_code_defaults_interval);

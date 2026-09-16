@@ -31,4 +31,4 @@ bool encodeTokenRequest(const char *deviceCode, char *out, size_t size);
 
 bool parsePairCode(const char *json, PairCode &out);
 TokenPoll parseTokenPoll(int httpStatus, const char *json);
-bool parseUsage(const char *json, UsageView &out);
+bool parseUsage(const char *json, ProvidersUsage &out);

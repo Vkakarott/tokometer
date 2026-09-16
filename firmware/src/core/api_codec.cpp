@@ -45,6 +45,22 @@ void parseWindow(JsonObjectConst json, UsageView &view) {
     window->resetsAt = json["resetsAt"].as<int64_t>();
 }
 
+// An absent provider block reads as "no data yet"; a present one must be valid.
+bool parseProvider(JsonVariantConst json, UsageView &out) {
+    if (json.isNull()) return true;
+    if (!json["hasData"].is<bool>()) return false;
+
+    UsageView view;
+    view.hasData = json["hasData"];
+    view.stale = json["stale"] | false;
+    view.ageSeconds = json["ageSeconds"] | 0u;
+    for (JsonObjectConst window : json["windows"].as<JsonArrayConst>()) {
+        parseWindow(window, view);
+    }
+    out = view;
+    return true;
+}
+
 TokenPollOutcome outcomeForError(const char *error) {
     if (error == nullptr) return TokenPollOutcome::Failed;
     if (strcmp(error, "authorization_pending") == 0) return TokenPollOutcome::Pending;
@@ -100,18 +116,15 @@ TokenPoll parseTokenPoll(int httpStatus, const char *json) {
     return poll;
 }
 
-bool parseUsage(const char *json, UsageView &out) {
+bool parseUsage(const char *json, ProvidersUsage &out) {
     JsonDocument doc;
     if (deserializeJson(doc, json)) return false;
-    if (!doc["hasData"].is<bool>()) return false;
+    const JsonVariantConst providers = doc["providers"];
+    if (!providers.is<JsonObjectConst>()) return false;
 
-    UsageView view;
-    view.hasData = doc["hasData"];
-    view.stale = doc["stale"] | false;
-    view.ageSeconds = doc["ageSeconds"] | 0u;
-    for (JsonObjectConst window : doc["windows"].as<JsonArrayConst>()) {
-        parseWindow(window, view);
-    }
-    out = view;
+    ProvidersUsage usage;
+    if (!parseProvider(providers["claude"], usage.claude)) return false;
+    if (!parseProvider(providers["codex"], usage.codex)) return false;
+    out = usage;
     return true;
 }
