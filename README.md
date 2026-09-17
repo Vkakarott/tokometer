@@ -23,7 +23,7 @@ Claude / Codex ──collector──► backend API ──► web (/ e /pair)
 | `backend/` | Node + TypeScript. Guarda o snapshot e expõe a API para web e device. |
 | `collector/` | Envia o uso das contas Claude e Codex ao backend (hook `Stop` + launchd). A fonte do dado. |
 | `web/` | Vite + React. Dashboard e aprovação de pareamento. |
-| `firmware/` | ESP32 (Heltec WiFi LoRa 32 V2). Consome `docs/device-api.md`. |
+| `firmware/` | ESP32 DevKit + OLED I2C externo (ou Heltec WiFi LoRa 32 V2). Consome `docs/device-api.md`. |
 
 ## Rodar
 
@@ -80,6 +80,7 @@ cd web && npm run build && npm run lint
 
 # firmware (na raiz, com PlatformIO)
 pio test -e native
+pio run   # alvo padrão: esp32_i2c
 pio run -e heltec_wifi_lora_32_V2
 ```
 
@@ -88,6 +89,29 @@ Antes de gravar o ESP32, `API_HOST` em `firmware/src/config/api_config.h` e
 máquina (`scutil --get LocalHostName` no macOS, ex.: `minha-maquina.local`). O
 firmware resolve esse nome por mDNS a cada falha, então trocar de IP não exige
 regravar a placa.
+
+## Hardware do display
+
+O alvo padrão é uma **ESP32 DevKit (ESP-WROOM-32)** com um módulo **OLED I2C de
+4 pinos** (SSD1306 0.96", endereço 0x3C):
+
+| Display | ESP32 |
+|---|---|
+| GND | GND |
+| VCC | 3V3 |
+| SCL | D22 |
+| SDA | D21 |
+
+```bash
+pio run -e esp32_i2c -t upload    # placa padrão
+pio run -e heltec_wifi_lora_32_V2 -t upload    # placa com OLED embutido
+```
+
+O firmware varre o barramento I2C no boot e registra os endereços que
+respondem: se nada aparecer, o problema é ligação ou alimentação. Se a imagem
+sair deslocada, o painel é SH1106 — some `-DTOKESP_DISPLAY_SH1106` ao
+`build_flags` do env. Os pinos de cada placa ficam em
+`firmware/src/config/board_*.h`.
 
 ## Limitações conhecidas
 

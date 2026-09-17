@@ -12,7 +12,8 @@ constexpr uint8_t OLED_SCL_PIN = 22;
 // The module has no reset line: 255 is U8g2's "no pin".
 constexpr uint8_t OLED_RESET_PIN = 255;
 
-// Most modules ship at 0x3C; a few are 0x3D. The boot scan tells which.
+// Tested panel: 0.96" SSD1306 answering at 0x3C. Other modules may sit at
+// 0x3D, or need -DTOKESP_DISPLAY_SH1106; the boot scan tells which.
 constexpr uint8_t OLED_I2C_ADDRESS = 0x3C;
 
 // On-board BOOT button, active low.
