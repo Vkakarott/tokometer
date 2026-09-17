@@ -1,15 +1,8 @@
 #pragma once
 
-#include <cstdint>
-
-namespace HardwareConfig {
-
-constexpr uint8_t OLED_SDA_PIN = 4;
-constexpr uint8_t OLED_SCL_PIN = 15;
-constexpr uint8_t OLED_RST_PIN = 16;
-
-// On-board PRG button, active low.
-constexpr uint8_t PRG_BUTTON_PIN = 0;
-constexpr uint32_t BUTTON_DEBOUNCE_MS = 30;
-
-}
+// Board pinout, chosen by the PlatformIO environment's build flag.
+#if defined(TOKESP_BOARD_ESP32_I2C)
+#include "config/board_esp32_i2c.h"
+#else
+#include "config/board_heltec_v2.h"
+#endif
