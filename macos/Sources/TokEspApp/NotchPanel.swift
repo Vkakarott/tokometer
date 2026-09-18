@@ -87,7 +87,6 @@ private struct NotchView: View {
         ZStack {
             AeroNotchShape()
                 .fill(.black.opacity(0.98))
-                .overlay(alignment: .bottom) { AeroBottomEdge().stroke(.black.opacity(0.95), lineWidth: 4) }
 
             if isExpanded {
                 expandedContent
@@ -157,7 +156,7 @@ private struct NotchView: View {
 private struct AeroNotchShape: Shape {
     func path(in rect: CGRect) -> Path {
         let inset = min(22, rect.width * 0.08)
-        let cornerRadius = min(12, rect.height * 0.22)
+        let cornerRadius = min(5, rect.height * 0.08)
         var path = Path()
         path.move(to: CGPoint(x: 0, y: 0))
         path.addLine(to: CGPoint(x: rect.maxX, y: 0))
@@ -172,17 +171,6 @@ private struct AeroNotchShape: Shape {
             control: CGPoint(x: rect.minX + inset, y: rect.maxY)
         )
         path.closeSubpath()
-        return path
-    }
-}
-
-private struct AeroBottomEdge: Shape {
-    func path(in rect: CGRect) -> Path {
-        let inset = min(22, rect.width * 0.08)
-        let cornerRadius = min(12, rect.height * 0.22)
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX + inset + cornerRadius, y: rect.maxY - 1))
-        path.addLine(to: CGPoint(x: rect.maxX - inset - cornerRadius, y: rect.maxY - 1))
         return path
     }
 }
