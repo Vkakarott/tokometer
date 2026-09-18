@@ -32,9 +32,9 @@ BASE_D = BOARD_L + 2 * PADDING
 # Every outer edge of the plinth and the body is left square.
 
 # --- Body
-BODY_H = 57.7  # gives a 24 mm chin under the funnel
+BODY_H = 59.2  # gives a 24 mm chin under the funnel
 WALL = 2.0
-FRONT_LEAN = 5.8  # how far the top of the front face sits behind its bottom (~5.7 deg)
+FRONT_LEAN = 5.9  # how far the top of the front face sits behind its bottom (~5.7 deg)
 
 # --- Display mock (0.96" SSD1306 module), never exported
 PCB_T = 1.6
@@ -55,8 +55,10 @@ OPENING = (ACTIVE_W + 2 * WINDOW_PADDING, ACTIVE_H + 2 * WINDOW_PADDING)  # thro
 CORNER_RADIUS = 1.5  # window corners
 OPENING_R = CORNER_RADIUS
 FUNNEL_DEPTH = 2.5  # slope depth; the rest of the wall is the throat in front of the glass
-FUNNEL_RUN = 6.0  # width of the sloped band on the face: atan(2.5 / 6) = 22.6 deg
-FUNNEL_OUTER = (OPENING[0] + 2 * FUNNEL_RUN, OPENING[1] + 2 * FUNNEL_RUN)
+# Like the Macintosh, the slope is wider (gentler) above and below the screen than at the sides.
+FUNNEL_RUN_SIDE = 5.0  # sloped band at the sides: atan(2.5 / 5) = 26.6 deg
+FUNNEL_RUN_TOP = 7.5  # sloped band above and below: atan(2.5 / 7.5) = 18.4 deg
+FUNNEL_OUTER = (OPENING[0] + 2 * FUNNEL_RUN_SIDE, OPENING[1] + 2 * FUNNEL_RUN_TOP)
 FUNNEL_OUTER_R = 0.5  # outer outline corners, almost sharp
 LIP_FILLET = 0.3  # face into slope, almost sharp; kept under FUNNEL_OUTER_R
 THROAT_CHAMFER = 0.5  # flat band into the throat; leaves 1 mm of straight throat wall
@@ -559,11 +561,13 @@ def run(context):
         log("panel {} x {} x {} mm, opening {} x {} mm".format(
             PANEL_W, PANEL_H, PANEL_T, OPENING[0], OPENING[1]
         ))
-        log("funnel {} x {} (r {}) -> {} x {} (r {}) over {} mm, {:.1f} deg, screen centre at y {} mm".format(
+        log("funnel {} x {} (r {}) -> {} x {} (r {}) over {} mm, sides {:.1f} deg, top/bottom {:.1f} deg".format(
             round(FUNNEL_OUTER[0], 2), round(FUNNEL_OUTER[1], 2), FUNNEL_OUTER_R,
-            round(OPENING[0], 2), round(OPENING[1], 2), OPENING_R,
-            FUNNEL_DEPTH, math.degrees(math.atan2(FUNNEL_DEPTH, FUNNEL_RUN)), round(panel_center_y(), 1),
+            round(OPENING[0], 2), round(OPENING[1], 2), OPENING_R, FUNNEL_DEPTH,
+            math.degrees(math.atan2(FUNNEL_DEPTH, FUNNEL_RUN_SIDE)),
+            math.degrees(math.atan2(FUNNEL_DEPTH, FUNNEL_RUN_TOP)),
         ))
+        log("screen centre at y {} mm, chin {} mm".format(round(panel_center_y(), 1), round(CHIN_H, 2)))
         log("lip fillet {} mm, throat chamfer {} mm; glass {} mm behind the throat edge".format(
             LIP_FILLET, THROAT_CHAMFER, PANEL_T - FUNNEL_DEPTH
         ))
