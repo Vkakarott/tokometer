@@ -4,8 +4,10 @@ enum class WifiStatus {
     Disconnected,
     Connecting,
     Connected,
-    Failed
+    Failed,
+    Provisioning
 };
 
 void initializeWifi();
 WifiStatus updateWifi();
+const char *provisioningNetworkName();

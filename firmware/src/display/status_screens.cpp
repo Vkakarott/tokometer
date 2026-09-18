@@ -21,6 +21,8 @@ const char *wifiStatusText(WifiStatus status) {
             return "WiFi desconectado";
         case WifiStatus::Failed:
             return "Falha no WiFi";
+        case WifiStatus::Provisioning:
+            return "Configurar WiFi";
     }
     return "WiFi desconhecido";
 }
@@ -35,6 +37,16 @@ void drawFittedText(U8G2 &display, int baselineY, const char *text) {
 }  // namespace
 
 void drawWifiScreen(U8G2 &display, WifiStatus status) {
+    if (status == WifiStatus::Provisioning) {
+        display.setFont(u8g2_font_6x10_tf);
+        drawCenteredText(display, CENTER_X, 16, "Conecte-se a");
+        drawCenteredText(display, CENTER_X, 30, provisioningNetworkName());
+        display.setFont(u8g2_font_5x7_tf);
+        drawCenteredText(display, CENTER_X, 45, "e abra 192.168.4.1");
+        drawCenteredText(display, CENTER_X, 60, "para configurar");
+        return;
+    }
+
     display.drawXBMP(CENTER_X - 16, 6, 32, 32, epd_bitmap_72264);
     display.setFont(u8g2_font_6x10_tf);
     drawCenteredText(display, CENTER_X, 52, wifiStatusText(status));

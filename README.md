@@ -85,6 +85,18 @@ máquina (`scutil --get LocalHostName` no macOS, ex.: `minha-maquina.local`). O
 firmware resolve esse nome por mDNS a cada falha, então trocar de IP não exige
 regravar a placa.
 
+### Primeira conexão do display
+
+Depois de gravar, o display cria uma rede temporária `tokEsp-xxxx`. Conecte o
+celular ou Mac a ela, abra `192.168.4.1` e informe a rede Wi-Fi que o display
+deve usar. A senha é salva na memória da placa; ela não entra no firmware nem
+precisa ser gravada outra vez.
+
+Assim que o display entrar na rede, ele exibirá o código de oito caracteres.
+No tokometer, abra **Configurações → Display**, informe o código e confirme o
+pareamento. Se a rede salva deixar de estar disponível, o display volta para o
+modo de configuração após 15 segundos.
+
 ## Hardware do display
 
 O alvo padrão é uma **ESP32 DevKit (ESP-WROOM-32)** com um módulo **OLED I2C de

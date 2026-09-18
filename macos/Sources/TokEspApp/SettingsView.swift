@@ -46,6 +46,9 @@ struct SettingsView: View {
             }
 
             Section("Display") {
+                Text("No primeiro uso, conecte o celular ou Mac à rede tokEsp-xxxx exibida no display e abra 192.168.4.1. Depois, digite aqui o código que ele mostrar.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 TextField("Código do dispositivo", text: $pairingCode)
                 Button("Parear display") {
                     Task { await approvePairing() }
