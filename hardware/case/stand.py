@@ -22,11 +22,17 @@ import adsk.fusion
 # --- Board: ESP32 DevKit 30-pin (ESP-WROOM-32), USB-C on a short edge
 BOARD_L, BOARD_W = 51.5, 28.5
 
-# --- Plinth
+# --- Plinth and body footprint: width follows the front panel, depth the board
 PADDING = 3.0
 BASE_T = 8.0
-CORNER_R = 6.0  # the board still clears up to about 14 mm
-BASE_SIDE = BOARD_L + 2 * PADDING
+BASE_W = 52.0
+BASE_D = BOARD_L + 2 * PADDING
+CORNER_R = 3.0  # upright corners
+TOP_R = 2.0  # softer edge where the top meets the walls
+
+# --- Body
+BODY_H = 60.0
+WALL = 2.0
 
 # --- Display mock (0.96" SSD1306 module), never exported
 PCB_T = 1.6
@@ -36,8 +42,7 @@ ACTIVE_W, ACTIVE_H = 22.0, 12.0  # the lit area inside the glass
 GLASS_OFFSET_Y = -2.0  # the glass sits below the module centre, away from the pins
 
 # --- Front panel, three levels deep
-PANEL_W, PANEL_H, PANEL_T = 52.0, 60.0, 4.0
-PANEL_R = 3.5
+PANEL_W, PANEL_H, PANEL_T = BASE_W, BODY_H, 4.0
 BEVEL_OUTER = (39.0, 29.0)  # where the slope starts, on the surface
 BEVEL_INNER = (29.0, 19.0)  # where it lands: the black bezel plane
 BEVEL_DEPTH = 2.5
@@ -164,7 +169,7 @@ def fillet_corner_edges(comp, body, radius: float) -> None:
             continue
         start, end = geometry.startPoint, geometry.endPoint
         rises = abs(start.y - end.y) > cm(1.0)
-        on_side = abs(abs(start.x) - cm(BASE_SIDE / 2)) < 1e-6 and abs(abs(end.x) - cm(BASE_SIDE / 2)) < 1e-6
+        on_side = abs(abs(start.x) - cm(BASE_W / 2)) < 1e-6 and abs(abs(end.x) - cm(BASE_W / 2)) < 1e-6
         if rises and on_side:
             edges.add(edge)
     if not edges.count:
@@ -220,8 +225,23 @@ def cut_on_face(comp, body, face, width: float, height: float, depth: float, off
 
 def build_base(builder: Builder):
     """Plain plinth standing on the table."""
-    half = BASE_SIDE / 2
-    return builder.slab(0.0, -half, 0.0, half, -BASE_SIDE, BASE_T, NEW)
+    return builder.slab(0.0, -BASE_W / 2, 0.0, BASE_W / 2, -BASE_D, BASE_T, NEW)
+
+
+def fillet_top_edges(comp, body, radius: float) -> None:
+    """Softens every edge of the top face; the bottom stays square."""
+    top = BASE_T + BODY_H
+    edges = adsk.core.ObjectCollection.create()
+    for edge in body.edges:
+        points = [edge.startVertex.geometry, edge.endVertex.geometry]
+        if all(abs(point.y - cm(top)) < 1e-6 for point in points):
+            edges.add(edge)
+    if not edges.count:
+        return
+    fillets = comp.features.filletFeatures
+    fillet_input = fillets.createInput()
+    fillet_input.addConstantRadiusEdgeSet(edges, adsk.core.ValueInput.createByReal(cm(radius)), True)
+    fillets.add(fillet_input)
 
 
 def rounded_profile(builder: Builder, comp, z, half_w, center_y, half_h, radius):
@@ -237,20 +257,27 @@ def panel_center_y():
     return panel_top - BEVEL_TOP_PADDING - BEVEL_OUTER[1] / 2
 
 
-def build_front_panel(builder: Builder, comp):
-    """Front face with three levels: bevel, black bezel and the opening."""
-    body_profile = rounded_profile(
-        builder, comp, 0.0, PANEL_W / 2, BASE_T + PANEL_H / 2, PANEL_H / 2, PANEL_R
+def build_body(builder: Builder, comp):
+    """Hollow body on the plinth whose front wall carries the screen levels."""
+    body = builder.slab(BASE_T, -BASE_W / 2, 0.0, BASE_W / 2, -BASE_D, BODY_H, NEW)
+    fillet_corner_edges(comp, body, CORNER_R)
+    fillet_top_edges(comp, body, TOP_R)
+
+    # Cavity: open at the bottom, thick front wall, 2 mm elsewhere.
+    builder.slab(
+        BASE_T,
+        -BASE_W / 2 + WALL,
+        -PANEL_T,
+        BASE_W / 2 - WALL,
+        -(BASE_D - WALL),
+        BODY_H - WALL,
+        CUT,
+        body,
     )
-    extrudes = comp.features.extrudeFeatures
-    ext_input = extrudes.createInput(body_profile, NEW)
-    ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(-PANEL_T)))
-    panel = extrudes.add(ext_input).bodies.item(0)
 
     center_y = panel_center_y()
-    # The slope: wide at the surface, narrow where the black bezel starts.
     outer = rounded_profile(
-        builder, comp, 0.0, BEVEL_OUTER[0] / 2, center_y, BEVEL_OUTER[1] / 2, PANEL_R + 0.5
+        builder, comp, 0.0, BEVEL_OUTER[0] / 2, center_y, BEVEL_OUTER[1] / 2, TOP_R + 1.0
     )
     inner = rounded_profile(
         builder, comp, -BEVEL_DEPTH, BEVEL_INNER[0] / 2, center_y, BEVEL_INNER[1] / 2, OPENING_R + 1.0
@@ -259,20 +286,20 @@ def build_front_panel(builder: Builder, comp):
     loft_input = lofts.createInput(CUT)
     loft_input.loftSections.add(outer)
     loft_input.loftSections.add(inner)
-    loft_input.participantBodies = [panel]
+    loft_input.participantBodies = [body]
     lofts.add(loft_input)
 
-    # The window, through whatever wall is left behind the bezel.
     opening = rounded_profile(
         builder, comp, -BEVEL_DEPTH, OPENING[0] / 2, center_y, OPENING[1] / 2, OPENING_R
     )
+    extrudes = comp.features.extrudeFeatures
     ext_input = extrudes.createInput(opening, CUT)
     ext_input.setDistanceExtent(
         False, adsk.core.ValueInput.createByReal(cm(-(PANEL_T - BEVEL_DEPTH + 1.0)))
     )
-    ext_input.participantBodies = [panel]
+    ext_input.participantBodies = [body]
     extrudes.add(ext_input)
-    return panel
+    return body
 
 
 def build_display_mock(builder: Builder):
@@ -323,12 +350,14 @@ def run(context):
         fillet_corner_edges(comp, base, CORNER_R)
         display = build_display_mock(builder)
         display.name = "mock_display"
-        panel_body = build_front_panel(builder, comp)
-        panel_body.name = "front_panel"
+        body = build_body(builder, comp)
+        body.name = "stand_body"
         app.activeViewport.fit()
 
         export(design, base, "stand_base.3mf")
-        log("plinth {} x {} x {} mm".format(BASE_SIDE, BASE_T, BASE_SIDE))
+        export(design, body, "stand_body.3mf")
+        log("plinth {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
+        log("body {} x {} x {} mm, {} mm walls, {} mm front".format(BASE_W, BODY_H, BASE_D, WALL, PANEL_T))
         log("panel {} x {} x {} mm, opening {} x {} mm".format(
             PANEL_W, PANEL_H, PANEL_T, OPENING[0], OPENING[1]
         ))
