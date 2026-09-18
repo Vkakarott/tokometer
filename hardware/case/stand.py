@@ -29,13 +29,7 @@ PADDING = 3.0
 BASE_T = 8.0
 BASE_W = 52.0
 BASE_D = BOARD_L + 2 * PADDING
-CORNER_R = 1.5  # edges of the rear housing: back uprights, top sides and back
-BASE_R = 1.5  # plinth corners
-
-# --- Macintosh-style edges: a front bezel that wraps round, then a stepped seam.
-BEZEL_EDGE_R = 1.5  # small moulded radius round the front: both uprights and the top
-BEZEL_RETURN = 3.0  # flat return of the front piece onto the sides and top, square to the face
-SEAM_STEP = 0.5  # the rear bucket sits this much inside the front piece, sides and top
+# Every outer edge of the plinth and the body is left square.
 
 # --- Body
 BODY_H = 60.0
@@ -171,92 +165,6 @@ def find_faces(body, axis: str, sign: float):
     return found
 
 
-def fillet_corner_edges(comp, body, radius: float) -> None:
-    """Fillets the four upright corner edges: those on a side wall that rise."""
-    edges = adsk.core.ObjectCollection.create()
-    for edge in body.edges:
-        geometry = edge.geometry
-        if geometry.objectType != adsk.core.Line3D.classType():
-            continue
-        start, end = geometry.startPoint, geometry.endPoint
-        rises = abs(start.y - end.y) > cm(1.0)
-        on_side = abs(abs(start.x) - cm(BASE_W / 2)) < 1e-6 and abs(abs(end.x) - cm(BASE_W / 2)) < 1e-6
-        if rises and on_side:
-            edges.add(edge)
-    if not edges.count:
-        return
-    fillets = comp.features.filletFeatures
-    fillet_input = fillets.createInput()
-    fillet_input.addConstantRadiusEdgeSet(edges, adsk.core.ValueInput.createByReal(cm(radius)), True)
-    fillets.add(fillet_input)
-
-
-def collection(items):
-    result = adsk.core.ObjectCollection.create()
-    for item in items:
-        result.add(item)
-    return result
-
-
-def seam_z(y: float) -> float:
-    """Z of the bezel seam at height y: parallel to the leaning face, BEZEL_RETURN behind it."""
-    nz, _ = front_normal()
-    return -FRONT_LEAN * (y - BASE_T) / BODY_H - BEZEL_RETURN / nz
-
-
-def step_rear_housing(builder: Builder, body) -> None:
-    """Pulls the sides and top behind the seam in by SEAM_STEP."""
-    bottom, top = BASE_T, BASE_T + BODY_H
-    back = -BASE_D - 1.0
-    for x in (BASE_W / 2 - SEAM_STEP, -BASE_W / 2 - 1.0):
-        side = [(bottom - 1.0, seam_z(bottom - 1.0)), (top + 1.0, seam_z(top + 1.0)), (top + 1.0, back), (bottom - 1.0, back)]
-        builder.side_profile(x, side, SEAM_STEP + 1.0, CUT, body)
-    lid = [(top - SEAM_STEP, seam_z(top - SEAM_STEP)), (top + 1.0, seam_z(top + 1.0)), (top + 1.0, back), (top - SEAM_STEP, back)]
-    builder.side_profile(-BASE_W / 2 - 1.0, lid, BASE_W + 2.0, CUT, body)
-
-
-def round_bezel(comp, body) -> None:
-    """The full rounded edge around the front face: both uprights and the top."""
-    face = front_faces(body)[0]
-    bottom = cm(BASE_T)
-    edges = [
-        edge for edge in face.edges
-        if not all(abs(v.geometry.y - bottom) < 1e-6 for v in (edge.startVertex, edge.endVertex))
-    ]
-    fillets = comp.features.filletFeatures
-    fillet_input = fillets.createInput()
-    fillet_input.edgeSetInputs.addConstantRadiusEdgeSet(collection(edges), value(BEZEL_EDGE_R), True)
-    fillets.add(fillet_input)
-
-
-def round_rear_housing(comp, body) -> None:
-    """Tighter edges on the rear housing; the seam step itself stays crisp."""
-    back_z = -cm(BASE_D)
-    edges = []
-    for edge in body.edges:
-        start, end = edge.startVertex.geometry, edge.endVertex.geometry
-        on_back = all(abs(point.z - back_z) < 1e-6 for point in (start, end))
-        rises = abs(start.y - end.y) > cm(1.0)
-        if on_back and (rises or abs(start.y - cm(BASE_T + BODY_H - SEAM_STEP)) < 1e-6):
-            edges.append(edge)  # back uprights and the top-back edge
-    for face in find_faces(body, "y", 1.0):
-        if abs(face.boundingBox.maxPoint.y - cm(BASE_T + BODY_H - SEAM_STEP)) > 1e-6:
-            continue
-        for edge in face.edges:
-            start, end = edge.startVertex.geometry, edge.endVertex.geometry
-            runs_back = abs(start.z - end.z) > cm(1.0)
-            if runs_back:
-                edges.append(edge)  # top-side edges of the rear housing
-    fillets = comp.features.filletFeatures
-    fillet_input = fillets.createInput()
-    fillet_input.edgeSetInputs.addConstantRadiusEdgeSet(collection(edges), value(CORNER_R), False)
-    fillets.add(fillet_input)
-
-
-def value(mm: float):
-    return adsk.core.ValueInput.createByReal(cm(mm))
-
-
 def shell_open_bottom(comp, body, thickness: float) -> None:
     faces = adsk.core.ObjectCollection.create()
     for face in find_faces(body, "y", -1.0):
@@ -375,14 +283,11 @@ def build_body(builder: Builder, comp):
         (bottom, -BASE_D),
     ]
     body = builder.side_profile(-BASE_W / 2, outer_profile, BASE_W, NEW)
-    step_rear_housing(builder, body)
-    round_bezel(comp, body)
-    round_rear_housing(comp, body)
 
-    # Cavity: 4 mm front square to the leaning face; WALL behind the seam step elsewhere.
+    # Cavity: 4 mm front square to the leaning face; WALL elsewhere.
     nz, _ = front_normal()
     front_thickness = PANEL_T / nz
-    side_wall = WALL + SEAM_STEP
+    side_wall = WALL
     cavity = [
         (bottom, -front_thickness),
         (top - side_wall, -FRONT_LEAN * (top - side_wall - bottom) / BODY_H - front_thickness),
@@ -530,7 +435,6 @@ def run(context):
         builder = Builder(comp)
         base = build_base(builder)
         base.name = "stand_base"
-        fillet_corner_edges(comp, base, BASE_R)
         display = build_display_mock(builder)
         display.name = "mock_display"
         body = build_body(builder, comp)
@@ -540,9 +444,7 @@ def run(context):
         export(design, base, "stand_base.3mf")
         export(design, body, "stand_body.3mf")
         log("plinth {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
-        log("bezel edge {} mm, wrapping {} mm, seam step {} mm; rear housing edges {} mm".format(
-            BEZEL_EDGE_R, BEZEL_RETURN, SEAM_STEP, CORNER_R
-        ))
+        log("outer edges: all square")
         log("body {} x {} x {} mm, {} mm walls, front leaning {} mm ({:.1f} deg)".format(
             BASE_W, BODY_H, BASE_D, WALL, FRONT_LEAN,
             math.degrees(math.atan2(FRONT_LEAN, BODY_H)),
