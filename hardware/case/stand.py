@@ -61,6 +61,17 @@ FUNNEL_OUTER_R = 0.5  # outer outline corners, almost sharp
 LIP_FILLET = 0.3  # face into slope, almost sharp; kept under FUNNEL_OUTER_R
 THROAT_CHAMFER = 0.5  # flat band into the throat; leaves 1 mm of straight throat wall
 
+# --- Floppy drive detail in the chin, visual only (never cut through the wall)
+FLOPPY_RIGHT_X = FUNNEL_OUTER[0] / 2  # right end lines up with the funnel's right edge
+FLOPPY_Y = BASE_T + 13.0  # centre height on the face
+FLOPPY_BAND = (22.0, 3.0)  # the long shallow recess
+FLOPPY_MOUTH = (6.0, 5.5)  # the taller block at its right end
+FLOPPY_RECESS_DEPTH = 0.8
+FLOPPY_SLOT = (18.0, 1.0)  # dark slot running along the recess, ending in the mouth
+FLOPPY_SLOT_DEPTH = 1.5
+FLOPPY_EJECT_D = 0.8  # pinhole in the mouth, below the slot
+FLOPPY_R = 0.3
+
 # Fusion appearance library and its matte black plastic; ids, so any UI language works.
 APPEARANCE_LIBRARY_ID = "BA5EE55E-9982-449B-9D66-9F036540E140"
 DISPLAY_APPEARANCE_ID = "Prism-113"
@@ -310,6 +321,46 @@ def build_body(builder: Builder, comp):
     return body
 
 
+def face_point(x: float, y: float):
+    """Point on the leaning front face at model x and height y."""
+    z = -FRONT_LEAN * (y - BASE_T) / BODY_H
+    return adsk.core.Point3D.create(cm(x), cm(y), cm(z))
+
+
+def cut_from_face(comp, body, profile, depth: float):
+    extrudes = comp.features.extrudeFeatures
+    ext_input = extrudes.createInput(profile, CUT)
+    ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(-depth)))
+    ext_input.participantBodies = [body]
+    return extrudes.add(ext_input)
+
+
+def cut_floppy(comp, body):
+    """Recessed drive bezel, dark slot and eject pinhole; returns the slot's faces."""
+    face = front_faces(body)[0]
+    band_center_x = FLOPPY_RIGHT_X - FLOPPY_BAND[0] / 2
+    mouth_center_x = FLOPPY_RIGHT_X - FLOPPY_MOUTH[0] / 2
+    for center_x, size in ((band_center_x, FLOPPY_BAND), (mouth_center_x, FLOPPY_MOUTH)):
+        sketch = comp.sketches.addWithoutEdges(face)
+        profile = sketch_rect_at(sketch, face_point(center_x, FLOPPY_Y), size[0], size[1], FLOPPY_R)
+        cut_from_face(comp, body, profile, FLOPPY_RECESS_DEPTH)
+
+    slot_right = FLOPPY_RIGHT_X - 1.0
+    sketch = comp.sketches.addWithoutEdges(face)
+    profile = sketch_rect_at(
+        sketch, face_point(slot_right - FLOPPY_SLOT[0] / 2, FLOPPY_Y), FLOPPY_SLOT[0], FLOPPY_SLOT[1], 0.2
+    )
+    slot = cut_from_face(comp, body, profile, FLOPPY_SLOT_DEPTH)
+
+    sketch = comp.sketches.addWithoutEdges(face)
+    center = sketch.modelToSketchSpace(face_point(mouth_center_x + 1.2, FLOPPY_Y - 1.8))
+    sketch.sketchCurves.sketchCircles.addByCenterRadius(
+        adsk.core.Point3D.create(center.x, center.y, 0), cm(FLOPPY_EJECT_D / 2)
+    )
+    cut_from_face(comp, body, sketch.profiles.item(0), FLOPPY_SLOT_DEPTH)
+    return list(slot.faces)
+
+
 def cut_funnel(comp, body) -> None:
     """Sloped funnel from the face down to the throat, then the throat to the glass."""
     center = screen_center_point()
@@ -438,13 +489,17 @@ def lean_with_front(comp, body, glass_front_z: float) -> None:
     moves.add(move_input)
 
 
-def paint(app, design, body, appearance_id: str) -> None:
-    """Visual-only appearance on a body; not carried into the 3MF exports."""
+def appearance_for(app, design, appearance_id: str):
     appearance = design.appearances.itemById(appearance_id)
     if appearance is None:
         library = app.materialLibraries.itemById(APPEARANCE_LIBRARY_ID)
         appearance = design.appearances.addByCopy(library.appearances.itemById(appearance_id), appearance_id)
-    body.appearance = appearance
+    return appearance
+
+
+def paint(app, design, target, appearance_id: str) -> None:
+    """Visual-only appearance on a body or face; not carried into the 3MF exports."""
+    target.appearance = appearance_for(app, design, appearance_id)
 
 
 def export(design: adsk.fusion.Design, body, filename: str) -> None:
@@ -486,6 +541,8 @@ def run(context):
         paint(app, design, display, DISPLAY_APPEARANCE_ID)
         body = build_body(builder, comp)
         body.name = "stand_body"
+        for face in cut_floppy(comp, body):
+            paint(app, design, face, DISPLAY_APPEARANCE_ID)
         comp.isSketchFolderLightBulbOn = False  # keep sketch outlines off the renders
         comp.isConstructionFolderLightBulbOn = False
         app.activeViewport.fit()
