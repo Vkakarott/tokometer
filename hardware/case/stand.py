@@ -35,6 +35,7 @@ BASE_D = BOARD_L + 2 * PADDING
 BODY_H = 57.7  # gives a 24 mm chin under the funnel
 WALL = 2.0
 FRONT_LEAN = 5.8  # how far the top of the front face sits behind its bottom (~5.7 deg)
+BACK_LEAN = 2.0  # the back leans forward this much at the top, like the Macintosh's rear
 # Flat decline round the front panel's edge: (width on the front, setback on the other face).
 # The setback is the same all round; top and bottom only reach further down the front.
 FRONT_DECLINE_SETBACK = 1.0
@@ -460,7 +461,7 @@ def build_body(builder: Builder, comp):
     outer_profile = [
         (bottom, 0.0),
         (top, -FRONT_LEAN),
-        (top, -BASE_D),
+        (top, -BASE_D + BACK_LEAN),
         (bottom, -BASE_D),
     ]
     body = builder.side_profile(-BASE_W / 2, outer_profile, BASE_W, NEW)
@@ -475,7 +476,7 @@ def build_body(builder: Builder, comp):
     cavity = [
         (bottom, -front_thickness),
         (top - side_wall, -FRONT_LEAN * (top - side_wall - bottom) / BODY_H - front_thickness),
-        (top - side_wall, -(BASE_D - WALL)),
+        (top - side_wall, -(BASE_D - WALL) + BACK_LEAN * (top - side_wall - bottom) / BODY_H),
         (bottom, -(BASE_D - WALL)),
     ]
     builder.side_profile(-BASE_W / 2 + side_wall, cavity, BASE_W - 2 * side_wall, CUT, body)
@@ -722,6 +723,7 @@ def run(context):
             FRONT_DECLINE_SIDE[0], FRONT_DECLINE_SIDE[1], FRONT_DECLINE_TOP[0], FRONT_DECLINE_TOP[1],
             DECLINE_CORNER_R,
         ))
+        log("back leaning {} mm at the top".format(BACK_LEAN))
         log("box edges r {} mm (top-sides, top-back, back uprights)".format(BOX_EDGE_R))
         log("body {} x {} x {} mm, {} mm walls, front leaning {} mm ({:.1f} deg)".format(
             BASE_W, BODY_H, BASE_D, WALL, FRONT_LEAN,
