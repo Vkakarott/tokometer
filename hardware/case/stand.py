@@ -31,21 +31,11 @@ BASE_SIDE = BOARD_L + 2 * PADDING
 # --- Feet
 FOOT_D, FOOT_H, FOOT_INSET = 8.0, 2.5, 9.0
 
-# --- Cover
-COVER_H = BASE_SIDE  # the cube proportion of the first sketch
-COVER_WALL = 2.0
-FRONT_LEAN = 10.0  # how far the top of the front face sits behind its bottom
-
-# --- Display module (0.96" SSD1306) and its opening
-GLASS_W, GLASS_H = 26.7, 19.3
-WINDOW_MARGIN = 0.5  # the frame overlaps the glass edge by this much
-WINDOW_W, WINDOW_H = GLASS_W - 2 * WINDOW_MARGIN, GLASS_H - 2 * WINDOW_MARGIN
-BEZEL_MARGIN, BEZEL_DEPTH = 4.0, 2.5  # recessed frame around the window
-
-# --- Back
-USB_SLOT = (13.0, 7.0)
-USB_CENTER_Y = BASE_T + 12.0
-BACK_PANEL_INSET, BACK_PANEL_DEPTH = 7.0, 0.8
+# --- Board reference body: shows where the ESP32 sits, never exported
+PCB_T = 1.6
+CAN_W, CAN_L, CAN_T = 18.0, 25.5, 3.1  # the ESP-WROOM-32 metal can
+CAN_FRONT_GAP = 3.0  # from the front edge of the board to the can
+USB_W, USB_H, USB_L = 9.0, 3.2, 7.0  # the USB-C receptacle at the back edge
 
 LOG_PATH = "/tmp/tokometer_stand.log"
 EXPORT_DIR = "/Users/lucas/Documents/Projetos/Pessoal/harware/tokEsp/hardware/case"
@@ -211,52 +201,21 @@ def build_base(builder: Builder):
     return base
 
 
-def build_cover(builder: Builder, comp):
-    """Leaning-front shell that sits on the plinth."""
-    bottom = FOOT_H + BASE_T
-    top = bottom + COVER_H
-    profile = [
-        (bottom, 0.0),
-        (top, -FRONT_LEAN),
-        (top, -BASE_SIDE),
-        (bottom, -BASE_SIDE),
-    ]
-    cover = builder.side_profile(-BASE_SIDE / 2, profile, BASE_SIDE, NEW)
-    fillet_corner_edges(comp, cover, CORNER_R)
-    shell_open_bottom(comp, cover, COVER_WALL)
+def build_board_reference(builder: Builder):
+    """The ESP32 DevKit laid on the base: board, module can and USB-C."""
+    top = FOOT_H + BASE_T
+    half_w, half_l = BOARD_W / 2, BOARD_L / 2
+    front_z = -(BASE_SIDE / 2 - half_l)
+    back_z = front_z - BOARD_L
 
-    # The bezel first, then the window through the pocket floor. Both faces are
-    # looked up again, because a cut invalidates the previous face.
-    cut_on_face(
-        comp, cover, front_faces(cover)[0], WINDOW_W + 2 * BEZEL_MARGIN, WINDOW_H + 2 * BEZEL_MARGIN, BEZEL_DEPTH
-    )
-    cut_on_face(comp, cover, front_faces(cover)[-1], WINDOW_W, WINDOW_H, COVER_WALL + 1.0)
+    board = builder.slab(top, -half_w, front_z, half_w, back_z, PCB_T, NEW)
 
-    # Back: the USB-C opening and a shallow panel for a label.
-    builder.panel(
-        -BASE_SIDE,
-        -USB_SLOT[0] / 2,
-        USB_CENTER_Y - USB_SLOT[1] / 2,
-        USB_SLOT[0] / 2,
-        USB_CENTER_Y + USB_SLOT[1] / 2,
-        COVER_WALL,
-        CUT,
-        cover,
+    can_front = front_z - CAN_FRONT_GAP
+    builder.slab(top + PCB_T, -CAN_W / 2, can_front, CAN_W / 2, can_front - CAN_L, CAN_T, JOIN, board)
+    builder.slab(
+        top + PCB_T, -USB_W / 2, back_z + USB_L, USB_W / 2, back_z - 1.0, USB_H, JOIN, board
     )
-    panel_half = BASE_SIDE / 2 - BACK_PANEL_INSET
-    # Starts above the USB opening so the two never touch.
-    panel_bottom = USB_CENTER_Y + USB_SLOT[1] / 2 + 3.0
-    builder.panel(
-        -BASE_SIDE,
-        -panel_half,
-        panel_bottom,
-        panel_half,
-        top - BACK_PANEL_INSET,
-        BACK_PANEL_DEPTH,
-        CUT,
-        cover,
-    )
-    return cover
+    return board
 
 
 def export(design: adsk.fusion.Design, body, filename: str) -> None:
@@ -278,16 +237,16 @@ def run(context):
         builder = Builder(comp)
         base = build_base(builder)
         base.name = "stand_base"
-        cover = build_cover(builder, comp)
-        cover.name = "stand_cover"
+        fillet_corner_edges(comp, base, CORNER_R)
+        board = build_board_reference(builder)
+        board.name = "reference_board"
         app.activeViewport.fit()
 
         export(design, base, "stand_base.3mf")
-        export(design, cover, "stand_cover.3mf")
         log("plinth {} x {} x {} mm on {} mm feet".format(BASE_SIDE, BASE_T, BASE_SIDE, FOOT_H))
-        log("cover {} mm tall, front leaning {} mm, wall {} mm".format(COVER_H, FRONT_LEAN, COVER_WALL))
-        log("window {} x {} mm in a {} mm bezel".format(WINDOW_W, WINDOW_H, BEZEL_DEPTH))
-        log("total height {} mm".format(FOOT_H + BASE_T + COVER_H))
+        log("board {} x {} mm resting at {} mm, {} mm clear at each end".format(
+            BOARD_L, BOARD_W, FOOT_H + BASE_T, round((BASE_SIDE - BOARD_L) / 2, 2)
+        ))
     except Exception:
         import traceback
 
