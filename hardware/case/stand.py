@@ -21,6 +21,7 @@ BOARD_L, BOARD_W = 51.5, 28.5
 PADDING = 3.0
 BASE_T = 4.0
 
+CORNER_R = 6.0  # rounded corners; the board still clears up to about 14 mm
 BASE_SIDE = BOARD_L + 2 * PADDING
 BASE_W = BASE_SIDE
 BASE_D = BASE_SIDE
@@ -106,6 +107,28 @@ class Builder:
             ext_input.participantBodies = [target]
         feature = extrudes.add(ext_input)
         return feature.bodies.item(0) if op == NEW else target
+
+
+def round_corners(comp: adsk.fusion.Component, body, radius: float) -> None:
+    """Fillets the four upright corner edges, leaving cut-outs sharp."""
+    half = BASE_SIDE / 2
+    edges = adsk.core.ObjectCollection.create()
+    for edge in body.edges:
+        geometry = edge.geometry
+        if geometry.objectType != adsk.core.Line3D.classType():
+            continue
+        start, end = geometry.startPoint, geometry.endPoint
+        upright = abs(start.x - end.x) < 1e-6 and abs(start.z - end.z) < 1e-6
+        at_side = abs(abs(start.x) - cm(half)) < 1e-6
+        at_face = abs(start.z) < 1e-6 or abs(start.z + cm(BASE_SIDE)) < 1e-6
+        if upright and at_side and at_face:
+            edges.add(edge)
+    if not edges.count:
+        return
+    fillets = comp.features.filletFeatures
+    fillet_input = fillets.createInput()
+    fillet_input.addConstantRadiusEdgeSet(edges, adsk.core.ValueInput.createByReal(cm(radius)), True)
+    fillets.add(fillet_input)
 
 
 def build_base(builder: Builder):
@@ -196,6 +219,8 @@ def run(context):
         base.name = "stand_base"
         cover = build_cover(builder)
         cover.name = "stand_cover"
+        for body in (base, cover):
+            round_corners(design.rootComponent, body, CORNER_R)
         app.activeViewport.fit()
 
         if SHOW_MODULE:
@@ -206,6 +231,11 @@ def run(context):
         log("base {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
         log("cover {} x {} x {} mm, wall {} mm".format(BASE_SIDE, COVER_H, BASE_SIDE, COVER_WALL))
         log("assembled height {} mm".format(BASE_T + COVER_H))
+        log(
+            "corner radius {} mm; the board corners sit {} mm from the side walls".format(
+                CORNER_R, round((BASE_SIDE - BOARD_W) / 2, 2)
+            )
+        )
         log(
             "module {} x {} mm covers {:.0f}% of the {} mm face width, {:.0f}% of its height, {:.0f}% of its area".format(
                 MODULE_W,
