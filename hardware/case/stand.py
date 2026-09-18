@@ -32,16 +32,18 @@ BASE_SIDE = BOARD_L + 2 * PADDING
 PCB_T = 1.6
 MODULE_W, MODULE_H = 27.3, 27.8
 GLASS_W, GLASS_H, GLASS_T = 26.7, 19.3, 1.2
-GLASS_OFFSET_Y = -2.0  # the glass sits below centre, away from the pin header
-MODULE_FRONT_GAP = 2.0  # from the front edge of the base to the module
-DISPLAY_LIFT = 4.0  # the module floats this far above the base
+ACTIVE_W, ACTIVE_H = 22.0, 12.0  # the lit area inside the glass
+GLASS_OFFSET_Y = -2.0  # the glass sits below the module centre, away from the pins
 
-# --- Frame around the screen only, like the black bezel in the reference
-FRAME_W = 1.0  # inner band, added outside the glass to enlarge the screen
-FRAME_GAP = 2.0  # empty space between the two bands
-OUTER_FRAME_W = 4.0  # second band, wrapping the first one
-FRAME_PROUD = 1.0  # how far the bands stand in front of the glass
-FRAME_R = 1.5  # corner radius at the glass edge, growing with each band
+# --- Front panel, three levels deep
+PANEL_W, PANEL_H, PANEL_T = 52.0, 60.0, 4.0
+PANEL_R = 3.5
+BEVEL_OUTER = (39.0, 29.0)  # where the slope starts, on the surface
+BEVEL_INNER = (29.0, 19.0)  # where it lands: the black bezel plane
+BEVEL_DEPTH = 2.5
+BEVEL_TOP_PADDING = 7.0  # panel top to the start of the slope
+OPENING = (23.0, 13.0)  # window over the lit area
+OPENING_R = 2.0
 
 LOG_PATH = "/tmp/tokometer_stand.log"
 EXPORT_DIR = "/Users/lucas/Documents/Projetos/Pessoal/harware/tokEsp/hardware/case"
@@ -222,73 +224,76 @@ def build_base(builder: Builder):
     return builder.slab(0.0, -half, 0.0, half, -BASE_SIDE, BASE_T, NEW)
 
 
-def build_ring(builder: Builder, comp, center_y, inner_half_w, inner_half_h, band, inner_r, z, depth):
-    """Rounded band around a rectangle, extruded towards +Z."""
+def rounded_profile(builder: Builder, comp, z, half_w, center_y, half_h, radius):
+    """A single rounded-rectangle profile on the plane at z."""
     sketch = comp.sketches.add(builder._offset_plane(comp.xYConstructionPlane, z))
-    rounded_rect(
-        sketch,
-        -(inner_half_w + band),
-        center_y - inner_half_h - band,
-        inner_half_w + band,
-        center_y + inner_half_h + band,
-        inner_r + band,
+    rounded_rect(sketch, -half_w, center_y - half_h, half_w, center_y + half_h, radius)
+    return sketch.profiles.item(0)
+
+
+def panel_center_y():
+    """Centre of the screen opening, from the top padding of the bevel."""
+    panel_top = BASE_T + PANEL_H
+    return panel_top - BEVEL_TOP_PADDING - BEVEL_OUTER[1] / 2
+
+
+def build_front_panel(builder: Builder, comp):
+    """Front face with three levels: bevel, black bezel and the opening."""
+    body_profile = rounded_profile(
+        builder, comp, 0.0, PANEL_W / 2, BASE_T + PANEL_H / 2, PANEL_H / 2, PANEL_R
     )
-    rounded_rect(
-        sketch,
-        -inner_half_w,
-        center_y - inner_half_h,
-        inner_half_w,
-        center_y + inner_half_h,
-        inner_r,
-    )
-    ring = min(sketch.profiles, key=lambda profile: profile.areaProperties().area)
     extrudes = comp.features.extrudeFeatures
-    ext_input = extrudes.createInput(ring, NEW)
-    ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(depth)))
-    return extrudes.add(ext_input).bodies.item(0)
+    ext_input = extrudes.createInput(body_profile, NEW)
+    ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(-PANEL_T)))
+    panel = extrudes.add(ext_input).bodies.item(0)
 
-
-def build_display_frames(builder: Builder, comp):
-    """Two concentric bands around the screen, from the glass edge outwards."""
-    center_y = BASE_T + DISPLAY_LIFT + MODULE_H / 2 + GLASS_OFFSET_Y
-    glass_front_z = -MODULE_FRONT_GAP + GLASS_T
-
-    inner = build_ring(
-        builder, comp, center_y, GLASS_W / 2, GLASS_H / 2, FRAME_W, FRAME_R, glass_front_z, FRAME_PROUD
+    center_y = panel_center_y()
+    # The slope: wide at the surface, narrow where the black bezel starts.
+    outer = rounded_profile(
+        builder, comp, 0.0, BEVEL_OUTER[0] / 2, center_y, BEVEL_OUTER[1] / 2, PANEL_R + 0.5
     )
-    outer = build_ring(
-        builder,
-        comp,
-        center_y,
-        GLASS_W / 2 + FRAME_W + FRAME_GAP,
-        GLASS_H / 2 + FRAME_W + FRAME_GAP,
-        OUTER_FRAME_W,
-        FRAME_R + FRAME_W + FRAME_GAP,
-        glass_front_z,
-        FRAME_PROUD,
+    inner = rounded_profile(
+        builder, comp, -BEVEL_DEPTH, BEVEL_INNER[0] / 2, center_y, BEVEL_INNER[1] / 2, OPENING_R + 1.0
     )
-    return inner, outer
+    lofts = comp.features.loftFeatures
+    loft_input = lofts.createInput(CUT)
+    loft_input.loftSections.add(outer)
+    loft_input.loftSections.add(inner)
+    loft_input.participantBodies = [panel]
+    lofts.add(loft_input)
+
+    # The window, through whatever wall is left behind the bezel.
+    opening = rounded_profile(
+        builder, comp, -BEVEL_DEPTH, OPENING[0] / 2, center_y, OPENING[1] / 2, OPENING_R
+    )
+    ext_input = extrudes.createInput(opening, CUT)
+    ext_input.setDistanceExtent(
+        False, adsk.core.ValueInput.createByReal(cm(-(PANEL_T - BEVEL_DEPTH + 1.0)))
+    )
+    ext_input.participantBodies = [panel]
+    extrudes.add(ext_input)
+    return panel
 
 
 def build_display_mock(builder: Builder):
-    """The OLED module standing on the base, glass facing front."""
-    bottom = BASE_T + DISPLAY_LIFT
+    """The OLED module sitting behind the panel, glass against its back."""
+    module_center_y = panel_center_y() - GLASS_OFFSET_Y
+    glass_front_z = -PANEL_T
     module = builder.panel(
-        -MODULE_FRONT_GAP - PCB_T,
+        glass_front_z - GLASS_T - PCB_T,
         -MODULE_W / 2,
-        bottom,
+        module_center_y - MODULE_H / 2,
         MODULE_W / 2,
-        bottom + MODULE_H,
+        module_center_y + MODULE_H / 2,
         PCB_T,
         NEW,
     )
-    glass_center_y = bottom + MODULE_H / 2 + GLASS_OFFSET_Y
     builder.panel(
-        -MODULE_FRONT_GAP,
+        glass_front_z - GLASS_T,
         -GLASS_W / 2,
-        glass_center_y - GLASS_H / 2,
+        panel_center_y() - GLASS_H / 2,
         GLASS_W / 2,
-        glass_center_y + GLASS_H / 2,
+        panel_center_y() + GLASS_H / 2,
         GLASS_T,
         JOIN,
         module,
@@ -318,22 +323,18 @@ def run(context):
         fillet_corner_edges(comp, base, CORNER_R)
         display = build_display_mock(builder)
         display.name = "mock_display"
-        inner_frame, outer_frame = build_display_frames(builder, comp)
-        inner_frame.name = "display_frame_inner"
-        outer_frame.name = "display_frame_outer"
+        panel_body = build_front_panel(builder, comp)
+        panel_body.name = "front_panel"
         app.activeViewport.fit()
 
         export(design, base, "stand_base.3mf")
         log("plinth {} x {} x {} mm".format(BASE_SIDE, BASE_T, BASE_SIDE))
-        log("display mock {} x {} mm, lifted {} mm above the base".format(
-            MODULE_W, MODULE_H, DISPLAY_LIFT
+        log("panel {} x {} x {} mm, opening {} x {} mm".format(
+            PANEL_W, PANEL_H, PANEL_T, OPENING[0], OPENING[1]
         ))
-        log("bands {} mm + {} mm gap + {} mm: outer size {} x {} mm".format(
-            FRAME_W,
-            FRAME_GAP,
-            OUTER_FRAME_W,
-            round(GLASS_W + 2 * (FRAME_W + FRAME_GAP + OUTER_FRAME_W), 1),
-            round(GLASS_H + 2 * (FRAME_W + FRAME_GAP + OUTER_FRAME_W), 1),
+        log("bevel {} x {} -> {} x {} over {} mm, screen centre at y {} mm".format(
+            BEVEL_OUTER[0], BEVEL_OUTER[1], BEVEL_INNER[0], BEVEL_INNER[1], BEVEL_DEPTH,
+            round(panel_center_y(), 1),
         ))
     except Exception:
         import traceback
