@@ -86,8 +86,7 @@ private struct NotchView: View {
     var body: some View {
         ZStack {
             AeroNotchShape()
-                .fill(.ultraThinMaterial)
-                .overlay { AeroNotchShape().fill(.black.opacity(0.63)) }
+                .fill(.black.opacity(0.98))
                 .overlay(alignment: .bottom) { AeroBottomEdge().stroke(.black.opacity(0.95), lineWidth: 4) }
 
             if isExpanded {
