@@ -40,13 +40,18 @@ FRONT_LEAN = 6.0  # how far the top of the front face sits behind its bottom
 PCB_T = 1.6
 MODULE_W, MODULE_H = 27.3, 27.8
 GLASS_W, GLASS_H, GLASS_T = 26.7, 19.3, 1.2
-ACTIVE_W, ACTIVE_H = 22.0, 12.0  # the lit area inside the glass
-GLASS_OFFSET_Y = -2.0  # the glass sits below the module centre, away from the pins
+ACTIVE_W, ACTIVE_H = 21.74, 10.86  # the lit area: 128 x 64 pixels, datasheet size
+# From a photo of the actual module, lit: the lit area sits towards the pins
+# (about 2 mm of dead glass on that side, 6.4 mm on the ribbon side), and the
+# glass is centred on the board.
+ACTIVE_OFFSET_Y = 2.0  # lit area centre above the glass centre, towards the pins
+GLASS_OFFSET_Y = 0.0  # glass centre relative to the board centre
 
 # --- Front panel: a Macintosh-style funnel sunk into the face
 PANEL_W, PANEL_H, PANEL_T = BASE_W, BODY_H, 4.0
 SCREEN_FROM_TOP = 21.5  # panel top to the screen centre; fixes where the OLED sits
-OPENING = (23.0, 13.0)  # throat over the lit area, running through to the glass
+WINDOW_PADDING = 0.75  # dead glass left visible round the lit area, each side
+OPENING = (ACTIVE_W + 2 * WINDOW_PADDING, ACTIVE_H + 2 * WINDOW_PADDING)  # throat to the glass
 OPENING_R = 2.0
 FUNNEL_DEPTH = 2.5  # slope depth; the rest of the wall is the throat in front of the glass
 FUNNEL_RUN = 6.0  # width of the sloped band on the face: atan(2.5 / 6) = 22.6 deg
@@ -370,8 +375,9 @@ def fillet_edges(comp, edges, radius: float) -> None:
 
 
 def build_display_mock(builder: Builder):
-    """The OLED module sitting behind the panel, glass against its back."""
-    module_center_y = panel_center_y() - GLASS_OFFSET_Y
+    """The OLED module behind the panel, placed so its lit area is centred in the window."""
+    glass_center_y = panel_center_y() - ACTIVE_OFFSET_Y
+    module_center_y = glass_center_y - GLASS_OFFSET_Y
     glass_front_z = -PANEL_T
     module = builder.panel(
         glass_front_z - GLASS_T - PCB_T,
@@ -385,9 +391,9 @@ def build_display_mock(builder: Builder):
     builder.panel(
         glass_front_z - GLASS_T,
         -GLASS_W / 2,
-        panel_center_y() - GLASS_H / 2,
+        glass_center_y - GLASS_H / 2,
         GLASS_W / 2,
-        panel_center_y() + GLASS_H / 2,
+        glass_center_y + GLASS_H / 2,
         GLASS_T,
         JOIN,
         module,
@@ -469,7 +475,8 @@ def run(context):
             PANEL_W, PANEL_H, PANEL_T, OPENING[0], OPENING[1]
         ))
         log("funnel {} x {} (r {}) -> {} x {} (r {}) over {} mm, {:.1f} deg, screen centre at y {} mm".format(
-            FUNNEL_OUTER[0], FUNNEL_OUTER[1], FUNNEL_OUTER_R, OPENING[0], OPENING[1], OPENING_R,
+            round(FUNNEL_OUTER[0], 2), round(FUNNEL_OUTER[1], 2), FUNNEL_OUTER_R,
+            round(OPENING[0], 2), round(OPENING[1], 2), OPENING_R,
             FUNNEL_DEPTH, math.degrees(math.atan2(FUNNEL_DEPTH, FUNNEL_RUN)), round(panel_center_y(), 1),
         ))
         log("fillets: lip {} mm, throat {} mm; glass {} mm behind the throat edge".format(
