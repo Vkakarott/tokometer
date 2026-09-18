@@ -9,3 +9,5 @@ backend/.env
 backend/state.json
 backend/state.json.tmp
 node_modules
+macos/.build/
+macos/.swiftpm/

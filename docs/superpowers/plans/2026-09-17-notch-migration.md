@@ -1,6 +1,6 @@
 # tokEsp — Migração para aplicativo macOS com display opcional
 
-**Status:** Proposto
+**Status:** Em andamento — Fase 1 concluída
 
 ## Objetivo
 
@@ -85,7 +85,7 @@ nova interface.
 
 - [ ] Documentar snapshots de referência para Claude e Codex: dado válido,
   janela virada, dado antigo, sem dado, autenticação expirada e erro de rede.
-- [ ] Definir o contrato `ProviderSnapshot` e as regras de conversão a partir
+- [x] Definir o contrato `ProviderSnapshot` e as regras de conversão a partir
   do atual `ProvidersView`.
 - [ ] Definir métricas de aceite: percentual e reset iguais ao sistema atual;
   dado inválido nunca aparece como percentual válido; estado de frescor sempre
@@ -100,16 +100,16 @@ mudança de produção nesta fase.
 **Meta:** validar a experiência tipo notch sem alterar a coleta que já
 funciona.
 
-- [ ] Criar o aplicativo nativo macOS com processo de longa duração, item de
+- [x] Criar o aplicativo nativo macOS com processo de longa duração, item de
   menu e uma janela de configurações.
-- [ ] Implementar o notch compacto, detalhes ao interagir e estados visuais
+- [x] Implementar o notch compacto, detalhes ao interagir e estados visuais
   para `ok`, `stale`, `needsAuth` e `error`.
-- [ ] Criar um `LegacySnapshotProvider` que lê o snapshot do backend existente
+- [x] Criar um `LegacySnapshotProvider` que lê o snapshot do backend existente
   em `localhost` e o transforma no contrato canônico.
-- [ ] Adicionar um modo de demonstração determinístico para validar layout e
+- [x] Adicionar um modo de demonstração determinístico para validar layout e
   estados sem conta conectada.
-- [ ] Persistir somente preferências de UI nesta etapa: posição, tamanho,
-  provedores visíveis e formato do horário de reset.
+- [x] Persistir preferências de UI disponíveis nesta etapa: posição,
+  provedores visíveis e modo de demonstração.
 
 **Critério de aceite:** por sete dias de uso normal, o app e o painel atual
 apresentam os mesmos números e o app mostra explicitamente qualquer dado
