@@ -41,6 +41,7 @@ FRONT_DECLINE_SETBACK = 1.0
 FRONT_DECLINE_SIDE = (2.0, FRONT_DECLINE_SETBACK)
 FRONT_DECLINE_TOP = (4.0, FRONT_DECLINE_SETBACK)
 DECLINE_CORNER_R = 1.5  # rounds the diagonal edge where two declines meet at a corner
+BOX_EDGE_R = 1.0  # top-side, top-back and back upright edges; front and foot stay as they are
 
 # --- Display mock (0.96" SSD1306 module), never exported
 PCB_T = 1.6
@@ -294,6 +295,43 @@ def round_decline_corners(comp, body) -> None:
     fillets.add(fillet_input)
 
 
+def box_edges(body):
+    """Edges between top, sides and back: never the front declines or the foot."""
+    def kind(face):
+        if face.geometry.objectType != adsk.core.Plane.classType():
+            return None
+        normal = outward_normal(face)
+        if normal.y > 0.999:
+            return "top"
+        if abs(normal.x) > 0.999:
+            return "side"
+        if normal.z < -0.999:
+            return "back"
+        return None
+
+    wanted = ({"top", "side"}, {"top", "back"}, {"side", "back"})
+    edges = adsk.core.ObjectCollection.create()
+    for edge in body.edges:
+        if edge.faces.count != 2:
+            continue
+        kinds = {kind(face) for face in edge.faces}
+        if kinds in wanted:
+            edges.add(edge)
+    return edges
+
+
+def round_box_edges(comp, body) -> None:
+    edges = box_edges(body)
+    if edges.count != 5:
+        raise RuntimeError("expected 5 box edges, found {}".format(edges.count))
+    fillets = comp.features.filletFeatures
+    fillet_input = fillets.createInput()
+    fillet_input.edgeSetInputs.addConstantRadiusEdgeSet(
+        edges, adsk.core.ValueInput.createByReal(cm(BOX_EDGE_R)), False
+    )
+    fillets.add(fillet_input)
+
+
 def decline_front_edges(comp, body) -> None:
     """Flat two-distance chamfers round the front, flipped if a side lands the wrong way."""
     chamfers = comp.features.chamferFeatures
@@ -428,6 +466,7 @@ def build_body(builder: Builder, comp):
     body = builder.side_profile(-BASE_W / 2, outer_profile, BASE_W, NEW)
     decline_front_edges(comp, body)
     round_decline_corners(comp, body)
+    round_box_edges(comp, body)
 
     # Cavity: 4 mm front square to the leaning face; WALL elsewhere.
     nz, _ = front_normal()
@@ -683,6 +722,7 @@ def run(context):
             FRONT_DECLINE_SIDE[0], FRONT_DECLINE_SIDE[1], FRONT_DECLINE_TOP[0], FRONT_DECLINE_TOP[1],
             DECLINE_CORNER_R,
         ))
+        log("box edges r {} mm (top-sides, top-back, back uprights)".format(BOX_EDGE_R))
         log("body {} x {} x {} mm, {} mm walls, front leaning {} mm ({:.1f} deg)".format(
             BASE_W, BODY_H, BASE_D, WALL, FRONT_LEAN,
             math.degrees(math.atan2(FRONT_LEAN, BODY_H)),
