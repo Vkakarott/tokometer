@@ -80,6 +80,7 @@ private struct NotchView: View {
     @State private var rotation = 0.0
     @State private var isPulsing = false
     @State private var activeIndex = 0
+    @State private var hoverExitTask: Task<Void, Never>?
 
     private var snapshots: [ProviderSnapshot] {
         store.snapshots.filter { preferences.isVisible($0.id) }
@@ -107,10 +108,16 @@ private struct NotchView: View {
         .frame(width: isHovering ? 390 : 142, height: isHovering ? 290 : 142)
         .contentShape(Rectangle())
         .onHover { hovering in
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
-                isHovering = hovering
+            hoverExitTask?.cancel()
+            if hovering {
+                setExpanded(true)
+            } else {
+                hoverExitTask = Task {
+                    try? await Task.sleep(for: .milliseconds(220))
+                    guard !Task.isCancelled else { return }
+                    await MainActor.run { setExpanded(false) }
+                }
             }
-            onExpansionChange(hovering)
         }
         .task(id: providerKey) {
             guard !snapshots.isEmpty else { return }
@@ -130,6 +137,15 @@ private struct NotchView: View {
                 isPulsing = true
             }
         }
+        .onDisappear { hoverExitTask?.cancel() }
+    }
+
+    private func setExpanded(_ expanded: Bool) {
+        guard isHovering != expanded else { return }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+            isHovering = expanded
+        }
+        onExpansionChange(expanded)
     }
 
     private var expandedConstellation: some View {
