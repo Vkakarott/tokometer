@@ -25,6 +25,13 @@ BASE_SIDE = BOARD_L + 2 * PADDING
 BASE_W = BASE_SIDE
 BASE_D = BASE_SIDE
 
+# --- Display module (0.96" SSD1306), drawn only as a reference body
+MODULE_W, MODULE_H, MODULE_PCB_T = 27.3, 27.8, 1.6
+GLASS_W, GLASS_H, GLASS_T = 26.7, 19.3, 1.2
+GLASS_OFFSET_Y = -2.0  # the glass sits below centre, away from the pin header
+WINDOW_MARGIN = 0.5  # the frame overlaps the glass edge by this much
+SHOW_MODULE = False  # reference body, handy while judging proportions
+
 # --- Cover: a cube shell standing on the base, open at the bottom
 COVER_WALL = 2.0
 COVER_H = BASE_SIDE  # a cube: the same side as the base footprint
@@ -77,10 +84,59 @@ class Builder:
         feature = extrudes.add(ext_input)
         return feature.bodies.item(0) if op == NEW else target
 
+    def _plane_at_z(self, z: float) -> adsk.fusion.ConstructionPlane:
+        planes = self.comp.constructionPlanes
+        plane_input = planes.createInput()
+        plane_input.setByOffset(
+            self.comp.xYConstructionPlane, adsk.core.ValueInput.createByReal(cm(z))
+        )
+        return planes.add(plane_input)
+
+    def panel(self, z: float, x0: float, y0: float, x1: float, y1: float, depth: float, op, target=None):
+        """Upright rectangle on the plane at z, extruded `depth` towards +Z."""
+        sketch = self.comp.sketches.add(self._plane_at_z(z))
+        sketch.sketchCurves.sketchLines.addTwoPointRectangle(
+            adsk.core.Point3D.create(cm(x0), cm(y0), 0),
+            adsk.core.Point3D.create(cm(x1), cm(y1), 0),
+        )
+        extrudes = self.comp.features.extrudeFeatures
+        ext_input = extrudes.createInput(sketch.profiles.item(0), op)
+        ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(depth)))
+        if target is not None and op != NEW:
+            ext_input.participantBodies = [target]
+        feature = extrudes.add(ext_input)
+        return feature.bodies.item(0) if op == NEW else target
+
 
 def build_base(builder: Builder):
     """Plain solid plate: the board footprint plus a skirt on every side."""
     return builder.slab(0.0, -BASE_W / 2, 0.0, BASE_W / 2, -BASE_D, BASE_T, NEW)
+
+
+def build_module_reference(builder: Builder):
+    """The OLED module laid on the front face, to judge how much of it it takes."""
+    face_center_y = BASE_T + COVER_H / 2
+    module = builder.panel(
+        0.0,
+        -MODULE_W / 2,
+        face_center_y - MODULE_H / 2,
+        MODULE_W / 2,
+        face_center_y + MODULE_H / 2,
+        MODULE_PCB_T,
+        NEW,
+    )
+    glass_center_y = face_center_y + GLASS_OFFSET_Y
+    builder.panel(
+        MODULE_PCB_T,
+        -GLASS_W / 2,
+        glass_center_y - GLASS_H / 2,
+        GLASS_W / 2,
+        glass_center_y + GLASS_H / 2,
+        GLASS_T,
+        JOIN,
+        module,
+    )
+    return module
 
 
 def build_cover(builder: Builder):
@@ -96,6 +152,21 @@ def build_cover(builder: Builder):
         inner_half,
         -(BASE_SIDE - COVER_WALL),
         COVER_H - COVER_WALL,
+        CUT,
+        cover,
+    )
+
+    # Window for the display, centred on the glass rather than on the module.
+    window_center_y = BASE_T + COVER_H / 2 + GLASS_OFFSET_Y
+    window_w = GLASS_W - 2 * WINDOW_MARGIN
+    window_h = GLASS_H - 2 * WINDOW_MARGIN
+    builder.panel(
+        0.0,
+        -window_w / 2,
+        window_center_y - window_h / 2,
+        window_w / 2,
+        window_center_y + window_h / 2,
+        -COVER_WALL,
         CUT,
         cover,
     )
@@ -127,11 +198,29 @@ def run(context):
         cover.name = "stand_cover"
         app.activeViewport.fit()
 
+        if SHOW_MODULE:
+            build_module_reference(builder).name = "reference_display"
+
         export(design, base, "stand_base.3mf")
         export(design, cover, "stand_cover.3mf")
         log("base {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
         log("cover {} x {} x {} mm, wall {} mm".format(BASE_SIDE, COVER_H, BASE_SIDE, COVER_WALL))
         log("assembled height {} mm".format(BASE_T + COVER_H))
+        log(
+            "module {} x {} mm covers {:.0f}% of the {} mm face width, {:.0f}% of its height, {:.0f}% of its area".format(
+                MODULE_W,
+                MODULE_H,
+                100 * MODULE_W / BASE_SIDE,
+                BASE_SIDE,
+                100 * MODULE_H / BASE_SIDE,
+                100 * MODULE_W * MODULE_H / (BASE_SIDE * BASE_SIDE),
+            )
+        )
+        log(
+            "window {} x {} mm, centred {} mm below the face centre".format(
+                GLASS_W - 2 * WINDOW_MARGIN, GLASS_H - 2 * WINDOW_MARGIN, abs(GLASS_OFFSET_Y)
+            )
+        )
     except Exception:
         import traceback
 
