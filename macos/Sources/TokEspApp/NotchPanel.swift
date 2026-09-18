@@ -5,8 +5,8 @@ import SwiftUI
 @MainActor
 final class NotchPanelController: NSObject {
     private enum PanelSize {
-        static let compact = NSSize(width: 328, height: 54)
-        static let expanded = NSSize(width: 418, height: 168)
+        static let compact = NSSize(width: 328, height: 62)
+        static let expanded = NSSize(width: 418, height: 184)
     }
 
     private let panel: NSPanel
@@ -96,7 +96,7 @@ private struct NotchView: View {
                     .transition(.opacity)
             }
         }
-        .frame(width: isExpanded ? 418 : 328, height: isExpanded ? 168 : 54)
+        .frame(width: isExpanded ? 418 : 328, height: isExpanded ? 184 : 62)
         .contentShape(AeroNotchShape())
         .onHover { hovering in
             hoverExitTask?.cancel()
@@ -114,7 +114,7 @@ private struct NotchView: View {
     }
 
     private var compactContent: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 14) {
             ForEach(snapshots) { snapshot in
                 CompactUsage(snapshot: snapshot)
             }
@@ -124,7 +124,7 @@ private struct NotchView: View {
     }
 
     private var expandedContent: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Consumo das suas ferramentas")
                     .font(.caption)
@@ -140,7 +140,7 @@ private struct NotchView: View {
             }
         }
         .padding(.horizontal, 24)
-        .padding(.vertical, 4)
+        .padding(.vertical, 10)
         .foregroundStyle(.white)
     }
 
@@ -155,19 +155,20 @@ private struct NotchView: View {
 
 private struct AeroNotchShape: Shape {
     func path(in rect: CGRect) -> Path {
+        let inset = min(20, rect.width * 0.07)
         let cornerRadius = min(16, rect.height * 0.32)
         var path = Path()
         path.move(to: CGPoint(x: 0, y: 0))
         path.addLine(to: CGPoint(x: rect.maxX, y: 0))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - cornerRadius))
+        path.addLine(to: CGPoint(x: rect.maxX - inset, y: rect.maxY - cornerRadius))
         path.addQuadCurve(
-            to: CGPoint(x: rect.maxX - cornerRadius, y: rect.maxY),
-            control: CGPoint(x: rect.maxX, y: rect.maxY)
+            to: CGPoint(x: rect.maxX - inset - cornerRadius, y: rect.maxY),
+            control: CGPoint(x: rect.maxX - inset, y: rect.maxY)
         )
-        path.addLine(to: CGPoint(x: rect.minX + cornerRadius, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + inset + cornerRadius, y: rect.maxY))
         path.addQuadCurve(
-            to: CGPoint(x: rect.minX, y: rect.maxY - cornerRadius),
-            control: CGPoint(x: rect.minX, y: rect.maxY)
+            to: CGPoint(x: rect.minX + inset, y: rect.maxY - cornerRadius),
+            control: CGPoint(x: rect.minX + inset, y: rect.maxY)
         )
         path.closeSubpath()
         return path
