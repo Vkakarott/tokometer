@@ -37,8 +37,8 @@ MODULE_FRONT_GAP = 2.0  # from the front edge of the base to the module
 DISPLAY_LIFT = 4.0  # the module floats this far above the base
 
 # --- Frame around the screen only, like the black bezel in the reference
-FRAME_W = 0.5  # band width; thin for a 0.4 nozzle, raise it if it breaks
-FRAME_OVERLAP = 0.5  # how far it sits over the glass edge
+FRAME_W = 1.0  # band width, added outside the glass to enlarge the screen
+FRAME_OVERLAP = 0.0  # the inner edge lands exactly on the glass outline
 FRAME_PROUD = 1.0  # how far it stands in front of the glass
 FRAME_R = 1.5  # outer corner radius
 
