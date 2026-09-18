@@ -453,14 +453,29 @@ def export(design: adsk.fusion.Design, body, filename: str) -> None:
     manager.execute(options)
 
 
+def generated_documents(app):
+    """Unsaved documents an earlier run of this script built: every run makes a stand_base."""
+    found = []
+    for document in app.documents:
+        if document.isSaved:
+            continue
+        design = adsk.fusion.Design.cast(document.products.itemByProductType("DesignProductType"))
+        if design is not None and design.rootComponent.bRepBodies.itemByName("stand_base"):
+            found.append(document)
+    return found
+
+
 def run(context):
     app = adsk.core.Application.get()
     try:
         open(LOG_PATH, "w").close()
+        stale = generated_documents(app)
         design = adsk.fusion.Design.cast(app.activeProduct)
         if design is None or app.activeDocument.isSaved or design.rootComponent.bRepBodies.count:
             app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
             design = adsk.fusion.Design.cast(app.activeProduct)
+        for document in stale:
+            document.close(False)
         comp = design.rootComponent
 
         builder = Builder(comp)
