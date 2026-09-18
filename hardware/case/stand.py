@@ -52,13 +52,14 @@ PANEL_W, PANEL_H, PANEL_T = BASE_W, BODY_H, 4.0
 SCREEN_FROM_TOP = 21.5  # panel top to the screen centre; fixes where the OLED sits
 WINDOW_PADDING = 0.75  # dead glass left visible round the lit area, each side
 OPENING = (ACTIVE_W + 2 * WINDOW_PADDING, ACTIVE_H + 2 * WINDOW_PADDING)  # throat to the glass
-OPENING_R = 2.0
+CORNER_RADIUS = 1.5  # window and funnel outline share it, so the slope corners fold cleanly
+OPENING_R = CORNER_RADIUS
 FUNNEL_DEPTH = 2.5  # slope depth; the rest of the wall is the throat in front of the glass
 FUNNEL_RUN = 6.0  # width of the sloped band on the face: atan(2.5 / 6) = 22.6 deg
 FUNNEL_OUTER = (OPENING[0] + 2 * FUNNEL_RUN, OPENING[1] + 2 * FUNNEL_RUN)
-FUNNEL_OUTER_R = 1.5
-LIP_FILLET = 2.0  # face into slope
-THROAT_CHAMFER = 1.0  # flat band where the slope drops into the throat
+FUNNEL_OUTER_R = CORNER_RADIUS
+LIP_FILLET = 0.8  # face into slope; kept under CORNER_RADIUS so the corners stay regular
+THROAT_CHAMFER = 0.5  # flat band into the throat; leaves 1 mm of straight throat wall
 
 # Fusion appearance library and its matte black plastic; ids, so any UI language works.
 APPEARANCE_LIBRARY_ID = "BA5EE55E-9982-449B-9D66-9F036540E140"
