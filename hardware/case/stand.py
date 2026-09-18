@@ -36,9 +36,10 @@ GLASS_OFFSET_Y = -2.0  # the glass sits below centre, away from the pin header
 MODULE_FRONT_GAP = 2.0  # from the front edge of the base to the module
 DISPLAY_LIFT = 4.0  # the module floats this far above the base
 
-# --- Frame around the display
+# --- Frame around the screen only, like the black bezel in the reference
 FRAME_W = 0.5  # band width; thin for a 0.4 nozzle, raise it if it breaks
-FRAME_CLEARANCE = 0.15
+FRAME_OVERLAP = 0.5  # how far it sits over the glass edge
+FRAME_PROUD = 1.0  # how far it stands in front of the glass
 FRAME_R = 1.5  # outer corner radius
 
 LOG_PATH = "/tmp/tokometer_stand.log"
@@ -221,25 +222,36 @@ def build_base(builder: Builder):
 
 
 def build_display_frame(builder: Builder, comp):
-    """Thin band around the module, the first piece of the future face."""
-    bottom = BASE_T + DISPLAY_LIFT
-    inner_half_w = MODULE_W / 2 + FRAME_CLEARANCE
+    """Band around the screen: it laps over the glass edge and stands proud."""
+    glass_center_y = BASE_T + DISPLAY_LIFT + MODULE_H / 2 + GLASS_OFFSET_Y
+    inner_half_w = GLASS_W / 2 - FRAME_OVERLAP
+    inner_half_h = GLASS_H / 2 - FRAME_OVERLAP
     outer_half_w = inner_half_w + FRAME_W
-    inner_bottom = bottom - FRAME_CLEARANCE
-    inner_top = bottom + MODULE_H + FRAME_CLEARANCE
+    outer_half_h = inner_half_h + FRAME_W
+    glass_front_z = -MODULE_FRONT_GAP + GLASS_T
 
-    sketch = comp.sketches.add(
-        builder._offset_plane(comp.xYConstructionPlane, -MODULE_FRONT_GAP - PCB_T)
+    sketch = comp.sketches.add(builder._offset_plane(comp.xYConstructionPlane, glass_front_z))
+    rounded_rect(
+        sketch,
+        -outer_half_w,
+        glass_center_y - outer_half_h,
+        outer_half_w,
+        glass_center_y + outer_half_h,
+        FRAME_R,
     )
-    rounded_rect(sketch, -outer_half_w, inner_bottom - FRAME_W, outer_half_w, inner_top + FRAME_W, FRAME_R)
-    rounded_rect(sketch, -inner_half_w, inner_bottom, inner_half_w, inner_top, max(FRAME_R - FRAME_W, 0.2))
+    rounded_rect(
+        sketch,
+        -inner_half_w,
+        glass_center_y - inner_half_h,
+        inner_half_w,
+        glass_center_y + inner_half_h,
+        max(FRAME_R - FRAME_W, 0.2),
+    )
 
     ring = min(sketch.profiles, key=lambda profile: profile.areaProperties().area)
     extrudes = comp.features.extrudeFeatures
     ext_input = extrudes.createInput(ring, NEW)
-    ext_input.setDistanceExtent(
-        False, adsk.core.ValueInput.createByReal(cm(PCB_T + GLASS_T + FRAME_CLEARANCE))
-    )
+    ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(FRAME_PROUD)))
     return extrudes.add(ext_input).bodies.item(0)
 
 
@@ -300,7 +312,9 @@ def run(context):
         log("display mock {} x {} mm, lifted {} mm above the base".format(
             MODULE_W, MODULE_H, DISPLAY_LIFT
         ))
-        log("frame band {} mm wide, corner radius {} mm".format(FRAME_W, FRAME_R))
+        log("screen bezel {} mm wide, {} mm over the glass, {} mm proud".format(
+            FRAME_W, FRAME_OVERLAP, FRAME_PROUD
+        ))
     except Exception:
         import traceback
 
