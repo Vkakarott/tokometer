@@ -40,6 +40,7 @@ FRONT_LEAN = 5.8  # how far the top of the front face sits behind its bottom (~5
 FRONT_DECLINE_SETBACK = 1.0
 FRONT_DECLINE_SIDE = (2.0, FRONT_DECLINE_SETBACK)
 FRONT_DECLINE_TOP = (4.0, FRONT_DECLINE_SETBACK)
+DECLINE_CORNER_R = 1.5  # rounds the diagonal edge where two declines meet at a corner
 
 # --- Display mock (0.96" SSD1306 module), never exported
 PCB_T = 1.6
@@ -253,6 +254,46 @@ def front_edge(body, edge_kind: str):
     raise RuntimeError("no {} edge on the front face".format(edge_kind))
 
 
+def outward_normal(face):
+    _, normal = face.evaluator.getNormalAtPoint(face.pointOnFace)
+    return normal
+
+
+def decline_corner_edges(body):
+    """Diagonal edges where a top/bottom decline meets a side decline."""
+    nz, ny = front_normal()
+
+    def is_side_decline(normal):
+        return abs(normal.x) > 0.1 and normal.z > 0.2
+
+    def is_level_decline(normal):
+        # No X component, faces forward, but is not the front itself (the bottom
+        # decline is nearly parallel to the leaning front).
+        faces_front = normal.y * ny + normal.z * nz > 0.9999
+        return abs(normal.x) < 1e-6 and normal.z > 0.2 and not faces_front
+
+    edges = adsk.core.ObjectCollection.create()
+    for edge in body.edges:
+        if edge.faces.count != 2:
+            continue
+        normals = [outward_normal(face) for face in edge.faces]
+        if any(is_side_decline(n) for n in normals) and any(is_level_decline(n) for n in normals):
+            edges.add(edge)
+    return edges
+
+
+def round_decline_corners(comp, body) -> None:
+    edges = decline_corner_edges(body)
+    if edges.count != 4:
+        raise RuntimeError("expected 4 decline corner edges, found {}".format(edges.count))
+    fillets = comp.features.filletFeatures
+    fillet_input = fillets.createInput()
+    fillet_input.edgeSetInputs.addConstantRadiusEdgeSet(
+        edges, adsk.core.ValueInput.createByReal(cm(DECLINE_CORNER_R)), False
+    )
+    fillets.add(fillet_input)
+
+
 def decline_front_edges(comp, body) -> None:
     """Flat two-distance chamfers round the front, flipped if a side lands the wrong way."""
     chamfers = comp.features.chamferFeatures
@@ -386,6 +427,7 @@ def build_body(builder: Builder, comp):
     ]
     body = builder.side_profile(-BASE_W / 2, outer_profile, BASE_W, NEW)
     decline_front_edges(comp, body)
+    round_decline_corners(comp, body)
 
     # Cavity: 4 mm front square to the leaning face; WALL elsewhere.
     nz, _ = front_normal()
@@ -637,8 +679,9 @@ def run(context):
             (box.maxPoint.x - box.minPoint.x) * 10, (box.maxPoint.y - box.minPoint.y) * 10,
             (box.maxPoint.z - box.minPoint.z) * 10,
         ))
-        log("front decline: sides {} mm on the front x {} mm back, top/bottom {} x {} mm".format(
-            FRONT_DECLINE_SIDE[0], FRONT_DECLINE_SIDE[1], FRONT_DECLINE_TOP[0], FRONT_DECLINE_TOP[1]
+        log("front decline: sides {} mm on the front x {} mm back, top/bottom {} x {} mm, corners r {} mm".format(
+            FRONT_DECLINE_SIDE[0], FRONT_DECLINE_SIDE[1], FRONT_DECLINE_TOP[0], FRONT_DECLINE_TOP[1],
+            DECLINE_CORNER_R,
         ))
         log("body {} x {} x {} mm, {} mm walls, front leaning {} mm ({:.1f} deg)".format(
             BASE_W, BODY_H, BASE_D, WALL, FRONT_LEAN,
