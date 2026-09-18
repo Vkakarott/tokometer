@@ -55,6 +55,10 @@ FUNNEL_OUTER_R = 4.0
 LIP_FILLET = 2.0  # face into slope
 THROAT_FILLET = 1.0  # slope into throat
 
+# Fusion appearance library and its matte black plastic; ids, so any UI language works.
+APPEARANCE_LIBRARY_ID = "BA5EE55E-9982-449B-9D66-9F036540E140"
+DISPLAY_APPEARANCE_ID = "Prism-113"
+
 LOG_PATH = "/tmp/tokometer_stand.log"
 EXPORT_DIR = "/Users/lucas/Documents/Projetos/Pessoal/harware/tokEsp/hardware/case"
 
@@ -416,6 +420,15 @@ def lean_with_front(comp, body, glass_front_z: float) -> None:
     moves.add(move_input)
 
 
+def paint(app, design, body, appearance_id: str) -> None:
+    """Visual-only appearance on a body; not carried into the 3MF exports."""
+    appearance = design.appearances.itemById(appearance_id)
+    if appearance is None:
+        library = app.materialLibraries.itemById(APPEARANCE_LIBRARY_ID)
+        appearance = design.appearances.addByCopy(library.appearances.itemById(appearance_id), appearance_id)
+    body.appearance = appearance
+
+
 def export(design: adsk.fusion.Design, body, filename: str) -> None:
     manager = design.exportManager
     options = manager.createC3MFExportOptions(body, "{}/{}".format(EXPORT_DIR, filename))
@@ -437,8 +450,11 @@ def run(context):
         base.name = "stand_base"
         display = build_display_mock(builder)
         display.name = "mock_display"
+        paint(app, design, display, DISPLAY_APPEARANCE_ID)
         body = build_body(builder, comp)
         body.name = "stand_body"
+        comp.isSketchFolderLightBulbOn = False  # keep sketch outlines off the renders
+        comp.isConstructionFolderLightBulbOn = False
         app.activeViewport.fit()
 
         export(design, base, "stand_base.3mf")
