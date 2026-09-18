@@ -37,10 +37,10 @@ MODULE_FRONT_GAP = 2.0  # from the front edge of the base to the module
 DISPLAY_LIFT = 4.0  # the module floats this far above the base
 
 # --- Frame around the screen only, like the black bezel in the reference
-FRAME_W = 1.0  # band width, added outside the glass to enlarge the screen
-FRAME_OVERLAP = 0.0  # the inner edge lands exactly on the glass outline
-FRAME_PROUD = 1.0  # how far it stands in front of the glass
-FRAME_R = 1.5  # outer corner radius
+FRAME_W = 2.0  # inner band, added outside the glass to enlarge the screen
+OUTER_FRAME_W = 4.0  # second band, wrapping the first one
+FRAME_PROUD = 1.0  # how far the bands stand in front of the glass
+FRAME_R = 1.5  # corner radius at the glass edge, growing with each band
 
 LOG_PATH = "/tmp/tokometer_stand.log"
 EXPORT_DIR = "/Users/lucas/Documents/Projetos/Pessoal/harware/tokEsp/hardware/case"
@@ -221,38 +221,52 @@ def build_base(builder: Builder):
     return builder.slab(0.0, -half, 0.0, half, -BASE_SIDE, BASE_T, NEW)
 
 
-def build_display_frame(builder: Builder, comp):
-    """Band around the screen: it laps over the glass edge and stands proud."""
-    glass_center_y = BASE_T + DISPLAY_LIFT + MODULE_H / 2 + GLASS_OFFSET_Y
-    inner_half_w = GLASS_W / 2 - FRAME_OVERLAP
-    inner_half_h = GLASS_H / 2 - FRAME_OVERLAP
-    outer_half_w = inner_half_w + FRAME_W
-    outer_half_h = inner_half_h + FRAME_W
-    glass_front_z = -MODULE_FRONT_GAP + GLASS_T
-
-    sketch = comp.sketches.add(builder._offset_plane(comp.xYConstructionPlane, glass_front_z))
+def build_ring(builder: Builder, comp, center_y, inner_half_w, inner_half_h, band, inner_r, z, depth):
+    """Rounded band around a rectangle, extruded towards +Z."""
+    sketch = comp.sketches.add(builder._offset_plane(comp.xYConstructionPlane, z))
     rounded_rect(
         sketch,
-        -outer_half_w,
-        glass_center_y - outer_half_h,
-        outer_half_w,
-        glass_center_y + outer_half_h,
-        FRAME_R,
+        -(inner_half_w + band),
+        center_y - inner_half_h - band,
+        inner_half_w + band,
+        center_y + inner_half_h + band,
+        inner_r + band,
     )
     rounded_rect(
         sketch,
         -inner_half_w,
-        glass_center_y - inner_half_h,
+        center_y - inner_half_h,
         inner_half_w,
-        glass_center_y + inner_half_h,
-        max(FRAME_R - FRAME_W, 0.2),
+        center_y + inner_half_h,
+        inner_r,
     )
-
     ring = min(sketch.profiles, key=lambda profile: profile.areaProperties().area)
     extrudes = comp.features.extrudeFeatures
     ext_input = extrudes.createInput(ring, NEW)
-    ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(FRAME_PROUD)))
+    ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(depth)))
     return extrudes.add(ext_input).bodies.item(0)
+
+
+def build_display_frames(builder: Builder, comp):
+    """Two concentric bands around the screen, from the glass edge outwards."""
+    center_y = BASE_T + DISPLAY_LIFT + MODULE_H / 2 + GLASS_OFFSET_Y
+    glass_front_z = -MODULE_FRONT_GAP + GLASS_T
+
+    inner = build_ring(
+        builder, comp, center_y, GLASS_W / 2, GLASS_H / 2, FRAME_W, FRAME_R, glass_front_z, FRAME_PROUD
+    )
+    outer = build_ring(
+        builder,
+        comp,
+        center_y,
+        GLASS_W / 2 + FRAME_W,
+        GLASS_H / 2 + FRAME_W,
+        OUTER_FRAME_W,
+        FRAME_R + FRAME_W,
+        glass_front_z,
+        FRAME_PROUD,
+    )
+    return inner, outer
 
 
 def build_display_mock(builder: Builder):
@@ -303,8 +317,9 @@ def run(context):
         fillet_corner_edges(comp, base, CORNER_R)
         display = build_display_mock(builder)
         display.name = "mock_display"
-        frame = build_display_frame(builder, comp)
-        frame.name = "display_frame"
+        inner_frame, outer_frame = build_display_frames(builder, comp)
+        inner_frame.name = "display_frame_inner"
+        outer_frame.name = "display_frame_outer"
         app.activeViewport.fit()
 
         export(design, base, "stand_base.3mf")
@@ -312,8 +327,11 @@ def run(context):
         log("display mock {} x {} mm, lifted {} mm above the base".format(
             MODULE_W, MODULE_H, DISPLAY_LIFT
         ))
-        log("screen bezel {} mm wide, {} mm over the glass, {} mm proud".format(
-            FRAME_W, FRAME_OVERLAP, FRAME_PROUD
+        log("bands {} mm and {} mm around the glass: outer size {} x {} mm".format(
+            FRAME_W,
+            OUTER_FRAME_W,
+            round(GLASS_W + 2 * (FRAME_W + OUTER_FRAME_W), 1),
+            round(GLASS_H + 2 * (FRAME_W + OUTER_FRAME_W), 1),
         ))
     except Exception:
         import traceback
