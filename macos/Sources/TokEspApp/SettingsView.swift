@@ -8,12 +8,12 @@ struct SettingsView: View {
         Form {
             Section("Fonte de dados") {
                 LabeledContent("Modo") {
-                    Text("Compatibilidade")
+                    Text("Local")
                 }
                 LabeledContent("Estado") {
                     Text(store.sourceMessage)
                 }
-                Text("Esta primeira versão usa o backend local existente. A coleta nativa de Claude e Codex substitui essa ponte na próxima fase.")
+                Text("Claude e Codex são consultados diretamente a partir das sessões deste Mac. O backend antigo não é usado para alimentar o notch.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Toggle("Usar dados de demonstração", isOn: $preferences.demoMode)

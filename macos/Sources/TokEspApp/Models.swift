@@ -67,6 +67,7 @@ struct ProviderSnapshot: Equatable, Identifiable {
     let windows: [UsageWindow]
     let headlineID: String?
     let hasData: Bool
+    let observedAt: Date?
 
     var headline: UsageWindow? {
         if let headlineID, let match = windows.first(where: { $0.id == headlineID }) {
@@ -131,7 +132,8 @@ extension LegacyProvidersView {
                 status: status,
                 windows: windows,
                 headlineID: windows.first?.id,
-                hasData: usage.hasData
+                hasData: usage.hasData,
+                observedAt: Date.now.addingTimeInterval(TimeInterval(-usage.ageSeconds))
             )
         }
     }

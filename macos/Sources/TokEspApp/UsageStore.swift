@@ -17,7 +17,8 @@ final class UsageStore: ObservableObject {
                 status: .error(reason: "Aguardando serviço local"),
                 windows: [],
                 headlineID: nil,
-                hasData: false
+                hasData: false,
+                observedAt: nil
             )
         }
     }
@@ -38,7 +39,8 @@ final class UsageStore: ObservableObject {
                 status: .error(reason: message),
                 windows: $0.windows,
                 headlineID: $0.headlineID,
-                hasData: $0.hasData
+                hasData: $0.hasData,
+                observedAt: $0.observedAt
             )
         }
         sourceMessage = message
@@ -58,7 +60,8 @@ final class UsageStore: ObservableObject {
                 status: .ok,
                 windows: [UsageWindow(id: "five_hour", label: "5 horas", usedFraction: 0.42, resetsAt: .now.addingTimeInterval(3_600))],
                 headlineID: "five_hour",
-                hasData: true
+                hasData: true,
+                observedAt: .now
             ),
             ProviderSnapshot(
                 id: .codex,
@@ -67,11 +70,49 @@ final class UsageStore: ObservableObject {
                 status: .stale(ageSeconds: 1_260),
                 windows: [UsageWindow(id: "seven_day", label: "7 dias", usedFraction: 0.78, resetsAt: .now.addingTimeInterval(86_400))],
                 headlineID: "seven_day",
-                hasData: true
+                hasData: true,
+                observedAt: .now
             ),
         ]
         updatedAt = .now
         sourceMessage = "Dados de demonstração"
+    }
+
+    func apply(_ snapshot: ProviderSnapshot) {
+        snapshots = snapshots.map { $0.id == snapshot.id ? snapshot : $0 }
+        updatedAt = .now
+        sourceMessage = "Dados coletados localmente"
+    }
+
+    func preserveLastGood(for provider: ProviderID, error: Error) {
+        let message = error.localizedDescription
+        snapshots = snapshots.map { snapshot in
+            guard snapshot.id == provider else { return snapshot }
+            guard snapshot.hasData, let observedAt = snapshot.observedAt else {
+                return ProviderSnapshot(
+                    id: snapshot.id,
+                    displayName: snapshot.displayName,
+                    fidelity: snapshot.fidelity,
+                    status: .error(reason: message),
+                    windows: snapshot.windows,
+                    headlineID: snapshot.headlineID,
+                    hasData: false,
+                    observedAt: nil
+                )
+            }
+            let age = max(0, Int(Date.now.timeIntervalSince(observedAt)))
+            return ProviderSnapshot(
+                id: snapshot.id,
+                displayName: snapshot.displayName,
+                fidelity: snapshot.fidelity,
+                status: .stale(ageSeconds: age),
+                windows: snapshot.windows,
+                headlineID: snapshot.headlineID,
+                hasData: true,
+                observedAt: observedAt
+            )
+        }
+        sourceMessage = message
     }
 }
 

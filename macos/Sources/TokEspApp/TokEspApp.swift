@@ -34,7 +34,10 @@ struct TokEspApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = UsageStore()
     let preferences = AppPreferences()
-    lazy var polling = PollingController(provider: LegacySnapshotProvider(), store: store)
+    lazy var polling = NativePollingController(
+        providers: [ClaudeUsageProvider(), CodexUsageProvider()],
+        store: store
+    )
     lazy var notch = NotchPanelController(store: store, preferences: preferences)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
