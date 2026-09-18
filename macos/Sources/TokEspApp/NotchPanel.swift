@@ -41,6 +41,14 @@ final class NotchPanelController: NSObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.position() }
             .store(in: &subscriptions)
+        preferences.$preferredScreenID
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.position() }
+            .store(in: &subscriptions)
+        NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.position() }
+            .store(in: &subscriptions)
     }
 
     func show() {
@@ -56,7 +64,7 @@ final class NotchPanelController: NSObject {
         guard isExpanded != expanded else { return }
         isExpanded = expanded
         let size = expanded ? PanelSize.expanded : PanelSize.compact
-        guard let screen = NSScreen.main else { return }
+        guard let screen = targetScreen() else { return }
         let screenFrame = screen.visibleFrame
         let y = preferences.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
         let frame = NSRect(
@@ -73,11 +81,19 @@ final class NotchPanelController: NSObject {
     }
 
     private func position() {
-        guard let screen = NSScreen.main else { return }
+        guard let screen = targetScreen() else { return }
         let screenFrame = screen.visibleFrame
         let size = panel.frame.size
         let y = preferences.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
         panel.setFrameOrigin(NSPoint(x: screenFrame.midX - size.width / 2, y: y))
+    }
+
+    private func targetScreen() -> NSScreen? {
+        if let displayID = preferences.preferredScreenID,
+           let selected = NSScreen.screens.first(where: { $0.displayID == displayID }) {
+            return selected
+        }
+        return NSScreen.screens.first
     }
 }
 

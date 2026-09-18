@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 
@@ -29,6 +30,16 @@ final class AppPreferences: ObservableObject {
         didSet { defaults.set(demoMode, forKey: Keys.demoMode) }
     }
 
+    @Published var preferredScreenID: UInt32? {
+        didSet {
+            if let preferredScreenID {
+                defaults.set(Int(preferredScreenID), forKey: Keys.preferredScreenID)
+            } else {
+                defaults.removeObject(forKey: Keys.preferredScreenID)
+            }
+        }
+    }
+
     @Published private(set) var hasCompletedOnboarding: Bool {
         didSet { defaults.set(hasCompletedOnboarding, forKey: Keys.hasCompletedOnboarding) }
     }
@@ -41,6 +52,7 @@ final class AppPreferences: ObservableObject {
         let storedProviders = defaults.stringArray(forKey: Keys.visibleProviders) ?? ProviderID.allCases.map(\.rawValue)
         visibleProviders = Set(storedProviders.compactMap(ProviderID.init(rawValue:)))
         demoMode = defaults.bool(forKey: Keys.demoMode)
+        preferredScreenID = (defaults.object(forKey: Keys.preferredScreenID) as? NSNumber)?.uint32Value
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)
     }
 
@@ -66,5 +78,12 @@ private enum Keys {
     static let edge = "notch.edge"
     static let visibleProviders = "notch.visibleProviders"
     static let demoMode = "app.demoMode"
+    static let preferredScreenID = "tokonotch.preferredScreenID"
     static let hasCompletedOnboarding = "app.hasCompletedOnboarding"
+}
+
+extension NSScreen {
+    var displayID: UInt32? {
+        (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
+    }
 }

@@ -33,6 +33,11 @@ struct SettingsView: View {
             }
 
             Section("tokonotch") {
+                Picker("Monitor", selection: preferredScreenBinding) {
+                    ForEach(screens, id: \.displayID) { screen in
+                        Text(screenLabel(for: screen)).tag(screen.displayID ?? 0)
+                    }
+                }
                 Picker("Borda", selection: $preferences.edge) {
                     ForEach(NotchEdge.allCases) { edge in
                         Text(edge.label).tag(edge)
@@ -53,7 +58,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 390)
+        .frame(width: 460, height: 440)
         .padding()
         .onChange(of: preferences.demoMode, initial: true) { _, enabled in
             store.setDemoMode(enabled)
@@ -65,6 +70,28 @@ struct SettingsView: View {
             get: { preferences.isVisible(provider) },
             set: { preferences.setVisible($0, for: provider) }
         )
+    }
+
+    private var screens: [NSScreen] {
+        NSScreen.screens.filter { $0.displayID != nil }
+    }
+
+    private var primaryScreenID: UInt32 {
+        screens.first?.displayID ?? 0
+    }
+
+    private var preferredScreenBinding: Binding<UInt32> {
+        Binding(
+            get: { preferences.preferredScreenID ?? primaryScreenID },
+            set: { selected in
+                preferences.preferredScreenID = selected == primaryScreenID ? nil : selected
+            }
+        )
+    }
+
+    private func screenLabel(for screen: NSScreen) -> String {
+        guard screen.displayID != primaryScreenID else { return "Monitor principal" }
+        return screen.localizedName
     }
 
     private func approvePairing() async {
