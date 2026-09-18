@@ -6,7 +6,7 @@ import SwiftUI
 final class NotchPanelController: NSObject {
     private enum PanelSize {
         static let compact = NSSize(width: 328, height: 62)
-        static let expanded = NSSize(width: 328, height: 156)
+        static let expanded = NSSize(width: 328, height: 136)
     }
 
     private let panel: NSPanel
@@ -141,8 +141,8 @@ private struct NotchView: View {
 
     private func providerDrop(snapshot: ProviderSnapshot) -> some View {
         ExpandedUsage(snapshot: snapshot)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
+            .padding(.horizontal, 30)
+            .padding(.vertical, 10)
         .foregroundStyle(.white)
     }
 
