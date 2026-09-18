@@ -19,7 +19,7 @@ BOARD_L, BOARD_W = 51.5, 28.5
 
 # --- Base: square, sized by the board's longest side plus a skirt
 PADDING = 3.0
-BASE_T = 4.0
+BASE_T = 8.0  # tall enough to read as a plinth under the cube
 
 CORNER_R = 6.0  # rounded corners; the board still clears up to about 14 mm
 BASE_SIDE = BOARD_L + 2 * PADDING
