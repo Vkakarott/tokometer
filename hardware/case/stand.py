@@ -29,9 +29,13 @@ PADDING = 3.0
 BASE_T = 8.0
 BASE_W = 52.0
 BASE_D = BOARD_L + 2 * PADDING
-CORNER_R = 1.5  # upright corners of the body
-BASE_R = 1.5  # plinth corners
-TOP_R = 1.5  # edge where the top meets the walls
+CORNER_R = 1.5  # upright back corners of the body
+
+# --- Moulded shoulders: the front-to-side blend changes radius up the body.
+# (fraction of the edge from the bottom, radius in mm), blended with G2 continuity.
+SHOULDER_RADII = ((0.0, 5.0), (0.25, 3.5), (0.6, 3.5), (0.85, 5.5), (1.0, 7.0))
+TOP_BLEND_R = 6.0  # top into front, sides and back, blended with the shoulders at the corners
+REVEAL_H, REVEAL_D = 1.0, 0.8  # parting groove at the top of the skirt
 
 # --- Body
 BODY_H = 60.0
@@ -46,7 +50,8 @@ ACTIVE_W, ACTIVE_H = 22.0, 12.0  # the lit area inside the glass
 GLASS_OFFSET_Y = -2.0  # the glass sits below the module centre, away from the pins
 
 # --- Front panel: a Macintosh-style funnel sunk into the face
-PANEL_W, PANEL_H, PANEL_T = BASE_W, BODY_H, 4.0
+PANEL_W, PANEL_H, PANEL_T = BASE_W, BODY_H, 4.0  # the shell is WALL; a pad makes up PANEL_T
+PAD_MARGIN = 2.0  # pad reach beyond the funnel, behind the front wall
 SCREEN_FROM_TOP = 21.5  # panel top to the screen centre; fixes where the OLED sits
 OPENING = (23.0, 13.0)  # throat over the lit area, running through to the glass
 OPENING_R = 2.0
@@ -63,6 +68,7 @@ EXPORT_DIR = "/Users/lucas/Documents/Projetos/Pessoal/harware/tokEsp/hardware/ca
 NEW = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
 JOIN = adsk.fusion.FeatureOperations.JoinFeatureOperation
 CUT = adsk.fusion.FeatureOperations.CutFeatureOperation
+G2 = adsk.fusion.SurfaceContinuityTypes.CurvatureSurfaceContinuityType
 
 
 def cm(mm: float) -> float:
@@ -167,23 +173,65 @@ def find_faces(body, axis: str, sign: float):
     return found
 
 
-def fillet_corner_edges(comp, body, radius: float) -> None:
-    """Fillets the four upright corner edges: those on a side wall that rise."""
-    edges = adsk.core.ObjectCollection.create()
+def upright_edges(body, front: bool):
+    """Straight corner edges on the side walls that rise; front or back pair."""
+    found = []
     for edge in body.edges:
         geometry = edge.geometry
         if geometry.objectType != adsk.core.Line3D.classType():
             continue
         start, end = geometry.startPoint, geometry.endPoint
         rises = abs(start.y - end.y) > cm(1.0)
-        on_side = abs(abs(start.x) - cm(BASE_W / 2)) < 1e-6 and abs(abs(end.x) - cm(BASE_W / 2)) < 1e-6
-        if rises and on_side:
-            edges.add(edge)
-    if not edges.count:
-        return
+        on_side = all(abs(abs(point.x) - cm(BASE_W / 2)) < 1e-6 for point in (start, end))
+        at_front = max(start.z, end.z) > -cm(BASE_D / 2)
+        if rises and on_side and at_front == front:
+            found.append(edge)
+    return found
+
+
+def value(mm: float):
+    return adsk.core.ValueInput.createByReal(cm(mm))
+
+
+def top_edges(body):
+    """Straight edges around the top face of the unfilleted block."""
+    top = cm(BASE_T + BODY_H)
+    collection = adsk.core.ObjectCollection.create()
+    for edge in body.edges:
+        points = [edge.startVertex.geometry, edge.endVertex.geometry]
+        if all(abs(point.y - top) < 1e-6 for point in points):
+            collection.add(edge)
+    return collection
+
+
+def add_shoulder(edge_sets, edge) -> None:
+    """One front upright: G2 blend whose radius follows SHOULDER_RADII up the body."""
+    rising = edge.startVertex.geometry.y < edge.endVertex.geometry.y
+    stops = sorted((pos if rising else 1.0 - pos, radius) for pos, radius in SHOULDER_RADII)
+    single = adsk.core.ObjectCollection.create()
+    single.add(edge)
+    edge_set = edge_sets.addVariableRadiusEdgeSet(single, value(stops[0][1]), value(stops[-1][1]), False)
+    edge_set.setMidRadii(
+        [value(radius) for _, radius in stops[1:-1]],
+        [adsk.core.ValueInput.createByReal(pos) for pos, _ in stops[1:-1]],
+    )
+    edge_set.continuity = G2
+
+
+def mould_edges(comp, body) -> None:
+    """Shoulders, back corners and top in one fillet, so the corners are blended together."""
     fillets = comp.features.filletFeatures
     fillet_input = fillets.createInput()
-    fillet_input.addConstantRadiusEdgeSet(edges, adsk.core.ValueInput.createByReal(cm(radius)), True)
+    fillet_input.isRollingBallCorner = False  # setback corners blend unequal radii smoothly
+    edge_sets = fillet_input.edgeSetInputs
+    for edge in upright_edges(body, front=True):
+        add_shoulder(edge_sets, edge)
+    back = adsk.core.ObjectCollection.create()
+    for edge in upright_edges(body, front=False):
+        back.add(edge)
+    edge_sets.addConstantRadiusEdgeSet(back, value(CORNER_R), False)
+    top = edge_sets.addConstantRadiusEdgeSet(top_edges(body), value(TOP_BLEND_R), False)
+    top.continuity = G2
     fillets.add(fillet_input)
 
 
@@ -230,25 +278,54 @@ def cut_on_face(comp, body, face, width: float, height: float, depth: float, off
     extrudes.add(ext_input)
 
 
-def build_base(builder: Builder):
-    """Plain plinth standing on the table."""
-    return builder.slab(0.0, -BASE_W / 2, 0.0, BASE_W / 2, -BASE_D, BASE_T, NEW)
+def footprint_sketch(builder: Builder, body, y: float, inset: float):
+    """The body's bottom outline on the plane at y, optionally inset."""
+    sketch = builder.comp.sketches.add(builder._offset_plane(builder.comp.xZConstructionPlane, y))
+    bottom = find_faces(body, "y", -1.0)[0]
+    outline = adsk.core.ObjectCollection.create()
+    for loop in bottom.loops:
+        if not loop.isOuter:
+            continue
+        for edge in loop.edges:
+            for curve in sketch.project(edge):
+                outline.add(curve)
+    if inset:
+        inside = sketch.modelToSketchSpace(adsk.core.Point3D.create(0.0, cm(y), -cm(BASE_D / 2)))
+        sketch.offset(outline, inside, cm(inset))
+        for curve in outline:
+            curve.isConstruction = True
+    return sketch
 
 
-def fillet_top_edges(comp, body, radius: float) -> None:
-    """Softens every edge of the top face; the bottom stays square."""
-    top = BASE_T + BODY_H
-    edges = adsk.core.ObjectCollection.create()
-    for edge in body.edges:
-        points = [edge.startVertex.geometry, edge.endVertex.geometry]
-        if all(abs(point.y - cm(top)) < 1e-6 for point in points):
-            edges.add(edge)
-    if not edges.count:
-        return
-    fillets = comp.features.filletFeatures
-    fillet_input = fillets.createInput()
-    fillet_input.addConstantRadiusEdgeSet(edges, adsk.core.ValueInput.createByReal(cm(radius)), True)
-    fillets.add(fillet_input)
+def build_skirt(builder: Builder, body):
+    """Plinth that continues the body outline straight down, with a parting groove."""
+    band_h = BASE_T - REVEAL_H
+    band = footprint_sketch(builder, body, 0.0, 0.0)
+    skirt = builder._extrude(band.profiles.item(0), band_h, NEW)
+    neck = footprint_sketch(builder, body, band_h, REVEAL_D)
+    return builder._extrude(neck.profiles.item(0), REVEAL_H, JOIN, skirt)
+
+
+def add_display_pad(comp, body) -> None:
+    """Thickens the shell behind the funnel so the glass sits PANEL_T behind the face."""
+    face = front_faces(body)[0]
+    planes = comp.constructionPlanes
+    plane_input = planes.createInput()
+    plane_input.setByOffset(face, adsk.core.ValueInput.createByReal(cm(-WALL)))
+    sketch = comp.sketches.add(planes.add(plane_input))
+    pad = sketch_rect_at(
+        sketch,
+        screen_center_point(),
+        FUNNEL_OUTER[0] + 2 * PAD_MARGIN,
+        FUNNEL_OUTER[1] + 2 * PAD_MARGIN,
+        FUNNEL_OUTER_R,
+        -WALL,
+    )
+    extrudes = comp.features.extrudeFeatures
+    ext_input = extrudes.createInput(pad, JOIN)
+    ext_input.setDistanceExtent(False, value(-(PANEL_T - WALL)))
+    ext_input.participantBodies = [body]
+    extrudes.add(ext_input)
 
 
 def rounded_profile(builder: Builder, comp, z, half_w, center_y, half_h, radius):
@@ -308,7 +385,7 @@ def sketch_rect_at(sketch, model_point, width, height, radius, normal_offset=0.0
 
 
 def build_body(builder: Builder, comp):
-    """Hollow body with a leaning front wall that carries the screen levels."""
+    """Solid leaning-front block, moulded shoulders and top, then shelled."""
     bottom, top = BASE_T, BASE_T + BODY_H
     outer_profile = [
         (bottom, 0.0),
@@ -317,22 +394,15 @@ def build_body(builder: Builder, comp):
         (bottom, -BASE_D),
     ]
     body = builder.side_profile(-BASE_W / 2, outer_profile, BASE_W, NEW)
-    fillet_corner_edges(comp, body, CORNER_R)
-    fillet_top_edges(comp, body, TOP_R)
-
-    # Cavity: the front wall keeps 4 mm measured square to the leaning face.
-    nz, _ = front_normal()
-    front_thickness = PANEL_T / nz
-    cavity = [
-        (bottom, -front_thickness),
-        (top - WALL, -FRONT_LEAN * (top - WALL - bottom) / BODY_H - front_thickness),
-        (top - WALL, -(BASE_D - WALL)),
-        (bottom, -(BASE_D - WALL)),
-    ]
-    builder.side_profile(-BASE_W / 2 + WALL, cavity, BASE_W - 2 * WALL, CUT, body)
-
-    cut_funnel(comp, body)
+    mould_edges(comp, body)
     return body
+
+
+def hollow_body(comp, body) -> None:
+    """Open-bottom shell, the pad behind the screen, then the funnel."""
+    shell_open_bottom(comp, body, WALL)
+    add_display_pad(comp, body)
+    cut_funnel(comp, body)
 
 
 def cut_funnel(comp, body) -> None:
@@ -468,18 +538,21 @@ def run(context):
         comp = design.rootComponent
 
         builder = Builder(comp)
-        base = build_base(builder)
-        base.name = "stand_base"
-        fillet_corner_edges(comp, base, BASE_R)
-        display = build_display_mock(builder)
-        display.name = "mock_display"
         body = build_body(builder, comp)
         body.name = "stand_body"
+        base = build_skirt(builder, body)
+        base.name = "stand_base"
+        hollow_body(comp, body)
+        display = build_display_mock(builder)
+        display.name = "mock_display"
         app.activeViewport.fit()
 
         export(design, base, "stand_base.3mf")
         export(design, body, "stand_body.3mf")
-        log("plinth {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
+        log("skirt {} x {} x {} mm, reveal {} x {} mm".format(BASE_W, BASE_T, BASE_D, REVEAL_H, REVEAL_D))
+        log("shoulders G2 {} (fraction, mm), top blend G2 {} mm, back corners {} mm".format(
+            SHOULDER_RADII, TOP_BLEND_R, CORNER_R
+        ))
         log("body {} x {} x {} mm, {} mm walls, front leaning {} mm ({:.1f} deg)".format(
             BASE_W, BODY_H, BASE_D, WALL, FRONT_LEAN,
             math.degrees(math.atan2(FRONT_LEAN, BODY_H)),
