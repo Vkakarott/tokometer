@@ -156,7 +156,7 @@ private struct NotchView: View {
 private struct AeroNotchShape: Shape {
     func path(in rect: CGRect) -> Path {
         let inset = min(22, rect.width * 0.08)
-        let cornerRadius = min(5, rect.height * 0.08)
+        let cornerRadius = min(8, rect.height * 0.15)
         var path = Path()
         path.move(to: CGPoint(x: 0, y: 0))
         path.addLine(to: CGPoint(x: rect.maxX, y: 0))
