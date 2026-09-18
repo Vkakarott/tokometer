@@ -37,7 +37,8 @@ MODULE_FRONT_GAP = 2.0  # from the front edge of the base to the module
 DISPLAY_LIFT = 4.0  # the module floats this far above the base
 
 # --- Frame around the screen only, like the black bezel in the reference
-FRAME_W = 2.0  # inner band, added outside the glass to enlarge the screen
+FRAME_W = 1.0  # inner band, added outside the glass to enlarge the screen
+FRAME_GAP = 2.0  # empty space between the two bands
 OUTER_FRAME_W = 4.0  # second band, wrapping the first one
 FRAME_PROUD = 1.0  # how far the bands stand in front of the glass
 FRAME_R = 1.5  # corner radius at the glass edge, growing with each band
@@ -259,10 +260,10 @@ def build_display_frames(builder: Builder, comp):
         builder,
         comp,
         center_y,
-        GLASS_W / 2 + FRAME_W,
-        GLASS_H / 2 + FRAME_W,
+        GLASS_W / 2 + FRAME_W + FRAME_GAP,
+        GLASS_H / 2 + FRAME_W + FRAME_GAP,
         OUTER_FRAME_W,
-        FRAME_R + FRAME_W,
+        FRAME_R + FRAME_W + FRAME_GAP,
         glass_front_z,
         FRAME_PROUD,
     )
@@ -327,11 +328,12 @@ def run(context):
         log("display mock {} x {} mm, lifted {} mm above the base".format(
             MODULE_W, MODULE_H, DISPLAY_LIFT
         ))
-        log("bands {} mm and {} mm around the glass: outer size {} x {} mm".format(
+        log("bands {} mm + {} mm gap + {} mm: outer size {} x {} mm".format(
             FRAME_W,
+            FRAME_GAP,
             OUTER_FRAME_W,
-            round(GLASS_W + 2 * (FRAME_W + OUTER_FRAME_W), 1),
-            round(GLASS_H + 2 * (FRAME_W + OUTER_FRAME_W), 1),
+            round(GLASS_W + 2 * (FRAME_W + FRAME_GAP + OUTER_FRAME_W), 1),
+            round(GLASS_H + 2 * (FRAME_W + FRAME_GAP + OUTER_FRAME_W), 1),
         ))
     except Exception:
         import traceback
