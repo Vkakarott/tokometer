@@ -25,6 +25,10 @@ BASE_SIDE = BOARD_L + 2 * PADDING
 BASE_W = BASE_SIDE
 BASE_D = BASE_SIDE
 
+# --- Cover: a cube shell standing on the base, open at the bottom
+COVER_WALL = 2.0
+COVER_H = BASE_SIDE  # a cube: the same side as the base footprint
+
 LOG_PATH = "/tmp/tokometer_stand.log"
 EXPORT_DIR = "/Users/lucas/Documents/Projetos/Pessoal/harware/tokEsp/hardware/case"
 
@@ -79,6 +83,25 @@ def build_base(builder: Builder):
     return builder.slab(0.0, -BASE_W / 2, 0.0, BASE_W / 2, -BASE_D, BASE_T, NEW)
 
 
+def build_cover(builder: Builder):
+    """Hollow cube sitting on the base: four walls and a roof, open below."""
+    half = BASE_SIDE / 2
+    cover = builder.slab(BASE_T, -half, 0.0, half, -BASE_SIDE, COVER_H, NEW)
+
+    inner_half = half - COVER_WALL
+    builder.slab(
+        BASE_T,
+        -inner_half,
+        -COVER_WALL,
+        inner_half,
+        -(BASE_SIDE - COVER_WALL),
+        COVER_H - COVER_WALL,
+        CUT,
+        cover,
+    )
+    return cover
+
+
 def export(design: adsk.fusion.Design, body, filename: str) -> None:
     manager = design.exportManager
     options = manager.createC3MFExportOptions(body, "{}/{}".format(EXPORT_DIR, filename))
@@ -100,9 +123,15 @@ def run(context):
         builder = Builder(design.rootComponent)
         base = build_base(builder)
         base.name = "stand_base"
+        cover = build_cover(builder)
+        cover.name = "stand_cover"
         app.activeViewport.fit()
+
         export(design, base, "stand_base.3mf")
+        export(design, cover, "stand_cover.3mf")
         log("base {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
+        log("cover {} x {} x {} mm, wall {} mm".format(BASE_SIDE, COVER_H, BASE_SIDE, COVER_WALL))
+        log("assembled height {} mm".format(BASE_T + COVER_H))
     except Exception:
         import traceback
 
