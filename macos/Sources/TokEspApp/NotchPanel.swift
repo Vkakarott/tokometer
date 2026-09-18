@@ -213,7 +213,7 @@ private struct ExpandedUsage: View {
                     ZStack(alignment: .leading) {
                         Rectangle().fill(.white.opacity(0.12))
                         Rectangle()
-                            .fill(statusColor)
+                            .fill(accentColor)
                             .frame(width: geometry.size.width * max(0, min(fraction, 1)))
                     }
                 }
@@ -238,6 +238,10 @@ private struct ExpandedUsage: View {
         case .needsAuth, .accessDenied, .unsupported, .error: .red
         }
     }
+
+    private var accentColor: Color {
+        ProviderAccent.color(for: snapshot)
+    }
 }
 
 private struct UsageRing: View {
@@ -260,13 +264,24 @@ private struct UsageRing: View {
     }
 
     private var color: Color {
-        switch snapshot.status {
-        case .ok: .mint
-        case .stale: .orange
-        case .needsAuth, .accessDenied, .unsupported, .error: .red
-        }
+        ProviderAccent.color(for: snapshot)
     }
 
+}
+
+private enum ProviderAccent {
+    static func color(for snapshot: ProviderSnapshot) -> Color {
+        switch snapshot.status {
+        case .needsAuth, .accessDenied, .unsupported, .error:
+            .red
+        case .ok, .stale:
+            switch snapshot.id {
+            case .claude: Color(red: 0.93, green: 0.34, blue: 0.12)
+            case .codex: Color(red: 0.18, green: 0.82, blue: 0.43)
+            case .cursor: .white
+            }
+        }
+    }
 }
 
 private struct ProviderIcon: View {
