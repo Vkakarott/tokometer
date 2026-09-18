@@ -8,23 +8,31 @@ struct TokEspApp: App {
 
     var body: some Scene {
         MenuBarExtra("tokEsp", systemImage: "gauge.with.dots.needle.67percent") {
-            Button("Atualizar agora") {
-                Task { await appDelegate.polling.refresh() }
+            VStack(spacing: 3) {
+                MenuActionRow(title: "Atualizar agora", symbol: "arrow.clockwise") {
+                    Task { await appDelegate.polling.refresh() }
+                }
+                MenuActionRow(title: "Mostrar ou ocultar tokonotch", symbol: "eye") {
+                    appDelegate.notch.toggleVisibility()
+                }
+                MenuActionRow(title: "Configurar provedores", symbol: "slider.horizontal.3") {
+                    appDelegate.showOnboarding()
+                }
+
+                Divider()
+                    .padding(.vertical, 4)
+
+                SettingsLink {
+                    MenuRowLabel(title: "Configurações", symbol: "gearshape")
+                }
+                .buttonStyle(.plain)
+
+                MenuActionRow(title: "Encerrar tokEsp", symbol: "power") {
+                    NSApp.terminate(nil)
+                }
             }
-            Button("Mostrar ou ocultar tokonotch") {
-                appDelegate.notch.toggleVisibility()
-            }
-            Button("Configurar provedores…") {
-                appDelegate.showOnboarding()
-            }
-            Divider()
-            SettingsLink {
-                Text("Configurações…")
-            }
-            Divider()
-            Button("Encerrar tokEsp") {
-                NSApp.terminate(nil)
-            }
+            .padding(7)
+            .frame(width: 252)
         }
         .menuBarExtraStyle(.window)
 
@@ -35,6 +43,41 @@ struct TokEspApp: App {
                 showOnboarding: appDelegate.showOnboarding
             )
         }
+    }
+}
+
+private struct MenuActionRow: View {
+    let title: String
+    let symbol: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            MenuRowLabel(title: title, symbol: symbol)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct MenuRowLabel: View {
+    let title: String
+    let symbol: String
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .frame(width: 16)
+                .foregroundStyle(.secondary)
+            Text(title)
+                .font(.subheadline)
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 32)
+        .contentShape(RoundedRectangle(cornerRadius: 7))
+        .background(isHovering ? .white.opacity(0.1) : .clear, in: RoundedRectangle(cornerRadius: 7))
+        .onHover { isHovering = $0 }
     }
 }
 
