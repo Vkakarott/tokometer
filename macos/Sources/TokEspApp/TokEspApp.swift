@@ -14,6 +14,9 @@ struct TokEspApp: App {
             Button("Mostrar ou ocultar notch") {
                 appDelegate.notch.toggleVisibility()
             }
+            Button("Configurar provedores…") {
+                appDelegate.showOnboarding()
+            }
             Divider()
             SettingsLink {
                 Text("Configurações…")
@@ -26,7 +29,11 @@ struct TokEspApp: App {
         .menuBarExtraStyle(.window)
 
         Settings {
-            SettingsView(store: appDelegate.store, preferences: appDelegate.preferences)
+            SettingsView(
+                store: appDelegate.store,
+                preferences: appDelegate.preferences,
+                showOnboarding: appDelegate.showOnboarding
+            )
         }
     }
 }
@@ -40,6 +47,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store: store
     )
     lazy var notch = NotchPanelController(store: store, preferences: preferences)
+    lazy var onboarding = OnboardingPanelController(
+        store: store,
+        preferences: preferences,
+        refresh: { [weak self] in await self?.polling.refresh() },
+        finish: { [weak self] in self?.notch.show() }
+    )
     private let instanceLock = SingleInstanceLock()
     private var isPrimaryInstance = false
 
@@ -53,12 +66,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard isPrimaryInstance else { return }
         store.setDemoMode(preferences.demoMode)
-        notch.show()
         polling.start()
+        if preferences.hasCompletedOnboarding {
+            notch.show()
+        } else {
+            onboarding.show()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         polling.stop()
+    }
+
+    func showOnboarding() {
+        onboarding.show()
     }
 }
 

@@ -29,6 +29,10 @@ final class AppPreferences: ObservableObject {
         didSet { defaults.set(demoMode, forKey: Keys.demoMode) }
     }
 
+    @Published private(set) var hasCompletedOnboarding: Bool {
+        didSet { defaults.set(hasCompletedOnboarding, forKey: Keys.hasCompletedOnboarding) }
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -37,6 +41,7 @@ final class AppPreferences: ObservableObject {
         let storedProviders = defaults.stringArray(forKey: Keys.visibleProviders) ?? ProviderID.allCases.map(\.rawValue)
         visibleProviders = Set(storedProviders.compactMap(ProviderID.init(rawValue:)))
         demoMode = defaults.bool(forKey: Keys.demoMode)
+        hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)
     }
 
     func isVisible(_ provider: ProviderID) -> Bool {
@@ -50,10 +55,16 @@ final class AppPreferences: ObservableObject {
             visibleProviders.remove(provider)
         }
     }
+
+    func completeOnboarding(with providers: Set<ProviderID>) {
+        visibleProviders = providers
+        hasCompletedOnboarding = true
+    }
 }
 
 private enum Keys {
     static let edge = "notch.edge"
     static let visibleProviders = "notch.visibleProviders"
     static let demoMode = "app.demoMode"
+    static let hasCompletedOnboarding = "app.hasCompletedOnboarding"
 }

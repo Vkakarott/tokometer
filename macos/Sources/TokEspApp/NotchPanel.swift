@@ -321,7 +321,7 @@ private enum ProviderAccent {
     }
 }
 
-private struct ProviderIcon: View {
+struct ProviderIcon: View {
     let provider: ProviderID
     let size: CGFloat
 

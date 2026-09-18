@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var preferences: AppPreferences
+    let showOnboarding: () -> Void
     @State private var pairingCode = ""
     @State private var pairingStatus: String?
 
@@ -22,6 +23,7 @@ struct SettingsView: View {
             }
 
             Section("Provedores") {
+                Button("Reconfigurar provedores", action: showOnboarding)
                 ForEach(store.snapshots) { snapshot in
                     Toggle(snapshot.displayName, isOn: visibleBinding(for: snapshot.id))
                     Text(snapshot.status.label)
