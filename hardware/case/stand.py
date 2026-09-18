@@ -35,6 +35,9 @@ BASE_D = BOARD_L + 2 * PADDING
 BODY_H = 57.7  # gives a 24 mm chin under the funnel
 WALL = 2.0
 FRONT_LEAN = 5.8  # how far the top of the front face sits behind its bottom (~5.7 deg)
+# Flat decline round the front panel's edge: (width on the front, setback on the other face).
+FRONT_DECLINE_SIDE = (2.0, 1.0)
+FRONT_DECLINE_TOP = (4.0, 1.5)  # top and bottom decline more than the sides
 
 # --- Display mock (0.96" SSD1306 module), never exported
 PCB_T = 1.6
@@ -204,13 +207,72 @@ def smallest_profile(sketch):
 
 
 def front_faces(body):
-    """Forward-facing planar faces, frontmost first.
+    """Planar faces parallel to the leaning front, largest first.
 
-    Ordering by position, not area: the inner back wall also faces +Z and can
-    be the larger of the two once the front corners grow.
+    Matching the lean excludes the inner back wall (straight +Z) and the
+    declines round the edge, which only partly face forward.
     """
-    faces = find_faces(body, "z", 1.0)
-    return sorted(faces, key=lambda face: face.boundingBox.maxPoint.z, reverse=True)
+    nz, ny = front_normal()
+    found = []
+    for face in body.faces:
+        if face.geometry.objectType != adsk.core.Plane.classType():
+            continue
+        # The evaluator gives the outward normal; the plane's own normal can
+        # point either way, which let the wall's inner face pass as the front.
+        _, normal = face.evaluator.getNormalAtPoint(face.pointOnFace)
+        if normal.y * ny + normal.z * nz > 0.9999:
+            found.append(face)
+    return sorted(found, key=lambda face: face.area, reverse=True)
+
+
+def front_inset(body, edge_kind: str) -> float:
+    """How far the front face now stops short of the body's outline on one edge, in mm."""
+    box = front_faces(body)[0].boundingBox
+    return {
+        "top": BASE_T + BODY_H - box.maxPoint.y / cm(1),
+        "bottom": box.minPoint.y / cm(1) - BASE_T,
+        "left": box.minPoint.x / cm(1) + BASE_W / 2,
+        "right": BASE_W / 2 - box.maxPoint.x / cm(1),
+    }[edge_kind]
+
+
+def front_edge(body, edge_kind: str):
+    """One of the four straight edges round the front face."""
+    target = {"top": BASE_T + BODY_H, "bottom": BASE_T}
+    for edge in front_faces(body)[0].edges:
+        start, end = edge.startVertex.geometry, edge.endVertex.geometry
+        if edge_kind in target:
+            if all(abs(point.y - cm(target[edge_kind])) < 1e-6 for point in (start, end)):
+                return edge
+        else:
+            sign = -1.0 if edge_kind == "left" else 1.0
+            if all(abs(point.x - sign * cm(BASE_W / 2)) < 1e-6 for point in (start, end)):
+                return edge
+    raise RuntimeError("no {} edge on the front face".format(edge_kind))
+
+
+def decline_front_edges(comp, body) -> None:
+    """Flat two-distance chamfers round the front, flipped if a side lands the wrong way."""
+    chamfers = comp.features.chamferFeatures
+    for edge_kind in ("top", "bottom", "left", "right"):
+        on_front, setback = FRONT_DECLINE_TOP if edge_kind in ("top", "bottom") else FRONT_DECLINE_SIDE
+        for flipped in (False, True):
+            edges = adsk.core.ObjectCollection.create()
+            edges.add(front_edge(body, edge_kind))
+            chamfer_input = chamfers.createInput2()
+            chamfer_input.chamferEdgeSets.addTwoDistancesChamferEdgeSet(
+                edges,
+                adsk.core.ValueInput.createByReal(cm(on_front)),
+                adsk.core.ValueInput.createByReal(cm(setback)),
+                flipped,
+                False,
+            )
+            feature = chamfers.add(chamfer_input)
+            if abs(front_inset(body, edge_kind) - on_front) < 0.3:
+                break
+            feature.deleteMe()
+        else:
+            raise RuntimeError("{} decline came out the wrong way round".format(edge_kind))
 
 
 def cut_on_face(comp, body, face, width: float, height: float, depth: float, offset_y: float = 0.0):
@@ -305,6 +367,7 @@ def build_body(builder: Builder, comp):
         (bottom, -BASE_D),
     ]
     body = builder.side_profile(-BASE_W / 2, outer_profile, BASE_W, NEW)
+    decline_front_edges(comp, body)
 
     # Cavity: 4 mm front square to the leaning face; WALL elsewhere.
     nz, _ = front_normal()
@@ -551,7 +614,9 @@ def run(context):
         export(design, base, "stand_base.3mf")
         export(design, body, "stand_body.3mf")
         log("plinth {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
-        log("outer edges: all square")
+        log("front decline: sides {} mm on the front x {} mm back, top/bottom {} x {} mm".format(
+            FRONT_DECLINE_SIDE[0], FRONT_DECLINE_SIDE[1], FRONT_DECLINE_TOP[0], FRONT_DECLINE_TOP[1]
+        ))
         log("body {} x {} x {} mm, {} mm walls, front leaning {} mm ({:.1f} deg)".format(
             BASE_W, BODY_H, BASE_D, WALL, FRONT_LEAN,
             math.degrees(math.atan2(FRONT_LEAN, BODY_H)),
