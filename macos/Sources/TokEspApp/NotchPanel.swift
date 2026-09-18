@@ -98,13 +98,13 @@ private struct NotchView: View {
             AeroNotchShape()
                 .fill(.black.opacity(0.98))
 
-            compactContent
-                .opacity(isExpanded ? 0 : 1)
-                .allowsHitTesting(!isExpanded)
-
-            expandedContent
-                .opacity(isExpanded ? 1 : 0)
-                .allowsHitTesting(isExpanded)
+            if isExpanded {
+                expandedContent
+                    .transition(.opacity)
+            } else {
+                compactContent
+                    .transition(.opacity)
+            }
         }
         .frame(width: isExpanded ? 418 : 328, height: isExpanded ? 252 : 62)
         .contentShape(AeroNotchShape())
