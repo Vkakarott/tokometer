@@ -32,9 +32,9 @@ BASE_D = BOARD_L + 2 * PADDING
 # Every outer edge of the plinth and the body is left square.
 
 # --- Body
-BODY_H = 60.0
+BODY_H = 55.0
 WALL = 2.0
-FRONT_LEAN = 6.0  # how far the top of the front face sits behind its bottom
+FRONT_LEAN = 5.5  # how far the top of the front face sits behind its bottom (~5.7 deg)
 
 # --- Display mock (0.96" SSD1306 module), never exported
 PCB_T = 1.6
@@ -63,7 +63,8 @@ THROAT_CHAMFER = 0.5  # flat band into the throat; leaves 1 mm of straight throa
 
 # --- Floppy drive detail in the chin, visual only (never cut through the wall)
 FLOPPY_RIGHT_X = FUNNEL_OUTER[0] / 2  # right end lines up with the funnel's right edge
-FLOPPY_Y = BASE_T + 13.0  # centre height on the face
+CHIN_H = BODY_H - SCREEN_FROM_TOP - FUNNEL_OUTER[1] / 2  # face below the funnel
+FLOPPY_Y = BASE_T + CHIN_H / 2  # centred in the chin
 FLOPPY_BAND = (22.0, 3.0)  # the long shallow recess
 FLOPPY_MOUTH = (6.0, 5.5)  # the taller block at its right end
 FLOPPY_RECESS_DEPTH = 0.8
