@@ -111,8 +111,9 @@ private struct NotchView: View {
                     .transition(.opacity)
             }
         }
-        .frame(width: 328, height: expandedProvider == nil ? 62 : 156)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(AeroNotchShape())
+        .animation(.easeOut(duration: 0.12), value: expandedProvider)
         .onHover { hovering in
             hoverExitTask?.cancel()
             if !hovering {
@@ -148,17 +149,13 @@ private struct NotchView: View {
     private func openDrop(for provider: ProviderID) {
         hoverExitTask?.cancel()
         guard expandedProvider != provider else { return }
-        withAnimation(.easeInOut(duration: 0.16)) {
-            expandedProvider = provider
-        }
+        expandedProvider = provider
         onExpansionChange(true)
     }
 
     private func closeDrop() {
         guard expandedProvider != nil else { return }
-        withAnimation(.easeInOut(duration: 0.16)) {
-            expandedProvider = nil
-        }
+        expandedProvider = nil
         onExpansionChange(false)
     }
 }
