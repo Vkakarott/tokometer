@@ -1,10 +1,22 @@
 import Foundation
 
-enum ProviderID: String, CaseIterable, Codable, Identifiable {
+enum ProviderID: String, CaseIterable, Codable, CodingKey, Identifiable {
     case claude
     case codex
 
     var id: String { rawValue }
+
+    init?(stringValue: String) {
+        self.init(rawValue: stringValue)
+    }
+
+    var stringValue: String { rawValue }
+
+    init?(intValue: Int) {
+        nil
+    }
+
+    var intValue: Int? { nil }
 
     var displayName: String {
         switch self {
@@ -66,6 +78,24 @@ struct ProviderSnapshot: Equatable, Identifiable {
 
 struct LegacyProvidersView: Decodable {
     let providers: [ProviderID: LegacyUsageView]
+
+    init(providers: [ProviderID: LegacyUsageView]) {
+        self.providers = providers
+    }
+
+    init(from decoder: Decoder) throws {
+        let root = try decoder.container(keyedBy: RootKey.self)
+        let providerContainer = try root.nestedContainer(keyedBy: ProviderID.self, forKey: .providers)
+        var providers: [ProviderID: LegacyUsageView] = [:]
+        for provider in ProviderID.allCases where providerContainer.contains(provider) {
+            providers[provider] = try providerContainer.decode(LegacyUsageView.self, forKey: provider)
+        }
+        self.providers = providers
+    }
+}
+
+private enum RootKey: String, CodingKey {
+    case providers
 }
 
 struct LegacyUsageView: Decodable {

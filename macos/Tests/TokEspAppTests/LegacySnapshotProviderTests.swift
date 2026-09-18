@@ -40,3 +40,30 @@ func preservesUnknownWindow() {
     #expect(codex?.headline?.usedFraction == nil)
     #expect(codex?.status == .stale(ageSeconds: 20))
 }
+
+@Test("decodes the object keyed by provider identifiers")
+func decodesBackendResponse() throws {
+    let data = Data("""
+    {
+      "providers": {
+        "claude": {
+          "windows": [{"id":"five_hour","usedPercentage":55,"resetsAt":1789708200}],
+          "ageSeconds":36,
+          "stale":false,
+          "hasData":true
+        },
+        "codex": {
+          "windows": [{"id":"seven_day","usedPercentage":71,"resetsAt":1789989136}],
+          "ageSeconds":106,
+          "stale":false,
+          "hasData":true
+        }
+      }
+    }
+    """.utf8)
+
+    let view = try JSONDecoder().decode(LegacyProvidersView.self, from: data)
+
+    #expect(view.providers[.claude]?.windows.first?.usedPercentage == 55)
+    #expect(view.providers[.codex]?.windows.first?.id == "seven_day")
+}
