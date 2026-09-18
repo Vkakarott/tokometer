@@ -56,7 +56,7 @@ OPENING_R = 2.0
 FUNNEL_DEPTH = 2.5  # slope depth; the rest of the wall is the throat in front of the glass
 FUNNEL_RUN = 6.0  # width of the sloped band on the face: atan(2.5 / 6) = 22.6 deg
 FUNNEL_OUTER = (OPENING[0] + 2 * FUNNEL_RUN, OPENING[1] + 2 * FUNNEL_RUN)
-FUNNEL_OUTER_R = 4.0
+FUNNEL_OUTER_R = 1.5
 LIP_FILLET = 2.0  # face into slope
 THROAT_CHAMFER = 1.0  # flat band where the slope drops into the throat
 
