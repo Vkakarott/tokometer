@@ -5,8 +5,8 @@ import SwiftUI
 @MainActor
 final class NotchPanelController: NSObject {
     private enum PanelSize {
-        static let compact = NSSize(width: 328, height: 70)
-        static let expanded = NSSize(width: 418, height: 196)
+        static let compact = NSSize(width: 328, height: 54)
+        static let expanded = NSSize(width: 418, height: 168)
     }
 
     private let panel: NSPanel
@@ -96,7 +96,7 @@ private struct NotchView: View {
                     .transition(.opacity)
             }
         }
-        .frame(width: isExpanded ? 418 : 328, height: isExpanded ? 196 : 70)
+        .frame(width: isExpanded ? 418 : 328, height: isExpanded ? 168 : 54)
         .contentShape(AeroNotchShape())
         .onHover { hovering in
             hoverExitTask?.cancel()
@@ -140,7 +140,7 @@ private struct NotchView: View {
             }
         }
         .padding(.horizontal, 24)
-        .padding(.vertical, 11)
+        .padding(.vertical, 4)
         .foregroundStyle(.white)
     }
 
