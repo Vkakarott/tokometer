@@ -13,5 +13,10 @@ rm -rf "$bundle_path"
 mkdir -p "$bundle_path/Contents/MacOS"
 cp "$binary_dir/TokEsp" "$bundle_path/Contents/MacOS/TokEsp"
 cp "$project_dir/Resources/Info.plist" "$bundle_path/Contents/Info.plist"
+mkdir -p "$bundle_path/Contents/Resources"
+for resource_bundle in "$binary_dir"/*.bundle; do
+  [[ -d "$resource_bundle" ]] || continue
+  cp -R "$resource_bundle" "$bundle_path/Contents/Resources/"
+done
 
 echo "$bundle_path"
