@@ -23,6 +23,17 @@ import adsk.fusion
 
 # --- Board: ESP32 DevKit 30-pin (ESP-WROOM-32), USB-C on a short edge
 BOARD_L, BOARD_W = 51.5, 28.5
+BOARD_PCB_T = 1.6
+HEADER_T = 2.5  # plastic of the soldered headers; it rests on the plinth
+PIN_BELOW = 6.0  # pin length below the header plastic
+PIN_ROW_SPACING = 25.4  # between the two header rows (assumed; check the real board)
+PIN_SLOT_W = 1.3  # slots that locate the pins; square pins are 0.64 mm
+PIN_SLOT_L = BOARD_L - 5.0  # longer than any header row, centred on the board
+PIN_SLOT_CLEAR = 0.5  # below the pin tips
+USB_OVERMOULD = (13.0, 7.0)  # cable plug housing: it must enter the wall to seat fully
+USB_OVERMOULD_R = 1.5
+USB_ABOVE_PCB = 1.6  # receptacle centre above the PCB top
+BOARD_BACK_GAP = 0.3  # between the board's USB end and the inner back wall
 
 # --- Plinth and body footprint: width follows the front panel, depth the board
 PADDING = 3.0
@@ -34,6 +45,7 @@ BASE_D = BOARD_L + 2 * PADDING
 # --- Body
 BODY_H = 57.7  # gives a 24 mm chin under the funnel
 WALL = 2.0
+FRONT_WALL = 2.5  # the front is this thick; a pad behind the screen brings it to PANEL_T
 FRONT_LEAN = 5.8  # how far the top of the front face sits behind its bottom (~5.7 deg)
 BACK_LEAN = 2.0  # the back leans forward this much at the top, like the Macintosh's rear
 # Flat decline round the front panel's edge: (width on the front, setback on the other face).
@@ -80,6 +92,22 @@ FLOPPY_SLOT = (18.0, 1.0)  # dark slot running along the recess, ending in the m
 FLOPPY_SLOT_DEPTH = 1.5
 FLOPPY_EJECT_D = 0.8  # pinhole in the mouth, below the slot
 FLOPPY_R = 0.3
+
+# --- Display holder: U rails on the pad, the module slides up into them from below
+RAIL_CLEAR = 0.25  # beside and above the module
+RAIL_WALL = 1.5  # rail side wall, beside the module
+RAIL_LIP = 1.2  # how far the rail lip reaches over the module's back edge
+RAIL_LIP_T = 1.2
+RAIL_GAP_CLEAR = 0.1  # glass + PCB sit in a channel this much deeper
+RAIL_NUB = 0.3  # press-fit nubs on the lips
+PAD_MARGIN = 2.0  # pad reach round the funnel and the module
+
+# --- Plinth to body snap: a lip inside the walls, ridges clicking into wall grooves
+SNAP_LIP_T, SNAP_LIP_H = 1.6, 2.3  # the lip stays below the board's underside
+SNAP_CLEAR = 0.2
+SNAP_RIDGE = (0.4, 0.8, 20.0)  # proud of the lip, tall, long
+SNAP_GROOVE = (0.5, 1.0, 22.0)  # into the wall, tall, long
+USB_LIP_GAP = 15.0  # lip left open behind the USB plug
 
 # --- Small visual details, never through the wall
 VENT_COUNT = 8  # grille on each side, low and towards the back
@@ -406,7 +434,10 @@ def build_base(builder: Builder, body):
     outer = next(loop for loop in body_bottom_face(body).loops if loop.isOuter)
     for edge in outer.edges:
         sketch.project(edge)
-    return builder._extrude(sketch.profiles.item(0), BASE_T, NEW)
+    base = builder._extrude(sketch.profiles.item(0), BASE_T, NEW)
+    add_snap_lip(builder, base)
+    cut_pin_slots(builder, base)
+    return base
 
 
 def rounded_profile(builder: Builder, comp, z, half_w, center_y, half_h, radius):
@@ -481,7 +512,7 @@ def build_body(builder: Builder, comp):
 
     # Cavity: 4 mm front square to the leaning face; WALL elsewhere.
     nz, _ = front_normal()
-    front_thickness = PANEL_T / nz
+    front_thickness = FRONT_WALL / nz
     side_wall = WALL
     cavity = [
         (bottom, -front_thickness),
@@ -491,7 +522,11 @@ def build_body(builder: Builder, comp):
     ]
     builder.side_profile(-BASE_W / 2 + side_wall, cavity, BASE_W - 2 * side_wall, CUT, body)
 
+    add_display_pad(comp, body)
     cut_funnel(comp, body)
+    add_display_rails(comp, body)
+    cut_usb_port(builder, body)
+    cut_snap_grooves(builder, body)
     return body
 
 
@@ -566,6 +601,183 @@ def cut_badge(comp, body) -> None:
     center_x = -FUNNEL_OUTER[0] / 2 + BADGE[0] / 2
     profile = sketch_rect_at(sketch, face_point(center_x, FLOPPY_Y), BADGE[0], BADGE[1], 0.4)
     cut_from_face(comp, body, profile, BADGE_DEPTH)
+
+
+# --- Mounting: where things sit inside, shared by the body, the plinth and the mocks
+
+
+def front_inner_z(y: float) -> float:
+    """Inner face of the front wall at height y."""
+    nz, _ = front_normal()
+    return -FRONT_WALL / nz - FRONT_LEAN * (y - BASE_T) / BODY_H
+
+
+def back_inner_z(y: float) -> float:
+    """Inner face of the back wall at height y (it leans forward)."""
+    return -(BASE_D - WALL) + BACK_LEAN * (y - BASE_T) / BODY_H
+
+
+def board_bottom_y() -> float:
+    return BASE_T + HEADER_T
+
+
+def usb_center_y() -> float:
+    return board_bottom_y() + BOARD_PCB_T + USB_ABOVE_PCB
+
+
+def board_span_z():
+    """(back, front) Z of the board: its USB end just clear of the back wall."""
+    back = back_inner_z(usb_center_y() + USB_OVERMOULD[1] / 2) + BOARD_BACK_GAP
+    return back, back + BOARD_L
+
+
+def face_uv_point(u: float, v: float, normal_offset: float = 0.0):
+    """Point u mm across and v mm up the leaning face from the screen centre."""
+    nz, ny = front_normal()
+    center = screen_center_point()
+    return adsk.core.Point3D.create(
+        center.x + cm(u),
+        center.y + cm(v * nz + normal_offset * ny),
+        center.z + cm(-v * ny + normal_offset * nz),
+    )
+
+
+def module_v_span():
+    """(bottom, top) of the OLED board along the face, from the screen centre."""
+    center = -ACTIVE_OFFSET_Y - GLASS_OFFSET_Y
+    return center - MODULE_H / 2, center + MODULE_H / 2
+
+
+def face_plane(comp, body, offset: float):
+    """Construction plane parallel to the front face, offset mm inwards."""
+    planes = comp.constructionPlanes
+    plane_input = planes.createInput()
+    plane_input.setByOffset(front_faces(body)[0], adsk.core.ValueInput.createByReal(cm(-offset)))
+    return planes.add(plane_input)
+
+
+def face_block(comp, body, plane, offset, u, v, width, height, depth, op=None):
+    """Rectangle centred at (u, v) on a face-parallel plane, extruded depth mm inwards."""
+    sketch = comp.sketches.add(plane)
+    center = face_uv_point(u, v)
+    profile = sketch_rect_at(sketch, center, width, height, 0.2, -offset)
+    extrudes = comp.features.extrudeFeatures
+    ext_input = extrudes.createInput(profile, op or JOIN)
+    ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(-depth)))
+    ext_input.participantBodies = [body]
+    extrudes.add(ext_input)
+
+
+def add_display_pad(comp, body) -> None:
+    """Thickens the front behind the funnel and the module up to PANEL_T."""
+    bottom, top = module_v_span()
+    rail_reach = MODULE_W / 2 + RAIL_CLEAR + RAIL_WALL
+    half_w = max(FUNNEL_OUTER[0] / 2, rail_reach) + PAD_MARGIN
+    v_top = max(FUNNEL_OUTER[1] / 2, top + RAIL_CLEAR + RAIL_WALL) + PAD_MARGIN
+    v_bottom = min(-FUNNEL_OUTER[1] / 2, bottom) - PAD_MARGIN
+    plane = face_plane(comp, body, FRONT_WALL)
+    face_block(comp, body, plane, FRONT_WALL, 0.0, (v_top + v_bottom) / 2, 2 * half_w,
+               v_top - v_bottom, PANEL_T - FRONT_WALL)
+
+
+def add_display_rails(comp, body) -> None:
+    """U rails either side of the module and stops above it; it slides up from below."""
+    bottom, top = module_v_span()
+    channel = GLASS_T + PCB_T + RAIL_GAP_CLEAR
+    wall_plane = face_plane(comp, body, PANEL_T)
+    lip_plane = face_plane(comp, body, PANEL_T + channel)
+    nub_plane = face_plane(comp, body, PANEL_T + channel - RAIL_NUB)
+    rail_bottom, rail_top = bottom, top + RAIL_CLEAR + RAIL_WALL
+    rail_mid, rail_len = (rail_bottom + rail_top) / 2, rail_top - rail_bottom
+    for sign in (-1.0, 1.0):
+        edge = sign * MODULE_W / 2
+        wall_u = edge + sign * (RAIL_CLEAR + RAIL_WALL / 2)
+        face_block(comp, body, wall_plane, PANEL_T, wall_u, rail_mid, RAIL_WALL, rail_len, channel)
+        lip_inner, lip_outer = edge - sign * RAIL_LIP, edge + sign * (RAIL_CLEAR + RAIL_WALL)
+        face_block(comp, body, lip_plane, PANEL_T + channel, (lip_inner + lip_outer) / 2, rail_mid,
+                   abs(lip_outer - lip_inner), rail_len, RAIL_LIP_T)
+        stop_u = edge - sign * 1.0
+        face_block(comp, body, wall_plane, PANEL_T, stop_u, top + RAIL_CLEAR + RAIL_WALL / 2,
+                   3.0, RAIL_WALL, channel)
+        for nub_v in (bottom + MODULE_H * 0.25, bottom + MODULE_H * 0.75):
+            face_block(comp, body, nub_plane, PANEL_T + channel - RAIL_NUB,
+                       edge - sign * RAIL_LIP / 2, nub_v, RAIL_LIP * 0.8, 3.0, RAIL_NUB)
+
+
+def cut_usb_port(builder: Builder, body) -> None:
+    """Opening in the back wall for the cable's plug housing."""
+    sketch = builder.comp.sketches.add(
+        builder._offset_plane(builder.comp.xYConstructionPlane, -BASE_D - 1.0)
+    )
+    w, h = USB_OVERMOULD
+    y = usb_center_y()
+    rounded_rect(sketch, -w / 2, y - h / 2, w / 2, y + h / 2, USB_OVERMOULD_R)
+    builder._extrude(smallest_profile(sketch), WALL + 4.0, CUT, body)
+
+
+def snap_z_span(length: float):
+    middle = (front_inner_z(BASE_T) + back_inner_z(BASE_T)) / 2
+    return middle + length / 2, middle - length / 2
+
+
+def cut_snap_grooves(builder: Builder, body) -> None:
+    """Grooves inside both side walls for the plinth's ridges."""
+    depth, height, length = SNAP_GROOVE
+    y = BASE_T + SNAP_LIP_H / 2 - height / 2
+    z0, z1 = snap_z_span(length)
+    inner_x = BASE_W / 2 - WALL
+    for x0, x1 in ((inner_x - 0.5, inner_x + depth), (-inner_x - depth, -inner_x + 0.5)):
+        builder.slab(y, x0, z0, x1, z1, height, CUT, body)
+
+
+def add_snap_lip(builder: Builder, base) -> None:
+    """Lip rising inside the body walls, open behind the USB plug, with side ridges."""
+    top = BASE_T + SNAP_LIP_H
+    out_x = BASE_W / 2 - WALL - SNAP_CLEAR
+    out_front = front_inner_z(top) - SNAP_CLEAR
+    out_back = back_inner_z(BASE_T) + SNAP_CLEAR
+    sketch = builder.comp.sketches.add(builder._offset_plane(builder.comp.xZConstructionPlane, BASE_T))
+    lines = sketch.sketchCurves.sketchLines
+    t = SNAP_LIP_T
+    for inset in (0.0, t):
+        # On the XZ plane the sketch Y axis runs along -Z of the model.
+        lines.addTwoPointRectangle(
+            adsk.core.Point3D.create(cm(-out_x + inset), cm(-(out_front - inset)), 0),
+            adsk.core.Point3D.create(cm(out_x - inset), cm(-(out_back + inset)), 0),
+        )
+    builder._extrude(smallest_profile(sketch), SNAP_LIP_H, JOIN, base)
+    builder.slab(BASE_T, -USB_LIP_GAP / 2, out_back + t + 0.5, USB_LIP_GAP / 2, out_back - 0.5,
+                 SNAP_LIP_H + 0.5, CUT, base)
+
+    proud, height, length = SNAP_RIDGE
+    z0, z1 = snap_z_span(length)
+    y = BASE_T + SNAP_LIP_H / 2 - height / 2
+    for x0, x1 in ((out_x - 0.2, out_x + proud), (-out_x - proud, -out_x + 0.2)):
+        builder.slab(y, x0, z0, x1, z1, height, JOIN, base)
+
+
+def cut_pin_slots(builder: Builder, base) -> None:
+    """Two slots the header pins drop into; the header plastic rests on the plinth."""
+    back, front = board_span_z()
+    middle = (back + front) / 2
+    depth = PIN_BELOW + PIN_SLOT_CLEAR
+    for x in (-PIN_ROW_SPACING / 2, PIN_ROW_SPACING / 2):
+        builder.slab(BASE_T - depth, x - PIN_SLOT_W / 2, middle + PIN_SLOT_L / 2,
+                     x + PIN_SLOT_W / 2, middle - PIN_SLOT_L / 2, depth + 0.5, CUT, base)
+
+
+def build_esp_mock(builder: Builder):
+    """Board, header plastics, the WROOM can and the USB-C receptacle; never exported."""
+    back, front = board_span_z()
+    pcb_y = board_bottom_y()
+    board = builder.slab(pcb_y, -BOARD_W / 2, front, BOARD_W / 2, back, BOARD_PCB_T, NEW)
+    middle = (back + front) / 2
+    for x in (-PIN_ROW_SPACING / 2, PIN_ROW_SPACING / 2):
+        builder.slab(BASE_T, x - 1.27, middle + 19.0, x + 1.27, middle - 19.0, HEADER_T, JOIN, board)
+    top = pcb_y + BOARD_PCB_T
+    builder.slab(top, -9.0, front - 0.5, 9.0, front - 18.5, 3.1, JOIN, board)
+    builder.slab(top, -4.5, back + 7.3, 4.5, back, 3.2, JOIN, board)
+    return board
 
 
 def cut_funnel(comp, body) -> None:
@@ -728,7 +940,8 @@ def generated_documents(app):
     return found
 
 
-def run(context):
+def run(context, hidden=()):
+    """Builds everything; bodies named in hidden are left switched off, for inspection renders."""
     app = adsk.core.Application.get()
     try:
         open(LOG_PATH, "w").close()
@@ -749,10 +962,14 @@ def run(context):
         body.name = "stand_body"
         base = build_base(builder, body)
         base.name = "stand_base"
+        esp = build_esp_mock(builder)
+        esp.name = "mock_esp"
         for face in cut_floppy(comp, body):
             paint(app, design, face, DISPLAY_APPEARANCE_ID)
         cut_badge(comp, body)
         cut_side_vents(builder, body)
+        for name in hidden:
+            comp.bRepBodies.itemByName(name).isLightBulbOn = False
         comp.isSketchFolderLightBulbOn = False  # keep sketch outlines off the renders
         comp.isConstructionFolderLightBulbOn = False
         app.activeViewport.fit()
@@ -769,6 +986,14 @@ def run(context):
             DECLINE_CORNER_R,
         ))
         log("back leaning {} mm at the top".format(BACK_LEAN))
+        back, front = board_span_z()
+        board_top = board_bottom_y() + BOARD_PCB_T
+        log("board z {:.2f}..{:.2f}, front clearance {:.2f} mm at its top, USB centre y {:.2f}".format(
+            back, front, front_inner_z(board_top) - front, usb_center_y()
+        ))
+        log("front wall {} mm, pad to {} mm; rails channel {:.1f} mm; snap lip {} x {} mm".format(
+            FRONT_WALL, PANEL_T, GLASS_T + PCB_T + RAIL_GAP_CLEAR, SNAP_LIP_T, SNAP_LIP_H
+        ))
         log("box edges r {} mm (top-sides, top-back, back uprights)".format(BOX_EDGE_R))
         log("body {} x {} x {} mm, {} mm walls, front leaning {} mm ({:.1f} deg)".format(
             BASE_W, BODY_H, BASE_D, WALL, FRONT_LEAN,
