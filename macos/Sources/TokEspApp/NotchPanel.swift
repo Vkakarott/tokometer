@@ -4,14 +4,20 @@ import SwiftUI
 
 @MainActor
 final class NotchPanelController: NSObject {
+    private enum PanelSize {
+        static let compact = NSSize(width: 142, height: 142)
+        static let expanded = NSSize(width: 390, height: 290)
+    }
+
     private let panel: NSPanel
     private let preferences: AppPreferences
     private var subscriptions = Set<AnyCancellable>()
+    private var isExpanded = false
 
     init(store: UsageStore, preferences: AppPreferences) {
         self.preferences = preferences
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 310, height: 180),
+            contentRect: NSRect(origin: .zero, size: PanelSize.compact),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -19,10 +25,14 @@ final class NotchPanelController: NSObject {
         super.init()
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        panel.hasShadow = false
         panel.level = .statusBar
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.contentView = NSHostingView(rootView: NotchView(store: store, preferences: preferences))
+        panel.contentView = NSHostingView(
+            rootView: NotchView(store: store, preferences: preferences) { [weak self] expanded in
+                self?.setExpanded(expanded)
+            }
+        )
         store.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.position() }
@@ -42,6 +52,16 @@ final class NotchPanelController: NSObject {
         panel.isVisible ? panel.orderOut(nil) : show()
     }
 
+    private func setExpanded(_ expanded: Bool) {
+        guard isExpanded != expanded else { return }
+        isExpanded = expanded
+        let size = expanded ? PanelSize.expanded : PanelSize.compact
+        var frame = panel.frame
+        frame.size = size
+        panel.setFrame(frame, display: true, animate: true)
+        position()
+    }
+
     private func position() {
         guard let screen = NSScreen.main else { return }
         let frame = screen.visibleFrame
@@ -54,101 +74,198 @@ final class NotchPanelController: NSObject {
 private struct NotchView: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var preferences: AppPreferences
-    @State private var expanded = false
+    let onExpansionChange: (Bool) -> Void
 
-    private var hasLiveProvider: Bool {
-        store.snapshots.contains { $0.hasData && $0.status.isLive }
+    @State private var isHovering = false
+    @State private var rotation = 0.0
+    @State private var isPulsing = false
+    @State private var activeIndex = 0
+
+    private var snapshots: [ProviderSnapshot] {
+        store.snapshots.filter { preferences.isVisible($0.id) }
+    }
+
+    private var activeSnapshot: ProviderSnapshot? {
+        guard !snapshots.isEmpty else { return nil }
+        return snapshots[activeIndex % snapshots.count]
+    }
+
+    private var providerKey: String {
+        snapshots.map(\.id.rawValue).joined(separator: ",")
     }
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: "gauge.with.dots.needle.67percent")
-                    .foregroundStyle(.mint)
-                Text("tokEsp")
-                    .font(.headline)
-                Spacer()
-                Text(hasLiveProvider ? "LOCAL" : "OFFLINE")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(hasLiveProvider ? .green : .orange)
-            }
-            ForEach(store.snapshots.filter { preferences.isVisible($0.id) }) { snapshot in
-                ProviderRow(snapshot: snapshot, expanded: expanded)
-            }
-            if expanded {
-                Text("Clique para recolher · dados locais do Mac")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+        ZStack {
+            if isHovering {
+                expandedConstellation
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+            } else {
+                OrbCore(snapshot: activeSnapshot, rotation: rotation, isPulsing: isPulsing)
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .frame(width: 310)
-        .background(.black.opacity(0.93), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .foregroundStyle(.white)
+        .frame(width: isHovering ? 390 : 142, height: isHovering ? 290 : 142)
         .contentShape(Rectangle())
-        .onTapGesture { expanded.toggle() }
-        .animation(.easeInOut(duration: 0.18), value: expanded)
+        .onHover { hovering in
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+                isHovering = hovering
+            }
+            onExpansionChange(hovering)
+        }
+        .task(id: providerKey) {
+            guard !snapshots.isEmpty else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeInOut(duration: 0.45)) {
+                    activeIndex = (activeIndex + 1) % max(snapshots.count, 1)
+                }
+            }
+        }
+        .onAppear {
+            withAnimation(.linear(duration: 9).repeatForever(autoreverses: false)) {
+                rotation = 360
+            }
+            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                isPulsing = true
+            }
+        }
+    }
+
+    private var expandedConstellation: some View {
+        ZStack {
+            Circle()
+                .fill(Color.cyan.opacity(0.16))
+                .blur(radius: 36)
+                .frame(width: 180, height: 180)
+
+            OrbCore(snapshot: activeSnapshot, rotation: rotation, isPulsing: isPulsing)
+                .frame(width: 136, height: 136)
+
+            ForEach(Array(snapshots.enumerated()), id: \.element.id) { index, snapshot in
+                ProviderSatellite(snapshot: snapshot)
+                    .offset(satelliteOffset(for: index, count: snapshots.count))
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+    }
+
+    private func satelliteOffset(for index: Int, count: Int) -> CGSize {
+        switch count {
+        case 1:
+            .init(width: 0, height: 90)
+        case 2:
+            index == 0 ? .init(width: -112, height: 58) : .init(width: 112, height: 58)
+        default:
+            switch index {
+            case 0: .init(width: -116, height: -66)
+            case 1: .init(width: 116, height: -66)
+            default: .init(width: 0, height: 90)
+            }
+        }
     }
 }
 
-private struct ProviderRow: View {
-    let snapshot: ProviderSnapshot
-    let expanded: Bool
+private struct OrbCore: View {
+    let snapshot: ProviderSnapshot?
+    let rotation: Double
+    let isPulsing: Bool
+
+    private var fraction: Double {
+        snapshot?.headline?.usedFraction ?? 0
+    }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Gauge(value: snapshot.headline?.usedFraction ?? 0, in: 0...1) {
-                EmptyView()
-            } currentValueLabel: {
-                Text(percent)
-                    .font(.caption2.monospacedDigit().weight(.bold))
-            }
-            .gaugeStyle(.accessoryCircularCapacity)
-            .tint(tint)
-            .frame(width: 36, height: 36)
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color(red: 0.05, green: 0.2, blue: 0.24), Color.black.opacity(0.96)],
+                        center: .center,
+                        startRadius: 4,
+                        endRadius: 82
+                    )
+                )
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text(snapshot.displayName)
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    Text(snapshot.status.label)
-                        .font(.caption2)
-                        .foregroundStyle(statusColor)
-                }
-                if expanded {
-                    Text(detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            Circle()
+                .stroke(Color.white.opacity(0.1), lineWidth: 7)
+
+            Circle()
+                .trim(from: 0.025, to: max(0.035, fraction))
+                .stroke(
+                    AngularGradient(colors: [.cyan, .mint, .teal, .cyan], center: .center),
+                    style: StrokeStyle(lineWidth: 7, lineCap: .round)
+                )
+                .rotationEffect(.degrees(rotation - 90))
+                .shadow(color: .cyan.opacity(0.75), radius: isPulsing ? 12 : 6)
+
+            VStack(spacing: 3) {
+                Text(percent)
+                    .font(.system(size: 29, weight: .bold, design: .rounded).monospacedDigit())
+                    .contentTransition(.numericText())
+                Text(snapshot?.displayName ?? "tokEsp")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .lineLimit(1)
             }
+            .id(snapshot?.id)
+            .transition(.opacity.combined(with: .scale(scale: 0.88)))
         }
+        .frame(width: 122, height: 122)
+        .scaleEffect(isPulsing ? 1.015 : 0.985)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Uso de \(snapshot?.displayName ?? "tokEsp"): \(percent)")
     }
 
     private var percent: String {
-        guard snapshot.hasData, let fraction = snapshot.headline?.usedFraction else { return "--" }
-        return Int((fraction * 100).rounded()).formatted()
+        guard snapshot?.hasData == true else { return "--" }
+        return "\(Int((fraction * 100).rounded()))%"
     }
+}
 
-    private var detail: String {
-        guard snapshot.hasData else { return "Sem dados disponíveis" }
-        guard let headline = snapshot.headline else { return "Janela indisponível" }
-        guard let reset = headline.resetsAt else { return "Reset desconhecido" }
-        return "\(headline.label) · reinicia \(reset.formatted(date: .abbreviated, time: .shortened))"
-    }
+private struct ProviderSatellite: View {
+    let snapshot: ProviderSnapshot
 
-    private var tint: Color {
-        switch snapshot.status {
-        case .ok: .mint
-        case .stale: .orange
-        case .needsAuth, .accessDenied, .unsupported, .error: .red
+    private var fraction: Double { snapshot.headline?.usedFraction ?? 0 }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .fill(.black.opacity(0.88))
+                Circle()
+                    .stroke(Color.white.opacity(0.12), lineWidth: 4)
+                Circle()
+                    .trim(from: 0.025, to: max(0.035, fraction))
+                    .stroke(statusColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text(percent)
+                    .font(.caption.weight(.bold).monospacedDigit())
+            }
+            .frame(width: 58, height: 58)
+            .shadow(color: statusColor.opacity(0.45), radius: 9)
+
+            VStack(spacing: 1) {
+                Text(snapshot.displayName)
+                    .font(.caption.weight(.bold))
+                Text(snapshot.headline?.label ?? snapshot.status.label)
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.58))
+                    .lineLimit(1)
+            }
         }
+        .foregroundStyle(.white)
+        .frame(width: 104)
+    }
+
+    private var percent: String {
+        guard snapshot.hasData else { return "--" }
+        return "\(Int((fraction * 100).rounded()))%"
     }
 
     private var statusColor: Color {
         switch snapshot.status {
-        case .ok: .green
+        case .ok: .mint
         case .stale: .orange
         case .needsAuth, .accessDenied, .unsupported, .error: .red
         }
