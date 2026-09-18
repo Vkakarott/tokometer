@@ -5,8 +5,8 @@ import SwiftUI
 @MainActor
 final class NotchPanelController: NSObject {
     private enum PanelSize {
-        static let compact = NSSize(width: 336, height: 76)
-        static let expanded = NSSize(width: 430, height: 224)
+        static let compact = NSSize(width: 328, height: 70)
+        static let expanded = NSSize(width: 418, height: 210)
     }
 
     private let panel: NSPanel
@@ -86,11 +86,9 @@ private struct NotchView: View {
     var body: some View {
         ZStack {
             AeroNotchShape()
-                .fill(.black.opacity(0.96))
-                .overlay {
-                    AeroNotchShape()
-                        .stroke(Color.white.opacity(0.13), lineWidth: 1)
-                }
+                .fill(.ultraThinMaterial)
+                .overlay { AeroNotchShape().fill(.black.opacity(0.63)) }
+                .overlay(alignment: .bottom) { AeroBottomEdge().stroke(.black.opacity(0.95), lineWidth: 4) }
 
             if isExpanded {
                 expandedContent
@@ -100,7 +98,7 @@ private struct NotchView: View {
                     .transition(.opacity)
             }
         }
-        .frame(width: isExpanded ? 430 : 336, height: isExpanded ? 224 : 76)
+        .frame(width: isExpanded ? 418 : 328, height: isExpanded ? 210 : 70)
         .contentShape(AeroNotchShape())
         .onHover { hovering in
             hoverExitTask?.cancel()
@@ -119,20 +117,15 @@ private struct NotchView: View {
 
     private var compactContent: some View {
         HStack(spacing: 9) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("tokEsp")
-                    .font(.subheadline.weight(.bold))
-                Text("uso local")
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.52))
-            }
-            .frame(width: 48, alignment: .leading)
+            Text("Tokometer")
+                .font(.subheadline.weight(.bold))
+                .frame(width: 70, alignment: .leading)
 
             ForEach(snapshots) { snapshot in
                 CompactUsage(snapshot: snapshot)
             }
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 18)
         .foregroundStyle(.white)
     }
 
@@ -140,29 +133,25 @@ private struct NotchView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("tokEsp")
+                    Text("Tokometer")
                         .font(.headline.weight(.bold))
                     Text("Consumo das suas ferramentas")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.55))
                 }
                 Spacer()
-                Text("LOCAL")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(hasLiveProvider ? .mint : .orange)
+                Text("3 provedores")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.5))
             }
 
             ForEach(snapshots) { snapshot in
                 ExpandedUsage(snapshot: snapshot)
             }
         }
-        .padding(.horizontal, 30)
-        .padding(.vertical, 22)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 18)
         .foregroundStyle(.white)
-    }
-
-    private var hasLiveProvider: Bool {
-        snapshots.contains { $0.hasData && $0.status.isLive }
     }
 
     private func setExpanded(_ expanded: Bool) {
@@ -177,12 +166,32 @@ private struct NotchView: View {
 private struct AeroNotchShape: Shape {
     func path(in rect: CGRect) -> Path {
         let inset = min(22, rect.width * 0.08)
+        let cornerRadius = min(12, rect.height * 0.22)
         var path = Path()
         path.move(to: CGPoint(x: 0, y: 0))
         path.addLine(to: CGPoint(x: rect.maxX, y: 0))
-        path.addLine(to: CGPoint(x: rect.maxX - inset, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX + inset, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX - inset, y: rect.maxY - cornerRadius))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX - inset - cornerRadius, y: rect.maxY),
+            control: CGPoint(x: rect.maxX - inset, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + inset + cornerRadius, y: rect.maxY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX + inset, y: rect.maxY - cornerRadius),
+            control: CGPoint(x: rect.minX + inset, y: rect.maxY)
+        )
         path.closeSubpath()
+        return path
+    }
+}
+
+private struct AeroBottomEdge: Shape {
+    func path(in rect: CGRect) -> Path {
+        let inset = min(22, rect.width * 0.08)
+        let cornerRadius = min(12, rect.height * 0.22)
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + inset + cornerRadius, y: rect.maxY - 1))
+        path.addLine(to: CGPoint(x: rect.maxX - inset - cornerRadius, y: rect.maxY - 1))
         return path
     }
 }
@@ -267,9 +276,7 @@ private struct UsageRing: View {
                 .trim(from: 0.025, to: max(0.035, fraction))
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Image(systemName: iconName)
-                .font(.system(size: diameter * 0.32, weight: .medium))
-                .foregroundStyle(.white.opacity(0.82))
+            ProviderIcon(provider: snapshot.id, size: diameter * 0.36)
         }
         .frame(width: diameter, height: diameter)
     }
@@ -282,11 +289,24 @@ private struct UsageRing: View {
         }
     }
 
-    private var iconName: String {
-        switch snapshot.id {
-        case .claude: "sparkles"
-        case .codex: "command"
-        case .cursor: "cursorarrow.rays"
+}
+
+private struct ProviderIcon: View {
+    let provider: ProviderID
+    let size: CGFloat
+
+    var body: some View {
+        Image(systemName: symbolName)
+            .font(.system(size: size, weight: .medium))
+            .foregroundStyle(.white.opacity(0.84))
+            .accessibilityLabel(provider.displayName)
+    }
+
+    private var symbolName: String {
+        switch provider {
+        case .claude: "asterisk"
+        case .codex: "circle.hexagongrid.fill"
+        case .cursor: "cursorarrow"
         }
     }
 }
