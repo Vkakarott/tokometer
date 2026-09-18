@@ -32,9 +32,9 @@ BASE_D = BOARD_L + 2 * PADDING
 # Every outer edge of the plinth and the body is left square.
 
 # --- Body
-BODY_H = 55.0
+BODY_H = 57.7  # gives a 24 mm chin under the funnel
 WALL = 2.0
-FRONT_LEAN = 5.5  # how far the top of the front face sits behind its bottom (~5.7 deg)
+FRONT_LEAN = 5.8  # how far the top of the front face sits behind its bottom (~5.7 deg)
 
 # --- Display mock (0.96" SSD1306 module), never exported
 PCB_T = 1.6
