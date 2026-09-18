@@ -117,10 +117,6 @@ private struct NotchView: View {
 
     private var compactContent: some View {
         HStack(spacing: 9) {
-            Text("Tokometer")
-                .font(.subheadline.weight(.bold))
-                .frame(width: 70, alignment: .leading)
-
             ForEach(snapshots) { snapshot in
                 CompactUsage(snapshot: snapshot)
             }
@@ -132,13 +128,9 @@ private struct NotchView: View {
     private var expandedContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Tokometer")
-                        .font(.headline.weight(.bold))
-                    Text("Consumo das suas ferramentas")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.55))
-                }
+                Text("Consumo das suas ferramentas")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.55))
                 Spacer()
                 Text("3 provedores")
                     .font(.caption2)
