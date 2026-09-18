@@ -28,9 +28,6 @@ BASE_T = 8.0
 CORNER_R = 6.0  # the board still clears up to about 14 mm
 BASE_SIDE = BOARD_L + 2 * PADDING
 
-# --- Feet
-FOOT_D, FOOT_H, FOOT_INSET = 8.0, 2.5, 9.0
-
 # --- Board reference body: shows where the ESP32 sits, never exported
 PCB_T = 1.6
 CAN_W, CAN_L, CAN_T = 18.0, 25.5, 3.1  # the ESP-WROOM-32 metal can
@@ -192,18 +189,14 @@ def cut_on_face(comp, body, face, width: float, height: float, depth: float, off
 
 
 def build_base(builder: Builder):
-    """Plinth plus four feet."""
+    """Plain plinth standing on the table."""
     half = BASE_SIDE / 2
-    base = builder.slab(FOOT_H, -half, 0.0, half, -BASE_SIDE, BASE_T, NEW)
-    for x in (-half + FOOT_INSET, half - FOOT_INSET):
-        for z in (-FOOT_INSET, -BASE_SIDE + FOOT_INSET):
-            builder.cylinder(0.0, x, z, FOOT_D, FOOT_H, JOIN, base)
-    return base
+    return builder.slab(0.0, -half, 0.0, half, -BASE_SIDE, BASE_T, NEW)
 
 
 def build_board_reference(builder: Builder):
     """The ESP32 DevKit laid on the base: board, module can and USB-C."""
-    top = FOOT_H + BASE_T
+    top = BASE_T
     half_w, half_l = BOARD_W / 2, BOARD_L / 2
     front_z = -(BASE_SIDE / 2 - half_l)
     back_z = front_z - BOARD_L
@@ -243,9 +236,9 @@ def run(context):
         app.activeViewport.fit()
 
         export(design, base, "stand_base.3mf")
-        log("plinth {} x {} x {} mm on {} mm feet".format(BASE_SIDE, BASE_T, BASE_SIDE, FOOT_H))
+        log("plinth {} x {} x {} mm".format(BASE_SIDE, BASE_T, BASE_SIDE))
         log("board {} x {} mm resting at {} mm, {} mm clear at each end".format(
-            BOARD_L, BOARD_W, FOOT_H + BASE_T, round((BASE_SIDE - BOARD_L) / 2, 2)
+            BOARD_L, BOARD_W, BASE_T, round((BASE_SIDE - BOARD_L) / 2, 2)
         ))
     except Exception:
         import traceback
