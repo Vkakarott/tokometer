@@ -40,9 +40,46 @@ void saveWifiCredentials(const String &ssid, const String &password) {
     password.toCharArray(configuredPassword, sizeof configuredPassword);
 }
 
+String escapedHtml(const String &value) {
+    String escaped;
+    escaped.reserve(value.length());
+    for (const char character : value) {
+        switch (character) {
+            case '&': escaped += "&amp;"; break;
+            case '<': escaped += "&lt;"; break;
+            case '>': escaped += "&gt;"; break;
+            case '"': escaped += "&quot;"; break;
+            case '\'': escaped += "&#39;"; break;
+            default: escaped += character; break;
+        }
+    }
+    return escaped;
+}
+
+String nearbyNetworkOptions() {
+    String options;
+    const int count = WiFi.scanNetworks();
+    for (int index = 0; index < count; ++index) {
+        const String ssid = WiFi.SSID(index);
+        if (ssid.isEmpty()) continue;
+
+        options += "<option value=\"";
+        options += escapedHtml(ssid);
+        options += "\">";
+        options += escapedHtml(ssid);
+        options += " (";
+        options += WiFi.RSSI(index);
+        options += " dBm)</option>";
+    }
+    WiFi.scanDelete();
+    return options;
+}
+
 void sendPortalPage() {
-    static constexpr char PAGE[] = R"HTML(<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Configurar tokEsp</title><style>body{margin:0;background:#090909;color:#f5f5f5;font:16px -apple-system,BlinkMacSystemFont,sans-serif}.card{max-width:360px;margin:12vh auto;padding:28px;border:1px solid #272727;border-radius:18px;background:#111}h1{margin:0 0 8px;font-size:24px}p{color:#aaa;line-height:1.45}label{display:block;margin:18px 0 6px}input,button{box-sizing:border-box;width:100%;border-radius:10px;font:inherit;padding:12px}input{background:#191919;border:1px solid #333;color:#fff}button{margin-top:22px;border:0;background:#fff;color:#000;font-weight:650}</style></head><body><main class="card"><h1>Conectar display</h1><p>Escolha a rede Wi-Fi que o display deve usar. As credenciais ficam apenas nesta placa.</p><form method="post" action="/connect"><label>Nome da rede</label><input name="ssid" autocomplete="username" required autofocus><label>Senha</label><input name="password" type="password" autocomplete="current-password"><button>Conectar</button></form></main></body></html>)HTML";
-    portal.send(200, "text/html; charset=utf-8", PAGE);
+    String page = R"HTML(<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Configurar tokEsp</title><style>body{margin:0;background:#090909;color:#f5f5f5;font:16px -apple-system,BlinkMacSystemFont,sans-serif}.card{max-width:360px;margin:12vh auto;padding:28px;border:1px solid #272727;border-radius:18px;background:#111}h1{margin:0 0 8px;font-size:24px}p{color:#aaa;line-height:1.45}label{display:block;margin:18px 0 6px}input,select,button{box-sizing:border-box;width:100%;border-radius:10px;font:inherit;padding:12px}input,select{background:#191919;border:1px solid #333;color:#fff}button{margin-top:22px;border:0;background:#fff;color:#000;font-weight:650}.hidden{display:none}</style></head><body><main class="card"><h1>Conectar display</h1><p>Escolha uma rede próxima. Para rede aberta, deixe a senha em branco.</p><form method="post" action="/connect"><label>Rede Wi-Fi</label><select name="network" id="network" onchange="document.getElementById('other').classList.toggle('hidden',this.value!=='__other__')"><option value="" disabled selected>Selecione uma rede</option>)HTML";
+    page += nearbyNetworkOptions();
+    page += R"HTML(<option value="__other__">Outra rede...</option></select><div id="other" class="hidden"><label>Nome da rede</label><input name="manual_ssid" autocomplete="username" maxlength="32"></div><label>Senha</label><input name="password" type="password" autocomplete="current-password" maxlength="63"><button>Conectar</button></form></main></body></html>)HTML";
+    portal.send(200, "text/html; charset=utf-8", page);
 }
 
 void startProvisioning() {
@@ -59,7 +96,7 @@ void startProvisioning() {
     portal.on("/generate_204", HTTP_ANY, sendPortalPage);
     portal.on("/hotspot-detect.html", HTTP_ANY, sendPortalPage);
     portal.on("/connect", HTTP_POST, [] {
-        String ssid = portal.arg("ssid");
+        String ssid = portal.arg("network") == "__other__" ? portal.arg("manual_ssid") : portal.arg("network");
         ssid.trim();
         const String password = portal.arg("password");
         if (ssid.isEmpty() || ssid.length() >= sizeof configuredSsid || password.length() >= sizeof configuredPassword) {
