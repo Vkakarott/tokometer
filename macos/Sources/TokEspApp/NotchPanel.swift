@@ -6,7 +6,7 @@ import SwiftUI
 final class NotchPanelController: NSObject {
     private enum PanelSize {
         static let compact = NSSize(width: 328, height: 62)
-        static let expanded = NSSize(width: 418, height: 252)
+        static let expanded = NSSize(width: 328, height: 156)
     }
 
     private let panel: NSPanel
@@ -86,11 +86,16 @@ private struct NotchView: View {
     @ObservedObject var preferences: AppPreferences
     let onExpansionChange: (Bool) -> Void
 
-    @State private var isExpanded = false
+    @State private var expandedProvider: ProviderID?
     @State private var hoverExitTask: Task<Void, Never>?
 
     private var snapshots: [ProviderSnapshot] {
         store.snapshots.filter { preferences.isVisible($0.id) }
+    }
+
+    private var expandedSnapshot: ProviderSnapshot? {
+        guard let expandedProvider else { return nil }
+        return snapshots.first { $0.id == expandedProvider }
     }
 
     var body: some View {
@@ -98,25 +103,23 @@ private struct NotchView: View {
             AeroNotchShape()
                 .fill(.black.opacity(0.98))
 
-            if isExpanded {
-                expandedContent
+            if let expandedSnapshot {
+                providerDrop(snapshot: expandedSnapshot)
                     .transition(.opacity)
             } else {
                 compactContent
                     .transition(.opacity)
             }
         }
-        .frame(width: isExpanded ? 418 : 328, height: isExpanded ? 252 : 62)
+        .frame(width: 328, height: expandedProvider == nil ? 62 : 156)
         .contentShape(AeroNotchShape())
         .onHover { hovering in
             hoverExitTask?.cancel()
-            if hovering {
-                setExpanded(true)
-            } else {
+            if !hovering {
                 hoverExitTask = Task {
                     try? await Task.sleep(for: .milliseconds(240))
                     guard !Task.isCancelled else { return }
-                    await MainActor.run { setExpanded(false) }
+                    await MainActor.run { closeDrop() }
                 }
             }
         }
@@ -126,37 +129,37 @@ private struct NotchView: View {
     private var compactContent: some View {
         HStack(spacing: 14) {
             ForEach(snapshots) { snapshot in
-                CompactUsage(snapshot: snapshot)
+                CompactUsage(snapshot: snapshot) {
+                    openDrop(for: snapshot.id)
+                }
             }
         }
         .padding(.horizontal, 18)
         .foregroundStyle(.white)
     }
 
-    private var expandedContent: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack {
-                Text("Consumo")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.55))
-                Spacer()
-            }
-
-            ForEach(snapshots) { snapshot in
-                ExpandedUsage(snapshot: snapshot)
-            }
-        }
-        .padding(.horizontal, 26)
-        .padding(.vertical, 16)
+    private func providerDrop(snapshot: ProviderSnapshot) -> some View {
+        ExpandedUsage(snapshot: snapshot)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
         .foregroundStyle(.white)
     }
 
-    private func setExpanded(_ expanded: Bool) {
-        guard isExpanded != expanded else { return }
+    private func openDrop(for provider: ProviderID) {
+        hoverExitTask?.cancel()
+        guard expandedProvider != provider else { return }
         withAnimation(.easeInOut(duration: 0.16)) {
-            isExpanded = expanded
+            expandedProvider = provider
         }
-        onExpansionChange(expanded)
+        onExpansionChange(true)
+    }
+
+    private func closeDrop() {
+        guard expandedProvider != nil else { return }
+        withAnimation(.easeInOut(duration: 0.16)) {
+            expandedProvider = nil
+        }
+        onExpansionChange(false)
     }
 }
 
@@ -198,6 +201,7 @@ private struct AeroNotchShape: Shape {
 
 private struct CompactUsage: View {
     let snapshot: ProviderSnapshot
+    let onHover: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
@@ -205,6 +209,12 @@ private struct CompactUsage: View {
             Text(percent)
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.white.opacity(0.62))
+        }
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            if hovering {
+                onHover()
+            }
         }
     }
 
