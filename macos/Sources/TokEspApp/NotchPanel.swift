@@ -288,17 +288,17 @@ private struct ProviderIcon: View {
     let size: CGFloat
 
     var body: some View {
-        Image(systemName: symbolName)
-            .font(.system(size: size, weight: .medium))
-            .foregroundStyle(.white.opacity(0.84))
-            .accessibilityLabel(provider.displayName)
+        if let image = NSImage(contentsOf: iconURL) {
+            Image(nsImage: image)
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: size, height: size)
+                .accessibilityLabel(provider.displayName)
+        }
     }
 
-    private var symbolName: String {
-        switch provider {
-        case .claude: "asterisk"
-        case .codex: "circle.hexagongrid.fill"
-        case .cursor: "cursorarrow"
-        }
+    private var iconURL: URL {
+        Bundle.module.url(forResource: provider.rawValue, withExtension: "png")!
     }
 }

@@ -9,7 +9,10 @@ let package = Package(
         .executable(name: "TokEsp", targets: ["TokEspApp"]),
     ],
     targets: [
-        .executableTarget(name: "TokEspApp"),
+        .executableTarget(
+            name: "TokEspApp",
+            resources: [.process("Resources")]
+        ),
         .testTarget(name: "TokEspAppTests", dependencies: ["TokEspApp"]),
     ]
 )
