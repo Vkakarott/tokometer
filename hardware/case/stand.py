@@ -36,8 +36,10 @@ BODY_H = 57.7  # gives a 24 mm chin under the funnel
 WALL = 2.0
 FRONT_LEAN = 5.8  # how far the top of the front face sits behind its bottom (~5.7 deg)
 # Flat decline round the front panel's edge: (width on the front, setback on the other face).
-FRONT_DECLINE_SIDE = (2.0, 1.0)
-FRONT_DECLINE_TOP = (4.0, 1.5)  # top and bottom decline more than the sides
+# The setback is the same all round; top and bottom only reach further down the front.
+FRONT_DECLINE_SETBACK = 1.0
+FRONT_DECLINE_SIDE = (2.0, FRONT_DECLINE_SETBACK)
+FRONT_DECLINE_TOP = (4.0, FRONT_DECLINE_SETBACK)
 
 # --- Display mock (0.96" SSD1306 module), never exported
 PCB_T = 1.6
