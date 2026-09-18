@@ -298,9 +298,25 @@ def cut_on_face(comp, body, face, width: float, height: float, depth: float, off
     extrudes.add(ext_input)
 
 
-def build_base(builder: Builder):
-    """Plain plinth standing on the table."""
-    return builder.slab(0.0, -BASE_W / 2, 0.0, BASE_W / 2, -BASE_D, BASE_T, NEW)
+def body_bottom_face(body):
+    """The ring the body stands on: planar, flat at BASE_T, the largest there."""
+    level = cm(BASE_T)
+    faces = [
+        face for face in body.faces
+        if face.geometry.objectType == adsk.core.Plane.classType()
+        and abs(face.boundingBox.minPoint.y - level) < 1e-6
+        and abs(face.boundingBox.maxPoint.y - level) < 1e-6
+    ]
+    return max(faces, key=lambda face: face.area)
+
+
+def build_base(builder: Builder, body):
+    """Plinth that follows the body's footprint, so the front declines run straight into it."""
+    sketch = builder.comp.sketches.add(builder.comp.xZConstructionPlane)
+    outer = next(loop for loop in body_bottom_face(body).loops if loop.isOuter)
+    for edge in outer.edges:
+        sketch.project(edge)
+    return builder._extrude(sketch.profiles.item(0), BASE_T, NEW)
 
 
 def rounded_profile(builder: Builder, comp, z, half_w, center_y, half_h, radius):
@@ -575,13 +591,14 @@ def export(design: adsk.fusion.Design, body, filename: str) -> None:
 
 
 def generated_documents(app):
-    """Unsaved documents an earlier run of this script built: every run makes a stand_base."""
+    """Unsaved documents an earlier run of this script built: they hold a stand_base or stand_body."""
     found = []
     for document in app.documents:
         if document.isSaved:
             continue
         design = adsk.fusion.Design.cast(document.products.itemByProductType("DesignProductType"))
-        if design is not None and design.rootComponent.bRepBodies.itemByName("stand_base"):
+        bodies = design.rootComponent.bRepBodies if design is not None else None
+        if bodies is not None and (bodies.itemByName("stand_base") or bodies.itemByName("stand_body")):
             found.append(document)
     return found
 
@@ -600,13 +617,13 @@ def run(context):
         comp = design.rootComponent
 
         builder = Builder(comp)
-        base = build_base(builder)
-        base.name = "stand_base"
         display = build_display_mock(builder)
         display.name = "mock_display"
         paint(app, design, display, DISPLAY_APPEARANCE_ID)
         body = build_body(builder, comp)
         body.name = "stand_body"
+        base = build_base(builder, body)
+        base.name = "stand_base"
         for face in cut_floppy(comp, body):
             paint(app, design, face, DISPLAY_APPEARANCE_ID)
         comp.isSketchFolderLightBulbOn = False  # keep sketch outlines off the renders
@@ -615,7 +632,11 @@ def run(context):
 
         export(design, base, "stand_base.3mf")
         export(design, body, "stand_body.3mf")
-        log("plinth {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
+        box = base.boundingBox
+        log("plinth {:.2f} x {:.2f} x {:.2f} mm, following the body footprint".format(
+            (box.maxPoint.x - box.minPoint.x) * 10, (box.maxPoint.y - box.minPoint.y) * 10,
+            (box.maxPoint.z - box.minPoint.z) * 10,
+        ))
         log("front decline: sides {} mm on the front x {} mm back, top/bottom {} x {} mm".format(
             FRONT_DECLINE_SIDE[0], FRONT_DECLINE_SIDE[1], FRONT_DECLINE_TOP[0], FRONT_DECLINE_TOP[1]
         ))
