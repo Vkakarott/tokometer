@@ -45,14 +45,17 @@ GLASS_W, GLASS_H, GLASS_T = 26.7, 19.3, 1.2
 ACTIVE_W, ACTIVE_H = 22.0, 12.0  # the lit area inside the glass
 GLASS_OFFSET_Y = -2.0  # the glass sits below the module centre, away from the pins
 
-# --- Front panel, three levels deep
+# --- Front panel: a Macintosh-style funnel sunk into the face
 PANEL_W, PANEL_H, PANEL_T = BASE_W, BODY_H, 4.0
-BEVEL_OUTER = (39.0, 29.0)  # where the slope starts, on the surface
-BEVEL_INNER = (29.0, 19.0)  # where it lands: the black bezel plane
-BEVEL_DEPTH = 2.5
-BEVEL_TOP_PADDING = 7.0  # panel top to the start of the slope
-OPENING = (23.0, 13.0)  # window over the lit area
+SCREEN_FROM_TOP = 21.5  # panel top to the screen centre; fixes where the OLED sits
+OPENING = (23.0, 13.0)  # throat over the lit area, running through to the glass
 OPENING_R = 2.0
+FUNNEL_DEPTH = 2.5  # slope depth; the rest of the wall is the throat in front of the glass
+FUNNEL_RUN = 6.0  # width of the sloped band on the face: atan(2.5 / 6) = 22.6 deg
+FUNNEL_OUTER = (OPENING[0] + 2 * FUNNEL_RUN, OPENING[1] + 2 * FUNNEL_RUN)
+FUNNEL_OUTER_R = 4.0
+LIP_FILLET = 2.0  # face into slope
+THROAT_FILLET = 1.0  # slope into throat
 
 LOG_PATH = "/tmp/tokometer_stand.log"
 EXPORT_DIR = "/Users/lucas/Documents/Projetos/Pessoal/harware/tokEsp/hardware/case"
@@ -256,9 +259,9 @@ def rounded_profile(builder: Builder, comp, z, half_w, center_y, half_h, radius)
 
 
 def panel_center_y():
-    """Centre of the screen opening, from the top padding of the bevel."""
+    """Height of the screen centre, fixed from the panel top."""
     panel_top = BASE_T + PANEL_H
-    return panel_top - BEVEL_TOP_PADDING - BEVEL_OUTER[1] / 2
+    return panel_top - SCREEN_FROM_TOP
 
 
 def front_normal():
@@ -269,7 +272,7 @@ def front_normal():
 
 def screen_center_point():
     """Centre of the screen, on the leaning face."""
-    y = BASE_T + BODY_H - BEVEL_TOP_PADDING - BEVEL_OUTER[1] / 2
+    y = panel_center_y()
     z = -FRONT_LEAN * (y - BASE_T) / BODY_H
     return adsk.core.Point3D.create(0.0, cm(y), cm(z))
 
@@ -328,19 +331,23 @@ def build_body(builder: Builder, comp):
     ]
     builder.side_profile(-BASE_W / 2 + WALL, cavity, BASE_W - 2 * WALL, CUT, body)
 
-    # Bevel and window, both drawn on the leaning face itself.
+    cut_funnel(comp, body)
+    return body
+
+
+def cut_funnel(comp, body) -> None:
+    """Sloped funnel from the face down to the throat, then the throat to the glass."""
     center = screen_center_point()
     face = front_faces(body)[0]
     face_sketch = comp.sketches.add(face)
-    outer = sketch_rect_at(face_sketch, center, BEVEL_OUTER[0], BEVEL_OUTER[1], TOP_R + 1.0)
+    outer = sketch_rect_at(face_sketch, center, FUNNEL_OUTER[0], FUNNEL_OUTER[1], FUNNEL_OUTER_R)
 
     planes = comp.constructionPlanes
     plane_input = planes.createInput()
-    plane_input.setByOffset(face, adsk.core.ValueInput.createByReal(cm(-BEVEL_DEPTH)))
-    bezel_plane = planes.add(plane_input)
-    bezel_sketch = comp.sketches.add(bezel_plane)
+    plane_input.setByOffset(face, adsk.core.ValueInput.createByReal(cm(-FUNNEL_DEPTH)))
+    throat_plane = planes.add(plane_input)
     inner = sketch_rect_at(
-        bezel_sketch, center, BEVEL_INNER[0], BEVEL_INNER[1], OPENING_R + 1.0, -BEVEL_DEPTH
+        comp.sketches.add(throat_plane), center, OPENING[0], OPENING[1], OPENING_R, -FUNNEL_DEPTH
     )
 
     lofts = comp.features.loftFeatures
@@ -350,18 +357,47 @@ def build_body(builder: Builder, comp):
     loft_input.participantBodies = [body]
     lofts.add(loft_input)
 
-    window_sketch = comp.sketches.add(bezel_plane)
-    opening = sketch_rect_at(
-        window_sketch, center, OPENING[0], OPENING[1], OPENING_R, -BEVEL_DEPTH
+    throat = sketch_rect_at(
+        comp.sketches.add(throat_plane), center, OPENING[0], OPENING[1], OPENING_R, -FUNNEL_DEPTH
     )
     extrudes = comp.features.extrudeFeatures
-    ext_input = extrudes.createInput(opening, CUT)
+    ext_input = extrudes.createInput(throat, CUT)
     ext_input.setDistanceExtent(
-        False, adsk.core.ValueInput.createByReal(cm(-(PANEL_T - BEVEL_DEPTH + 1.0)))
+        False, adsk.core.ValueInput.createByReal(cm(-(PANEL_T - FUNNEL_DEPTH + 1.0)))
     )
     ext_input.participantBodies = [body]
     extrudes.add(ext_input)
-    return body
+
+    fillet_edges(comp, funnel_edges(body, 0.0, FUNNEL_OUTER), LIP_FILLET)
+    fillet_edges(comp, funnel_edges(body, -FUNNEL_DEPTH, OPENING), THROAT_FILLET)
+
+
+def funnel_edges(body, depth: float, size):
+    """Edges lying on the plane `depth` mm off the face, around the given contour."""
+    nz, ny = front_normal()
+    up_y, up_z = nz, -ny
+    center = screen_center_point()
+    edges = adsk.core.ObjectCollection.create()
+    for edge in body.edges:
+        _, start, end = edge.evaluator.getParameterExtents()
+        _, point = edge.evaluator.getPointAtParameter((start + end) / 2)
+        dy, dz = (point.y - center.y) / cm(1), (point.z - center.z) / cm(1)
+        off_face = dy * ny + dz * nz
+        along_face = dy * up_y + dz * up_z
+        if abs(off_face - depth) > 0.01:
+            continue
+        if abs(point.x / cm(1)) <= size[0] / 2 + 0.01 and abs(along_face) <= size[1] / 2 + 0.01:
+            edges.add(edge)
+    return edges
+
+
+def fillet_edges(comp, edges, radius: float) -> None:
+    if not edges.count:
+        raise RuntimeError("no edges found for a {} mm fillet".format(radius))
+    fillets = comp.features.filletFeatures
+    fillet_input = fillets.createInput()
+    fillet_input.addConstantRadiusEdgeSet(edges, adsk.core.ValueInput.createByReal(cm(radius)), True)
+    fillets.add(fillet_input)
 
 
 def build_display_mock(builder: Builder):
@@ -451,9 +487,12 @@ def run(context):
         log("panel {} x {} x {} mm, opening {} x {} mm".format(
             PANEL_W, PANEL_H, PANEL_T, OPENING[0], OPENING[1]
         ))
-        log("bevel {} x {} -> {} x {} over {} mm, screen centre at y {} mm".format(
-            BEVEL_OUTER[0], BEVEL_OUTER[1], BEVEL_INNER[0], BEVEL_INNER[1], BEVEL_DEPTH,
-            round(panel_center_y(), 1),
+        log("funnel {} x {} (r {}) -> {} x {} (r {}) over {} mm, {:.1f} deg, screen centre at y {} mm".format(
+            FUNNEL_OUTER[0], FUNNEL_OUTER[1], FUNNEL_OUTER_R, OPENING[0], OPENING[1], OPENING_R,
+            FUNNEL_DEPTH, math.degrees(math.atan2(FUNNEL_DEPTH, FUNNEL_RUN)), round(panel_center_y(), 1),
+        ))
+        log("fillets: lip {} mm, throat {} mm; glass {} mm behind the throat edge".format(
+            LIP_FILLET, THROAT_FILLET, PANEL_T - FUNNEL_DEPTH
         ))
     except Exception:
         import traceback
