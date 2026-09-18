@@ -155,20 +155,19 @@ private struct NotchView: View {
 
 private struct AeroNotchShape: Shape {
     func path(in rect: CGRect) -> Path {
-        let inset = min(22, rect.width * 0.08)
-        let cornerRadius = min(8, rect.height * 0.15)
+        let cornerRadius = min(16, rect.height * 0.32)
         var path = Path()
         path.move(to: CGPoint(x: 0, y: 0))
         path.addLine(to: CGPoint(x: rect.maxX, y: 0))
-        path.addLine(to: CGPoint(x: rect.maxX - inset, y: rect.maxY - cornerRadius))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - cornerRadius))
         path.addQuadCurve(
-            to: CGPoint(x: rect.maxX - inset - cornerRadius, y: rect.maxY),
-            control: CGPoint(x: rect.maxX - inset, y: rect.maxY)
+            to: CGPoint(x: rect.maxX - cornerRadius, y: rect.maxY),
+            control: CGPoint(x: rect.maxX, y: rect.maxY)
         )
-        path.addLine(to: CGPoint(x: rect.minX + inset + cornerRadius, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + cornerRadius, y: rect.maxY))
         path.addQuadCurve(
-            to: CGPoint(x: rect.minX + inset, y: rect.maxY - cornerRadius),
-            control: CGPoint(x: rect.minX + inset, y: rect.maxY)
+            to: CGPoint(x: rect.minX, y: rect.maxY - cornerRadius),
+            control: CGPoint(x: rect.minX, y: rect.maxY)
         )
         path.closeSubpath()
         return path
