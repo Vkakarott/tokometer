@@ -16,6 +16,8 @@ Z towards the viewer. The stand stands on Y = 0, centred on X = 0, with its
 front face on Z = 0 and the body growing towards -Z.
 """
 
+import math
+
 import adsk.core
 import adsk.fusion
 
@@ -34,6 +36,7 @@ TOP_R = 1.5  # edge where the top meets the walls
 # --- Body
 BODY_H = 60.0
 WALL = 2.0
+FRONT_LEAN = 6.0  # how far the top of the front face sits behind its bottom
 
 # --- Display mock (0.96" SSD1306 module), never exported
 PCB_T = 1.6
@@ -258,31 +261,88 @@ def panel_center_y():
     return panel_top - BEVEL_TOP_PADDING - BEVEL_OUTER[1] / 2
 
 
+def front_normal():
+    """Outward normal of the leaning front face, in the ZY plane."""
+    length = (FRONT_LEAN ** 2 + BODY_H ** 2) ** 0.5
+    return BODY_H / length, FRONT_LEAN / length  # (z, y), pointing out and up
+
+
+def screen_center_point():
+    """Centre of the screen, on the leaning face."""
+    y = BASE_T + BODY_H - BEVEL_TOP_PADDING - BEVEL_OUTER[1] / 2
+    z = -FRONT_LEAN * (y - BASE_T) / BODY_H
+    return adsk.core.Point3D.create(0.0, cm(y), cm(z))
+
+
+def sketch_rect_at(sketch, model_point, width, height, radius, normal_offset=0.0):
+    """Rounded rectangle centred on a model point, lying on the leaning face.
+
+    Opposite corners are placed in model space and mapped into the sketch, so
+    the result does not depend on how Fusion orients the face's sketch axes.
+    """
+    nz, ny = front_normal()
+    up_y, up_z = nz, -ny  # along the face, pointing up and back
+
+    def corner(sign):
+        return sketch.modelToSketchSpace(
+            adsk.core.Point3D.create(
+                model_point.x + sign * cm(width / 2),
+                model_point.y + cm(normal_offset * ny + sign * up_y * height / 2),
+                model_point.z + cm(normal_offset * nz + sign * up_z * height / 2),
+            )
+        )
+
+    first, second = corner(-1), corner(1)
+    lines = sketch.sketchCurves.sketchLines.addTwoPointRectangle(
+        adsk.core.Point3D.create(first.x, first.y, 0),
+        adsk.core.Point3D.create(second.x, second.y, 0),
+    )
+    arcs = sketch.sketchCurves.sketchArcs
+    for index in range(4):
+        a, b = lines.item(index), lines.item((index + 1) % 4)
+        arcs.addFillet(a, a.endSketchPoint.geometry, b, b.startSketchPoint.geometry, cm(radius))
+    return smallest_profile(sketch)
+
+
 def build_body(builder: Builder, comp):
-    """Hollow body on the plinth whose front wall carries the screen levels."""
-    body = builder.slab(BASE_T, -BASE_W / 2, 0.0, BASE_W / 2, -BASE_D, BODY_H, NEW)
+    """Hollow body with a leaning front wall that carries the screen levels."""
+    bottom, top = BASE_T, BASE_T + BODY_H
+    outer_profile = [
+        (bottom, 0.0),
+        (top, -FRONT_LEAN),
+        (top, -BASE_D),
+        (bottom, -BASE_D),
+    ]
+    body = builder.side_profile(-BASE_W / 2, outer_profile, BASE_W, NEW)
     fillet_corner_edges(comp, body, CORNER_R)
     fillet_top_edges(comp, body, TOP_R)
 
-    # Cavity: open at the bottom, thick front wall, 2 mm elsewhere.
-    builder.slab(
-        BASE_T,
-        -BASE_W / 2 + WALL,
-        -PANEL_T,
-        BASE_W / 2 - WALL,
-        -(BASE_D - WALL),
-        BODY_H - WALL,
-        CUT,
-        body,
+    # Cavity: the front wall keeps 4 mm measured square to the leaning face.
+    nz, _ = front_normal()
+    front_thickness = PANEL_T / nz
+    cavity = [
+        (bottom, -front_thickness),
+        (top - WALL, -FRONT_LEAN * (top - WALL - bottom) / BODY_H - front_thickness),
+        (top - WALL, -(BASE_D - WALL)),
+        (bottom, -(BASE_D - WALL)),
+    ]
+    builder.side_profile(-BASE_W / 2 + WALL, cavity, BASE_W - 2 * WALL, CUT, body)
+
+    # Bevel and window, both drawn on the leaning face itself.
+    center = screen_center_point()
+    face = front_faces(body)[0]
+    face_sketch = comp.sketches.add(face)
+    outer = sketch_rect_at(face_sketch, center, BEVEL_OUTER[0], BEVEL_OUTER[1], TOP_R + 1.0)
+
+    planes = comp.constructionPlanes
+    plane_input = planes.createInput()
+    plane_input.setByOffset(face, adsk.core.ValueInput.createByReal(cm(-BEVEL_DEPTH)))
+    bezel_plane = planes.add(plane_input)
+    bezel_sketch = comp.sketches.add(bezel_plane)
+    inner = sketch_rect_at(
+        bezel_sketch, center, BEVEL_INNER[0], BEVEL_INNER[1], OPENING_R + 1.0, -BEVEL_DEPTH
     )
 
-    center_y = panel_center_y()
-    outer = rounded_profile(
-        builder, comp, 0.0, BEVEL_OUTER[0] / 2, center_y, BEVEL_OUTER[1] / 2, TOP_R + 1.0
-    )
-    inner = rounded_profile(
-        builder, comp, -BEVEL_DEPTH, BEVEL_INNER[0] / 2, center_y, BEVEL_INNER[1] / 2, OPENING_R + 1.0
-    )
     lofts = comp.features.loftFeatures
     loft_input = lofts.createInput(CUT)
     loft_input.loftSections.add(outer)
@@ -290,8 +350,9 @@ def build_body(builder: Builder, comp):
     loft_input.participantBodies = [body]
     lofts.add(loft_input)
 
-    opening = rounded_profile(
-        builder, comp, -BEVEL_DEPTH, OPENING[0] / 2, center_y, OPENING[1] / 2, OPENING_R
+    window_sketch = comp.sketches.add(bezel_plane)
+    opening = sketch_rect_at(
+        window_sketch, center, OPENING[0], OPENING[1], OPENING_R, -BEVEL_DEPTH
     )
     extrudes = comp.features.extrudeFeatures
     ext_input = extrudes.createInput(opening, CUT)
@@ -326,7 +387,32 @@ def build_display_mock(builder: Builder):
         JOIN,
         module,
     )
+    lean_with_front(builder.comp, module, glass_front_z)
     return module
+
+
+def lean_with_front(comp, body, glass_front_z: float) -> None:
+    """Tilts a body built for an upright front so it sits against the leaning one."""
+    nz, ny = front_normal()
+    center = screen_center_point()
+    pivot = adsk.core.Point3D.create(0.0, cm(panel_center_y()), cm(glass_front_z))
+    transform = adsk.core.Matrix3D.create()
+    transform.setToRotation(
+        -math.atan2(FRONT_LEAN, BODY_H), adsk.core.Vector3D.create(1, 0, 0), pivot
+    )
+    shift = adsk.core.Matrix3D.create()
+    shift.translation = adsk.core.Vector3D.create(
+        0.0,
+        center.y + cm(glass_front_z * ny) - pivot.y,
+        center.z + cm(glass_front_z * nz) - pivot.z,
+    )
+    transform.transformBy(shift)
+    bodies = adsk.core.ObjectCollection.create()
+    bodies.add(body)
+    moves = comp.features.moveFeatures
+    move_input = moves.createInput2(bodies)
+    move_input.defineAsFreeMove(transform)
+    moves.add(move_input)
 
 
 def export(design: adsk.fusion.Design, body, filename: str) -> None:
@@ -358,7 +444,10 @@ def run(context):
         export(design, base, "stand_base.3mf")
         export(design, body, "stand_body.3mf")
         log("plinth {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
-        log("body {} x {} x {} mm, {} mm walls, {} mm front".format(BASE_W, BODY_H, BASE_D, WALL, PANEL_T))
+        log("body {} x {} x {} mm, {} mm walls, front leaning {} mm ({:.1f} deg)".format(
+            BASE_W, BODY_H, BASE_D, WALL, FRONT_LEAN,
+            math.degrees(math.atan2(FRONT_LEAN, BODY_H)),
+        ))
         log("panel {} x {} x {} mm, opening {} x {} mm".format(
             PANEL_W, PANEL_H, PANEL_T, OPENING[0], OPENING[1]
         ))
