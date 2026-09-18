@@ -35,7 +35,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 npm run dev   # porta 43110
 
 # app macOS
-cd macos && swift run TokEsp
+cd macos && ./scripts/build-app.sh
+open .build/TokEsp.app
 
 # collector: veja collector/README.md
 ```
