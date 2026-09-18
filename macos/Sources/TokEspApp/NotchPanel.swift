@@ -5,8 +5,8 @@ import SwiftUI
 @MainActor
 final class NotchPanelController: NSObject {
     private enum PanelSize {
-        static let compact = NSSize(width: 142, height: 142)
-        static let expanded = NSSize(width: 390, height: 290)
+        static let compact = NSSize(width: 336, height: 76)
+        static let expanded = NSSize(width: 430, height: 224)
     }
 
     private let panel: NSPanel
@@ -25,7 +25,7 @@ final class NotchPanelController: NSObject {
         super.init()
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = false
+        panel.hasShadow = true
         panel.level = .statusBar
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.contentView = NSHostingView(
@@ -64,10 +64,10 @@ final class NotchPanelController: NSObject {
 
     private func position() {
         guard let screen = NSScreen.main else { return }
-        let frame = screen.visibleFrame
+        let screenFrame = screen.visibleFrame
         let size = panel.frame.size
-        let y = preferences.edge == .top ? frame.maxY - size.height - 8 : frame.minY + 8
-        panel.setFrameOrigin(NSPoint(x: frame.midX - size.width / 2, y: y))
+        let y = preferences.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
+        panel.setFrameOrigin(NSPoint(x: screenFrame.midX - size.width / 2, y: y))
     }
 }
 
@@ -76,207 +76,172 @@ private struct NotchView: View {
     @ObservedObject var preferences: AppPreferences
     let onExpansionChange: (Bool) -> Void
 
-    @State private var isHovering = false
-    @State private var rotation = 0.0
-    @State private var isPulsing = false
-    @State private var activeIndex = 0
+    @State private var isExpanded = false
     @State private var hoverExitTask: Task<Void, Never>?
 
     private var snapshots: [ProviderSnapshot] {
         store.snapshots.filter { preferences.isVisible($0.id) }
     }
 
-    private var activeSnapshot: ProviderSnapshot? {
-        guard !snapshots.isEmpty else { return nil }
-        return snapshots[activeIndex % snapshots.count]
-    }
-
-    private var providerKey: String {
-        snapshots.map(\.id.rawValue).joined(separator: ",")
-    }
-
     var body: some View {
         ZStack {
-            if isHovering {
-                expandedConstellation
-                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+            AeroNotchShape()
+                .fill(.black.opacity(0.96))
+                .overlay {
+                    AeroNotchShape()
+                        .stroke(Color.white.opacity(0.13), lineWidth: 1)
+                }
+
+            if isExpanded {
+                expandedContent
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             } else {
-                OrbCore(snapshot: activeSnapshot, rotation: rotation, isPulsing: isPulsing)
-                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                compactContent
+                    .transition(.opacity)
             }
         }
-        .frame(width: isHovering ? 390 : 142, height: isHovering ? 290 : 142)
-        .contentShape(Rectangle())
+        .frame(width: isExpanded ? 430 : 336, height: isExpanded ? 224 : 76)
+        .contentShape(AeroNotchShape())
         .onHover { hovering in
             hoverExitTask?.cancel()
             if hovering {
                 setExpanded(true)
             } else {
                 hoverExitTask = Task {
-                    try? await Task.sleep(for: .milliseconds(220))
+                    try? await Task.sleep(for: .milliseconds(240))
                     guard !Task.isCancelled else { return }
                     await MainActor.run { setExpanded(false) }
                 }
             }
         }
-        .task(id: providerKey) {
-            guard !snapshots.isEmpty else { return }
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(3))
-                guard !Task.isCancelled else { return }
-                withAnimation(.easeInOut(duration: 0.45)) {
-                    activeIndex = (activeIndex + 1) % max(snapshots.count, 1)
-                }
-            }
-        }
-        .onAppear {
-            withAnimation(.linear(duration: 9).repeatForever(autoreverses: false)) {
-                rotation = 360
-            }
-            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
-                isPulsing = true
-            }
-        }
         .onDisappear { hoverExitTask?.cancel() }
     }
 
+    private var compactContent: some View {
+        HStack(spacing: 9) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("tokEsp")
+                    .font(.subheadline.weight(.bold))
+                Text("uso local")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.52))
+            }
+            .frame(width: 48, alignment: .leading)
+
+            ForEach(snapshots) { snapshot in
+                CompactUsage(snapshot: snapshot)
+            }
+        }
+        .padding(.horizontal, 22)
+        .foregroundStyle(.white)
+    }
+
+    private var expandedContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("tokEsp")
+                        .font(.headline.weight(.bold))
+                    Text("Consumo das suas ferramentas")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+                Spacer()
+                Text("LOCAL")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(hasLiveProvider ? .mint : .orange)
+            }
+
+            ForEach(snapshots) { snapshot in
+                ExpandedUsage(snapshot: snapshot)
+            }
+        }
+        .padding(.horizontal, 30)
+        .padding(.vertical, 22)
+        .foregroundStyle(.white)
+    }
+
+    private var hasLiveProvider: Bool {
+        snapshots.contains { $0.hasData && $0.status.isLive }
+    }
+
     private func setExpanded(_ expanded: Bool) {
-        guard isHovering != expanded else { return }
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
-            isHovering = expanded
+        guard isExpanded != expanded else { return }
+        withAnimation(.easeOut(duration: 0.18)) {
+            isExpanded = expanded
         }
         onExpansionChange(expanded)
     }
+}
 
-    private var expandedConstellation: some View {
-        ZStack {
-            Circle()
-                .fill(Color.cyan.opacity(0.16))
-                .blur(radius: 36)
-                .frame(width: 180, height: 180)
-
-            OrbCore(snapshot: activeSnapshot, rotation: rotation, isPulsing: isPulsing)
-                .frame(width: 136, height: 136)
-
-            ForEach(Array(snapshots.enumerated()), id: \.element.id) { index, snapshot in
-                ProviderSatellite(snapshot: snapshot)
-                    .offset(satelliteOffset(for: index, count: snapshots.count))
-                    .transition(.scale.combined(with: .opacity))
-            }
-        }
-    }
-
-    private func satelliteOffset(for index: Int, count: Int) -> CGSize {
-        switch count {
-        case 1:
-            .init(width: 0, height: 90)
-        case 2:
-            index == 0 ? .init(width: -112, height: 58) : .init(width: 112, height: 58)
-        default:
-            switch index {
-            case 0: .init(width: -116, height: -66)
-            case 1: .init(width: 116, height: -66)
-            default: .init(width: 0, height: 90)
-            }
-        }
+private struct AeroNotchShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let inset = min(22, rect.width * 0.08)
+        var path = Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: rect.maxX, y: 0))
+        path.addLine(to: CGPoint(x: rect.maxX - inset, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + inset, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 
-private struct OrbCore: View {
-    let snapshot: ProviderSnapshot?
-    let rotation: Double
-    let isPulsing: Bool
-
-    private var fraction: Double {
-        snapshot?.headline?.usedFraction ?? 0
-    }
+private struct CompactUsage: View {
+    let snapshot: ProviderSnapshot
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color(red: 0.05, green: 0.2, blue: 0.24), Color.black.opacity(0.96)],
-                        center: .center,
-                        startRadius: 4,
-                        endRadius: 82
-                    )
-                )
-
-            Circle()
-                .stroke(Color.white.opacity(0.1), lineWidth: 7)
-
-            Circle()
-                .trim(from: 0.025, to: max(0.035, fraction))
-                .stroke(
-                    AngularGradient(colors: [.cyan, .mint, .teal, .cyan], center: .center),
-                    style: StrokeStyle(lineWidth: 7, lineCap: .round)
-                )
-                .rotationEffect(.degrees(rotation - 90))
-                .shadow(color: .cyan.opacity(0.75), radius: isPulsing ? 12 : 6)
-
-            VStack(spacing: 3) {
-                Text(percent)
-                    .font(.system(size: 29, weight: .bold, design: .rounded).monospacedDigit())
-                    .contentTransition(.numericText())
-                Text(snapshot?.displayName ?? "tokEsp")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.72))
-                    .lineLimit(1)
-            }
-            .id(snapshot?.id)
-            .transition(.opacity.combined(with: .scale(scale: 0.88)))
+        HStack(spacing: 6) {
+            UsageRing(snapshot: snapshot, diameter: 30, lineWidth: 3)
+            Text(percent)
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.white.opacity(0.62))
         }
-        .frame(width: 122, height: 122)
-        .scaleEffect(isPulsing ? 1.015 : 0.985)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Uso de \(snapshot?.displayName ?? "tokEsp"): \(percent)")
     }
 
     private var percent: String {
-        guard snapshot?.hasData == true else { return "--" }
+        guard snapshot.hasData, let fraction = snapshot.headline?.usedFraction else { return "--" }
         return "\(Int((fraction * 100).rounded()))%"
     }
 }
 
-private struct ProviderSatellite: View {
+private struct ExpandedUsage: View {
     let snapshot: ProviderSnapshot
 
     private var fraction: Double { snapshot.headline?.usedFraction ?? 0 }
 
     var body: some View {
-        VStack(spacing: 6) {
-            ZStack {
-                Circle()
-                    .fill(.black.opacity(0.88))
-                Circle()
-                    .stroke(Color.white.opacity(0.12), lineWidth: 4)
-                Circle()
-                    .trim(from: 0.025, to: max(0.035, fraction))
-                    .stroke(statusColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                Text(percent)
-                    .font(.caption.weight(.bold).monospacedDigit())
-            }
-            .frame(width: 58, height: 58)
-            .shadow(color: statusColor.opacity(0.45), radius: 9)
-
-            VStack(spacing: 1) {
-                Text(snapshot.displayName)
-                    .font(.caption.weight(.bold))
-                Text(snapshot.headline?.label ?? snapshot.status.label)
+        HStack(spacing: 10) {
+            UsageRing(snapshot: snapshot, diameter: 32, lineWidth: 3)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack {
+                    Text(snapshot.displayName)
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text(snapshot.status.label)
+                        .font(.caption2)
+                        .foregroundStyle(statusColor)
+                }
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Rectangle().fill(.white.opacity(0.12))
+                        Rectangle()
+                            .fill(statusColor)
+                            .frame(width: geometry.size.width * max(0, min(fraction, 1)))
+                    }
+                }
+                .frame(height: 4)
+                Text(detail)
                     .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.58))
-                    .lineLimit(1)
+                    .foregroundStyle(.white.opacity(0.55))
             }
         }
-        .foregroundStyle(.white)
-        .frame(width: 104)
     }
 
-    private var percent: String {
-        guard snapshot.hasData else { return "--" }
-        return "\(Int((fraction * 100).rounded()))%"
+    private var detail: String {
+        guard snapshot.hasData, let headline = snapshot.headline else { return "Sem dados disponíveis" }
+        guard let reset = headline.resetsAt else { return headline.label }
+        return "\(headline.label) · reinicia \(reset.formatted(date: .abbreviated, time: .shortened))"
     }
 
     private var statusColor: Color {
@@ -284,6 +249,44 @@ private struct ProviderSatellite: View {
         case .ok: .mint
         case .stale: .orange
         case .needsAuth, .accessDenied, .unsupported, .error: .red
+        }
+    }
+}
+
+private struct UsageRing: View {
+    let snapshot: ProviderSnapshot
+    let diameter: CGFloat
+    let lineWidth: CGFloat
+
+    private var fraction: Double { snapshot.headline?.usedFraction ?? 0 }
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(.white.opacity(0.14), lineWidth: lineWidth)
+            Circle()
+                .trim(from: 0.025, to: max(0.035, fraction))
+                .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Image(systemName: iconName)
+                .font(.system(size: diameter * 0.32, weight: .medium))
+                .foregroundStyle(.white.opacity(0.82))
+        }
+        .frame(width: diameter, height: diameter)
+    }
+
+    private var color: Color {
+        switch snapshot.status {
+        case .ok: .mint
+        case .stale: .orange
+        case .needsAuth, .accessDenied, .unsupported, .error: .red
+        }
+    }
+
+    private var iconName: String {
+        switch snapshot.id {
+        case .claude: "sparkles"
+        case .codex: "command"
+        case .cursor: "cursorarrow.rays"
         }
     }
 }
