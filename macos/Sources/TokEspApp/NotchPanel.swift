@@ -6,7 +6,7 @@ import SwiftUI
 final class NotchPanelController: NSObject {
     private enum PanelSize {
         static let compact = NSSize(width: 328, height: 62)
-        static let expanded = NSSize(width: 418, height: 184)
+        static let expanded = NSSize(width: 418, height: 252)
     }
 
     private let panel: NSPanel
@@ -56,10 +56,20 @@ final class NotchPanelController: NSObject {
         guard isExpanded != expanded else { return }
         isExpanded = expanded
         let size = expanded ? PanelSize.expanded : PanelSize.compact
-        var frame = panel.frame
-        frame.size = size
-        panel.setFrame(frame, display: true, animate: true)
-        position()
+        guard let screen = NSScreen.main else { return }
+        let screenFrame = screen.visibleFrame
+        let y = preferences.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
+        let frame = NSRect(
+            x: screenFrame.midX - size.width / 2,
+            y: y,
+            width: size.width,
+            height: size.height
+        )
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.22
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            panel.animator().setFrame(frame, display: true)
+        }
     }
 
     private func position() {
@@ -88,15 +98,15 @@ private struct NotchView: View {
             AeroNotchShape()
                 .fill(.black.opacity(0.98))
 
-            if isExpanded {
-                expandedContent
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            } else {
-                compactContent
-                    .transition(.opacity)
-            }
+            compactContent
+                .opacity(isExpanded ? 0 : 1)
+                .allowsHitTesting(!isExpanded)
+
+            expandedContent
+                .opacity(isExpanded ? 1 : 0)
+                .allowsHitTesting(isExpanded)
         }
-        .frame(width: isExpanded ? 418 : 328, height: isExpanded ? 184 : 62)
+        .frame(width: isExpanded ? 418 : 328, height: isExpanded ? 252 : 62)
         .contentShape(AeroNotchShape())
         .onHover { hovering in
             hoverExitTask?.cancel()
@@ -124,29 +134,26 @@ private struct NotchView: View {
     }
 
     private var expandedContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 13) {
             HStack {
-                Text("Consumo das suas ferramentas")
+                Text("Consumo")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.55))
                 Spacer()
-                Text("3 provedores")
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.5))
             }
 
             ForEach(snapshots) { snapshot in
                 ExpandedUsage(snapshot: snapshot)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 26)
+        .padding(.vertical, 16)
         .foregroundStyle(.white)
     }
 
     private func setExpanded(_ expanded: Bool) {
         guard isExpanded != expanded else { return }
-        withAnimation(.easeOut(duration: 0.18)) {
+        withAnimation(.easeInOut(duration: 0.16)) {
             isExpanded = expanded
         }
         onExpansionChange(expanded)
@@ -210,52 +217,60 @@ private struct CompactUsage: View {
 private struct ExpandedUsage: View {
     let snapshot: ProviderSnapshot
 
-    private var fraction: Double { snapshot.headline?.usedFraction ?? 0 }
-
     var body: some View {
         HStack(spacing: 10) {
             UsageRing(snapshot: snapshot, diameter: 32, lineWidth: 3)
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 7) {
                 HStack {
                     Text(snapshot.displayName)
                         .font(.subheadline.weight(.semibold))
                     Spacer()
-                    Text(snapshot.status.label)
-                        .font(.caption2)
-                        .foregroundStyle(statusColor)
                 }
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        Rectangle().fill(.white.opacity(0.12))
-                        Rectangle()
-                            .fill(accentColor)
-                            .frame(width: geometry.size.width * max(0, min(fraction, 1)))
+                if snapshot.hasData {
+                    ForEach(snapshot.windows) { window in
+                        UsageLimit(window: window, color: accentColor)
                     }
+                } else {
+                    Text("Sem dados disponíveis")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.55))
                 }
-                .frame(height: 4)
-                Text(detail)
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.55))
             }
-        }
-    }
-
-    private var detail: String {
-        guard snapshot.hasData, let headline = snapshot.headline else { return "Sem dados disponíveis" }
-        guard let reset = headline.resetsAt else { return headline.label }
-        return "\(headline.label) · reinicia \(reset.formatted(date: .abbreviated, time: .shortened))"
-    }
-
-    private var statusColor: Color {
-        switch snapshot.status {
-        case .ok: .mint
-        case .stale: .orange
-        case .needsAuth, .accessDenied, .unsupported, .error: .red
         }
     }
 
     private var accentColor: Color {
         ProviderAccent.color(for: snapshot)
+    }
+}
+
+private struct UsageLimit: View {
+    let window: UsageWindow
+    let color: Color
+
+    private var fraction: Double { window.usedFraction ?? 0 }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack {
+                Text(window.label)
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.58))
+                Spacer()
+                Text("\(Int((fraction * 100).rounded()))%")
+                    .font(.caption2.monospacedDigit().weight(.medium))
+                    .foregroundStyle(.white.opacity(0.78))
+            }
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(.white.opacity(0.12))
+                    Capsule()
+                        .fill(color)
+                        .frame(width: geometry.size.width * max(0, min(fraction, 1)))
+                }
+            }
+            .frame(height: 3)
+        }
     }
 }
 
