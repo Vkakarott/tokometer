@@ -90,7 +90,9 @@ regravar a placa.
 Depois de gravar, o display cria uma rede temporária `tokEsp-xxxx`. Conecte o
 celular ou Mac a ela, abra `192.168.4.1` e informe a rede Wi-Fi que o display
 deve usar. A senha é salva na memória da placa; ela não entra no firmware nem
-precisa ser gravada outra vez.
+precisa ser gravada outra vez. O display mantém até três redes conhecidas e
+escolhe automaticamente uma que esteja disponível; adicionar uma rede nova não
+remove as anteriores até a lista ficar cheia.
 
 Assim que o display entrar na rede, ele exibirá o código de oito caracteres.
 No tokometer, abra **Configurações → Display**, informe o código e confirme o
