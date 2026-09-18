@@ -81,6 +81,16 @@ FLOPPY_SLOT_DEPTH = 1.5
 FLOPPY_EJECT_D = 0.8  # pinhole in the mouth, below the slot
 FLOPPY_R = 0.3
 
+# --- Small visual details, never through the wall
+VENT_COUNT = 8  # grille on each side, low and towards the back
+VENT_SLOT = (12.0, 0.8)  # length along the side, height
+VENT_PITCH = 1.8
+VENT_DEPTH = 0.6
+VENT_FROM_BACK = 4.0  # back end of the slots, from the back face
+VENT_FROM_FOOT = 3.0  # lowest slot, from the body's foot
+BADGE = (3.5, 4.0)  # logo plate on the chin, left of the floppy
+BADGE_DEPTH = 0.4
+
 # Fusion appearance library and its matte black plastic; ids, so any UI language works.
 APPEARANCE_LIBRARY_ID = "BA5EE55E-9982-449B-9D66-9F036540E140"
 DISPLAY_APPEARANCE_ID = "Prism-113"
@@ -525,6 +535,39 @@ def cut_floppy(comp, body):
     return list(slot.faces)
 
 
+def cut_side_vents(builder: Builder, body) -> None:
+    """Shallow horizontal slots low on both sides, near the back."""
+    back_z = -BASE_D + VENT_FROM_BACK
+    front_z = back_z + VENT_SLOT[0]
+    for x in (BASE_W / 2 - VENT_DEPTH, -BASE_W / 2 - 1.0):
+        sketch = builder.comp.sketches.add(builder._offset_plane(builder.comp.yZConstructionPlane, x))
+        lines = sketch.sketchCurves.sketchLines
+        for index in range(VENT_COUNT):
+            y0 = BASE_T + VENT_FROM_FOOT + index * VENT_PITCH
+            # On the YZ plane a (y, z) point maps to sketch (-z, y).
+            lines.addTwoPointRectangle(
+                adsk.core.Point3D.create(cm(-back_z), cm(y0), 0),
+                adsk.core.Point3D.create(cm(-front_z), cm(y0 + VENT_SLOT[1]), 0),
+            )
+        profiles = adsk.core.ObjectCollection.create()
+        for profile in sketch.profiles:
+            profiles.add(profile)
+        extrudes = builder.comp.features.extrudeFeatures
+        ext_input = extrudes.createInput(profiles, CUT)
+        ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(VENT_DEPTH + 1.0)))
+        ext_input.participantBodies = [body]
+        extrudes.add(ext_input)
+
+
+def cut_badge(comp, body) -> None:
+    """Small recessed logo plate, lined up with the funnel's left edge and the floppy."""
+    face = front_faces(body)[0]
+    sketch = comp.sketches.addWithoutEdges(face)
+    center_x = -FUNNEL_OUTER[0] / 2 + BADGE[0] / 2
+    profile = sketch_rect_at(sketch, face_point(center_x, FLOPPY_Y), BADGE[0], BADGE[1], 0.4)
+    cut_from_face(comp, body, profile, BADGE_DEPTH)
+
+
 def cut_funnel(comp, body) -> None:
     """Sloped funnel from the face down to the throat, then the throat to the glass."""
     center = screen_center_point()
@@ -708,6 +751,8 @@ def run(context):
         base.name = "stand_base"
         for face in cut_floppy(comp, body):
             paint(app, design, face, DISPLAY_APPEARANCE_ID)
+        cut_badge(comp, body)
+        cut_side_vents(builder, body)
         comp.isSketchFolderLightBulbOn = False  # keep sketch outlines off the renders
         comp.isConstructionFolderLightBulbOn = False
         app.activeViewport.fit()
