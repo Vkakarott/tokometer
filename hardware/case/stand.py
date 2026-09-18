@@ -58,6 +58,7 @@ FUNNEL_RUN = 6.0  # width of the sloped band on the face: atan(2.5 / 6) = 22.6 d
 FUNNEL_OUTER = (OPENING[0] + 2 * FUNNEL_RUN, OPENING[1] + 2 * FUNNEL_RUN)
 FUNNEL_OUTER_R = 4.0
 LIP_FILLET = 2.0  # face into slope
+THROAT_FILLET = 1.0  # slope into throat
 
 # Fusion appearance library and its matte black plastic; ids, so any UI language works.
 APPEARANCE_LIBRARY_ID = "BA5EE55E-9982-449B-9D66-9F036540E140"
@@ -342,6 +343,7 @@ def cut_funnel(comp, body) -> None:
     extrudes.add(ext_input)
 
     fillet_edges(comp, funnel_edges(body, 0.0, FUNNEL_OUTER), LIP_FILLET)
+    fillet_edges(comp, funnel_edges(body, -FUNNEL_DEPTH, OPENING), THROAT_FILLET)
 
 
 def funnel_edges(body, depth: float, size):
@@ -477,8 +479,8 @@ def run(context):
             round(OPENING[0], 2), round(OPENING[1], 2), OPENING_R,
             FUNNEL_DEPTH, math.degrees(math.atan2(FUNNEL_DEPTH, FUNNEL_RUN)), round(panel_center_y(), 1),
         ))
-        log("fillets: lip {} mm, throat edge sharp; glass {} mm behind the throat edge".format(
-            LIP_FILLET, PANEL_T - FUNNEL_DEPTH
+        log("fillets: lip {} mm, throat {} mm; glass {} mm behind the throat edge".format(
+            LIP_FILLET, THROAT_FILLET, PANEL_T - FUNNEL_DEPTH
         ))
     except Exception:
         import traceback
