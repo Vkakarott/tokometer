@@ -1,7 +1,7 @@
 # tokEsp
 
 Mostra quanto das suas assinaturas **Claude** (Pro/Max), **Codex** (ChatGPT) e
-**Cursor** foi consumido — num notch nativo do macOS e num display OLED
+**Cursor** foi consumido — num tokonotch nativo do macOS e num display OLED
 opcional.
 
 **Não existe endpoint público de consumo de assinatura.** Os collectors leem o
@@ -12,7 +12,7 @@ a cada 2 minutos (e, no Claude, também depois de cada resposta pelo hook
 permanece como ponte temporária para o ESP32.
 
 ```
-Claude / Codex / Cursor ──► app macOS (notch)
+Claude / Codex / Cursor ──► app macOS (tokonotch)
 collector ───────► backend API ──► ESP32 (durante a migração)
 ```
 
@@ -22,7 +22,7 @@ collector ───────► backend API ──► ESP32 (durante a migra�
 |---|---|
 | `backend/` | Node + TypeScript. Ponte de snapshots e API do device. |
 | `collector/` | Envia o uso das contas Claude e Codex ao backend (hook `Stop` + launchd). A fonte do dado. |
-| `macos/` | Aplicativo nativo: notch, coleta local e aprovação de pareamento. |
+| `macos/` | Aplicativo nativo: tokonotch, coleta local e aprovação de pareamento. |
 | `firmware/` | ESP32 DevKit + OLED I2C externo (ou Heltec WiFi LoRa 32 V2). Consome `docs/device-api.md`. |
 
 ## Rodar
@@ -123,4 +123,4 @@ sair deslocada, o painel é SH1106 — some `-DTOKESP_DISPLAY_SH1106` ao
 - `docs/superpowers/specs/2026-07-15-claude-usage-esp32-design.md` — desenho e o porquê
 - `docs/device-api.md` — contrato para o firmware
 - `collector/README.md` — configuração do statusline
-- `macos/README.md` — execução do notch nativo
+- `macos/README.md` — execução do tokonotch nativo

@@ -16,7 +16,7 @@ struct SettingsView: View {
                 LabeledContent("Estado") {
                     Text(store.sourceMessage)
                 }
-                Text("Claude, Codex e Cursor são consultados diretamente a partir das sessões deste Mac. O backend antigo não é usado para alimentar o notch.")
+                Text("Claude, Codex e Cursor são consultados diretamente a partir das sessões deste Mac. O backend antigo não é usado para alimentar o tokonotch.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Toggle("Usar dados de demonstração", isOn: $preferences.demoMode)
@@ -32,7 +32,7 @@ struct SettingsView: View {
                 }
             }
 
-            Section("Notch") {
+            Section("tokonotch") {
                 Picker("Borda", selection: $preferences.edge) {
                     ForEach(NotchEdge.allCases) { edge in
                         Text(edge.label).tag(edge)

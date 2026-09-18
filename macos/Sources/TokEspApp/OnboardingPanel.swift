@@ -147,7 +147,7 @@ private struct ProviderSetupRow: View {
 
     private var detail: String {
         if snapshot.hasData {
-            return "Pronto para aparecer no notch"
+            return "Pronto para aparecer no tokonotch"
         }
         switch snapshot.status {
         case .needsAuth:

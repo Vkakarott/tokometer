@@ -11,7 +11,7 @@ struct TokEspApp: App {
             Button("Atualizar agora") {
                 Task { await appDelegate.polling.refresh() }
             }
-            Button("Mostrar ou ocultar notch") {
+            Button("Mostrar ou ocultar tokonotch") {
                 appDelegate.notch.toggleVisibility()
             }
             Button("Configurar provedores…") {

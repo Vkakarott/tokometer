@@ -13,7 +13,7 @@ cd macos
 swift run TokEsp
 ```
 
-O ícone de menu permite atualizar a leitura, mostrar ou ocultar o notch e abrir
+O ícone de menu permite atualizar a leitura, mostrar ou ocultar o tokonotch e abrir
 as configurações.
 
 ## Estado da migração
