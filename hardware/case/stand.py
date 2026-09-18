@@ -29,9 +29,12 @@ PADDING = 3.0
 BASE_T = 8.0
 BASE_W = 52.0
 BASE_D = BOARD_L + 2 * PADDING
-CORNER_R = 1.5  # upright corners of the body
+CORNER_R = 1.5  # upright back corners of the body
+# Front uprights: a narrow, slightly varying blend instead of a constant fillet.
+# (fraction of the edge from the bottom, radius in mm)
+FRONT_CORNER_RADII = ((0.0, 3.0), (0.5, 3.5), (1.0, 4.5))
 BASE_R = 1.5  # plinth corners
-TOP_R = 1.5  # edge where the top meets the walls
+TOP_R = 2.5  # edge where the top meets the walls, filleted on its own
 
 # --- Body
 BODY_H = 60.0
@@ -187,6 +190,50 @@ def fillet_corner_edges(comp, body, radius: float) -> None:
     fillets.add(fillet_input)
 
 
+def upright_edges(body, front: bool):
+    """Straight corner edges on the side walls that rise; front or back pair."""
+    found = []
+    for edge in body.edges:
+        geometry = edge.geometry
+        if geometry.objectType != adsk.core.Line3D.classType():
+            continue
+        start, end = geometry.startPoint, geometry.endPoint
+        rises = abs(start.y - end.y) > cm(1.0)
+        on_side = all(abs(abs(point.x) - cm(BASE_W / 2)) < 1e-6 for point in (start, end))
+        at_front = max(start.z, end.z) > -cm(BASE_D / 2)
+        if rises and on_side and at_front == front:
+            found.append(edge)
+    return found
+
+
+def fillet_body_corners(comp, body) -> None:
+    """Varying blend on the two front uprights; constant CORNER_R at the back."""
+    fillets = comp.features.filletFeatures
+    fillet_input = fillets.createInput()
+    edge_sets = fillet_input.edgeSetInputs
+    for edge in upright_edges(body, front=True):
+        rising = edge.startVertex.geometry.y < edge.endVertex.geometry.y
+        stops = sorted((pos if rising else 1.0 - pos, radius) for pos, radius in FRONT_CORNER_RADII)
+        single = adsk.core.ObjectCollection.create()
+        single.add(edge)
+        edge_set = edge_sets.addVariableRadiusEdgeSet(
+            single, value(stops[0][1]), value(stops[-1][1]), False
+        )
+        edge_set.setMidRadii(
+            [value(radius) for _, radius in stops[1:-1]],
+            [adsk.core.ValueInput.createByReal(pos) for pos, _ in stops[1:-1]],
+        )
+    back = adsk.core.ObjectCollection.create()
+    for edge in upright_edges(body, front=False):
+        back.add(edge)
+    edge_sets.addConstantRadiusEdgeSet(back, value(CORNER_R), False)
+    fillets.add(fillet_input)
+
+
+def value(mm: float):
+    return adsk.core.ValueInput.createByReal(cm(mm))
+
+
 def shell_open_bottom(comp, body, thickness: float) -> None:
     faces = adsk.core.ObjectCollection.create()
     for face in find_faces(body, "y", -1.0):
@@ -204,9 +251,13 @@ def smallest_profile(sketch):
 
 
 def front_faces(body):
-    """Forward-facing planar faces, largest first."""
+    """Forward-facing planar faces, frontmost first.
+
+    Ordering by position, not area: the inner back wall also faces +Z and can
+    be the larger of the two once the front corners grow.
+    """
     faces = find_faces(body, "z", 1.0)
-    return sorted(faces, key=lambda face: face.area, reverse=True)
+    return sorted(faces, key=lambda face: face.boundingBox.maxPoint.z, reverse=True)
 
 
 def cut_on_face(comp, body, face, width: float, height: float, depth: float, offset_y: float = 0.0):
@@ -317,7 +368,7 @@ def build_body(builder: Builder, comp):
         (bottom, -BASE_D),
     ]
     body = builder.side_profile(-BASE_W / 2, outer_profile, BASE_W, NEW)
-    fillet_corner_edges(comp, body, CORNER_R)
+    fillet_body_corners(comp, body)
     fillet_top_edges(comp, body, TOP_R)
 
     # Cavity: the front wall keeps 4 mm measured square to the leaning face.
@@ -480,6 +531,9 @@ def run(context):
         export(design, base, "stand_base.3mf")
         export(design, body, "stand_body.3mf")
         log("plinth {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
+        log("front uprights {} (fraction, mm), back uprights {} mm, top edge {} mm".format(
+            FRONT_CORNER_RADII, CORNER_R, TOP_R
+        ))
         log("body {} x {} x {} mm, {} mm walls, front leaning {} mm ({:.1f} deg)".format(
             BASE_W, BODY_H, BASE_D, WALL, FRONT_LEAN,
             math.degrees(math.atan2(FRONT_LEAN, BODY_H)),
