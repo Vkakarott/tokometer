@@ -34,6 +34,12 @@ MODULE_W, MODULE_H = 27.3, 27.8
 GLASS_W, GLASS_H, GLASS_T = 26.7, 19.3, 1.2
 GLASS_OFFSET_Y = -2.0  # the glass sits below centre, away from the pin header
 MODULE_FRONT_GAP = 2.0  # from the front edge of the base to the module
+DISPLAY_LIFT = 4.0  # the module floats this far above the base
+
+# --- Frame around the display
+FRAME_W = 0.5  # band width; thin for a 0.4 nozzle, raise it if it breaks
+FRAME_CLEARANCE = 0.15
+FRAME_R = 1.5  # outer corner radius
 
 LOG_PATH = "/tmp/tokometer_stand.log"
 EXPORT_DIR = "/Users/lucas/Documents/Projetos/Pessoal/harware/tokEsp/hardware/case"
@@ -51,6 +57,25 @@ def log(message: str) -> None:
     """Fusion swallows stdout, and a message box would block the script."""
     with open(LOG_PATH, "a") as handle:
         handle.write(message + "\n")
+
+
+def rounded_rect(sketch, x0: float, y0: float, x1: float, y1: float, radius: float) -> None:
+    """Rectangle with filleted corners, drawn in sketch space."""
+    lines = sketch.sketchCurves.sketchLines.addTwoPointRectangle(
+        adsk.core.Point3D.create(cm(x0), cm(y0), 0),
+        adsk.core.Point3D.create(cm(x1), cm(y1), 0),
+    )
+    arcs = sketch.sketchCurves.sketchArcs
+    for index in range(4):
+        first = lines.item(index)
+        second = lines.item((index + 1) % 4)
+        arcs.addFillet(
+            first,
+            first.endSketchPoint.geometry,
+            second,
+            second.startSketchPoint.geometry,
+            cm(radius),
+        )
 
 
 class Builder:
@@ -195,9 +220,32 @@ def build_base(builder: Builder):
     return builder.slab(0.0, -half, 0.0, half, -BASE_SIDE, BASE_T, NEW)
 
 
+def build_display_frame(builder: Builder, comp):
+    """Thin band around the module, the first piece of the future face."""
+    bottom = BASE_T + DISPLAY_LIFT
+    inner_half_w = MODULE_W / 2 + FRAME_CLEARANCE
+    outer_half_w = inner_half_w + FRAME_W
+    inner_bottom = bottom - FRAME_CLEARANCE
+    inner_top = bottom + MODULE_H + FRAME_CLEARANCE
+
+    sketch = comp.sketches.add(
+        builder._offset_plane(comp.xYConstructionPlane, -MODULE_FRONT_GAP - PCB_T)
+    )
+    rounded_rect(sketch, -outer_half_w, inner_bottom - FRAME_W, outer_half_w, inner_top + FRAME_W, FRAME_R)
+    rounded_rect(sketch, -inner_half_w, inner_bottom, inner_half_w, inner_top, max(FRAME_R - FRAME_W, 0.2))
+
+    ring = min(sketch.profiles, key=lambda profile: profile.areaProperties().area)
+    extrudes = comp.features.extrudeFeatures
+    ext_input = extrudes.createInput(ring, NEW)
+    ext_input.setDistanceExtent(
+        False, adsk.core.ValueInput.createByReal(cm(PCB_T + GLASS_T + FRAME_CLEARANCE))
+    )
+    return extrudes.add(ext_input).bodies.item(0)
+
+
 def build_display_mock(builder: Builder):
     """The OLED module standing on the base, glass facing front."""
-    bottom = BASE_T
+    bottom = BASE_T + DISPLAY_LIFT
     module = builder.panel(
         -MODULE_FRONT_GAP - PCB_T,
         -MODULE_W / 2,
@@ -243,13 +291,16 @@ def run(context):
         fillet_corner_edges(comp, base, CORNER_R)
         display = build_display_mock(builder)
         display.name = "mock_display"
+        frame = build_display_frame(builder, comp)
+        frame.name = "display_frame"
         app.activeViewport.fit()
 
         export(design, base, "stand_base.3mf")
         log("plinth {} x {} x {} mm".format(BASE_SIDE, BASE_T, BASE_SIDE))
-        log("display mock {} x {} mm standing at the front, glass {} x {} mm".format(
-            MODULE_W, MODULE_H, GLASS_W, GLASS_H
+        log("display mock {} x {} mm, lifted {} mm above the base".format(
+            MODULE_W, MODULE_H, DISPLAY_LIFT
         ))
+        log("frame band {} mm wide, corner radius {} mm".format(FRAME_W, FRAME_R))
     except Exception:
         import traceback
 
