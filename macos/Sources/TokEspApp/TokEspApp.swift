@@ -18,6 +18,9 @@ struct TokEspApp: App {
                 MenuActionRow(title: "Configurar provedores", symbol: "slider.horizontal.3") {
                     appDelegate.showOnboarding()
                 }
+                MenuActionRow(title: "Conectar display", symbol: "display") {
+                    appDelegate.showDisplayPairing()
+                }
 
                 Divider()
                     .padding(.vertical, 4)
@@ -96,6 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         refresh: { [weak self] in await self?.polling.refresh() },
         finish: { [weak self] in self?.notch.show() }
     )
+    lazy var displayPairing = DisplayPairingPanelController()
     private let instanceLock = SingleInstanceLock()
     private var isPrimaryInstance = false
 
@@ -123,6 +127,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func showOnboarding() {
         onboarding.show()
+    }
+
+    func showDisplayPairing() {
+        displayPairing.show()
     }
 }
 
