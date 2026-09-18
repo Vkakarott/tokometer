@@ -1,14 +1,19 @@
-"""Generates the tokometer desk stand, one part at a time.
+"""Generates the tokometer desk stand: a retro-computer shell on a plinth.
 
-Built in steps instead of as a closed box: a solid base first, with the board
-and the OLED module added on top later. Run inside Fusion (Scripts and Add-Ins,
-or the Fusion MCP); it builds into the active scratch design and rebuilds in
-place on every run.
+Built in steps. The cover is an extruded side profile (front leaning back, flat
+top, straight back), filleted and then shelled to a 2 mm wall, open at the
+bottom. The display window and its bezel are cut on the leaning face, so the
+screen tilts back like the reference. The plinth carries four feet.
+
+Run inside Fusion (Scripts and Add-Ins, or the Fusion MCP). It always builds in
+a fresh scratch document: deleting bodies breaks the MCP, which holds
+references across the call and rolls the timeline back when it fails. Check
+LOG_PATH and the exported files rather than the tool's reply.
 
 All dimensions are millimetres; Fusion's API works in centimetres, so every
 value goes through `cm()`. Coordinates: X to the viewer's right, Y up,
-Z towards the viewer. The base sits on Y = 0 and is centred on X = 0, with its
-front edge on Z = 0 growing towards -Z.
+Z towards the viewer. The stand stands on Y = 0, centred on X = 0, with its
+front face on Z = 0 and the body growing towards -Z.
 """
 
 import adsk.core
@@ -17,25 +22,30 @@ import adsk.fusion
 # --- Board: ESP32 DevKit 30-pin (ESP-WROOM-32), USB-C on a short edge
 BOARD_L, BOARD_W = 51.5, 28.5
 
-# --- Base: square, sized by the board's longest side plus a skirt
+# --- Plinth
 PADDING = 3.0
-BASE_T = 8.0  # tall enough to read as a plinth under the cube
-
-CORNER_R = 6.0  # rounded corners; the board still clears up to about 14 mm
+BASE_T = 8.0
+CORNER_R = 6.0  # the board still clears up to about 14 mm
 BASE_SIDE = BOARD_L + 2 * PADDING
-BASE_W = BASE_SIDE
-BASE_D = BASE_SIDE
 
-# --- Display module (0.96" SSD1306), drawn only as a reference body
-MODULE_W, MODULE_H, MODULE_PCB_T = 27.3, 27.8, 1.6
-GLASS_W, GLASS_H, GLASS_T = 26.7, 19.3, 1.2
-GLASS_OFFSET_Y = -2.0  # the glass sits below centre, away from the pin header
-WINDOW_MARGIN = 0.5  # the frame overlaps the glass edge by this much
-SHOW_MODULE = False  # reference body, handy while judging proportions
+# --- Feet
+FOOT_D, FOOT_H, FOOT_INSET = 8.0, 2.5, 9.0
 
-# --- Cover: a cube shell standing on the base, open at the bottom
+# --- Cover
+COVER_H = BASE_SIDE  # the cube proportion of the first sketch
 COVER_WALL = 2.0
-COVER_H = BASE_SIDE  # a cube: the same side as the base footprint
+FRONT_LEAN = 10.0  # how far the top of the front face sits behind its bottom
+
+# --- Display module (0.96" SSD1306) and its opening
+GLASS_W, GLASS_H = 26.7, 19.3
+WINDOW_MARGIN = 0.5  # the frame overlaps the glass edge by this much
+WINDOW_W, WINDOW_H = GLASS_W - 2 * WINDOW_MARGIN, GLASS_H - 2 * WINDOW_MARGIN
+BEZEL_MARGIN, BEZEL_DEPTH = 4.0, 2.5  # recessed frame around the window
+
+# --- Back
+USB_SLOT = (13.0, 7.0)
+USB_CENTER_Y = BASE_T + 12.0
+BACK_PANEL_INSET, BACK_PANEL_DEPTH = 7.0, 0.8
 
 LOG_PATH = "/tmp/tokometer_stand.log"
 EXPORT_DIR = "/Users/lucas/Documents/Projetos/Pessoal/harware/tokEsp/hardware/case"
@@ -61,67 +71,84 @@ class Builder:
     def __init__(self, comp: adsk.fusion.Component) -> None:
         self.comp = comp
 
-    def _plane_at_y(self, y: float) -> adsk.fusion.ConstructionPlane:
+    def _offset_plane(self, base_plane, distance: float) -> adsk.fusion.ConstructionPlane:
         planes = self.comp.constructionPlanes
         plane_input = planes.createInput()
-        plane_input.setByOffset(
-            self.comp.xZConstructionPlane, adsk.core.ValueInput.createByReal(cm(y))
-        )
+        plane_input.setByOffset(base_plane, adsk.core.ValueInput.createByReal(cm(distance)))
         return planes.add(plane_input)
 
-    def slab(self, y: float, x0: float, z0: float, x1: float, z1: float, height: float, op, target=None):
-        """Footprint on the horizontal plane at y, extruded `height` upwards."""
-        sketch = self.comp.sketches.add(self._plane_at_y(y))
+    def _extrude(self, profile, distance: float, op, target=None):
+        extrudes = self.comp.features.extrudeFeatures
+        ext_input = extrudes.createInput(profile, op)
+        ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(distance)))
+        if target is not None and op != NEW:
+            ext_input.participantBodies = [target]
+        feature = extrudes.add(ext_input)
+        return feature.bodies.item(0) if op == NEW else target
+
+    def slab(self, y, x0, z0, x1, z1, height, op, target=None):
+        """Footprint on the horizontal plane at y, extruded upwards."""
+        sketch = self.comp.sketches.add(self._offset_plane(self.comp.xZConstructionPlane, y))
         # On the XZ plane the sketch Y axis runs along -Z of the model.
         sketch.sketchCurves.sketchLines.addTwoPointRectangle(
             adsk.core.Point3D.create(cm(x0), cm(-z0), 0),
             adsk.core.Point3D.create(cm(x1), cm(-z1), 0),
         )
-        extrudes = self.comp.features.extrudeFeatures
-        ext_input = extrudes.createInput(sketch.profiles.item(0), op)
-        ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(height)))
-        if target is not None and op != NEW:
-            ext_input.participantBodies = [target]
-        feature = extrudes.add(ext_input)
-        return feature.bodies.item(0) if op == NEW else target
+        return self._extrude(sketch.profiles.item(0), height, op, target)
 
-    def _plane_at_z(self, z: float) -> adsk.fusion.ConstructionPlane:
-        planes = self.comp.constructionPlanes
-        plane_input = planes.createInput()
-        plane_input.setByOffset(
-            self.comp.xYConstructionPlane, adsk.core.ValueInput.createByReal(cm(z))
-        )
-        return planes.add(plane_input)
-
-    def panel(self, z: float, x0: float, y0: float, x1: float, y1: float, depth: float, op, target=None):
-        """Upright rectangle on the plane at z, extruded `depth` towards +Z."""
-        sketch = self.comp.sketches.add(self._plane_at_z(z))
+    def panel(self, z, x0, y0, x1, y1, depth, op, target=None):
+        """Upright rectangle on the plane at z, extruded towards +Z."""
+        sketch = self.comp.sketches.add(self._offset_plane(self.comp.xYConstructionPlane, z))
         sketch.sketchCurves.sketchLines.addTwoPointRectangle(
             adsk.core.Point3D.create(cm(x0), cm(y0), 0),
             adsk.core.Point3D.create(cm(x1), cm(y1), 0),
         )
-        extrudes = self.comp.features.extrudeFeatures
-        ext_input = extrudes.createInput(sketch.profiles.item(0), op)
-        ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(depth)))
-        if target is not None and op != NEW:
-            ext_input.participantBodies = [target]
-        feature = extrudes.add(ext_input)
-        return feature.bodies.item(0) if op == NEW else target
+        return self._extrude(sketch.profiles.item(0), depth, op, target)
+
+    def side_profile(self, x: float, points, width: float, op, target=None):
+        """Closed polyline on the YZ plane at x, extruded along +X."""
+        sketch = self.comp.sketches.add(self._offset_plane(self.comp.yZConstructionPlane, x))
+        lines = sketch.sketchCurves.sketchLines
+        # On the YZ plane the sketch X axis runs along model -Z and sketch Y
+        # along model +Y, so a (y, z) point maps to (-z, y).
+        sketch_points = [adsk.core.Point3D.create(cm(-z), cm(y), 0) for y, z in points]
+        for start, end in zip(sketch_points, sketch_points[1:] + sketch_points[:1]):
+            lines.addByTwoPoints(start, end)
+        return self._extrude(sketch.profiles.item(0), width, op, target)
+
+    def cylinder(self, y: float, x: float, z: float, diameter: float, height: float, op, target=None):
+        sketch = self.comp.sketches.add(self._offset_plane(self.comp.xZConstructionPlane, y))
+        sketch.sketchCurves.sketchCircles.addByCenterRadius(
+            adsk.core.Point3D.create(cm(x), cm(-z), 0), cm(diameter / 2)
+        )
+        return self._extrude(sketch.profiles.item(0), height, op, target)
 
 
-def round_corners(comp: adsk.fusion.Component, body, radius: float) -> None:
-    """Fillets the four upright corner edges, leaving cut-outs sharp."""
-    half = BASE_SIDE / 2
+def find_faces(body, axis: str, sign: float):
+    """Planar faces whose outward normal points along the given axis."""
+    found = []
+    for face in body.faces:
+        geometry = face.geometry
+        if geometry.objectType != adsk.core.Plane.classType():
+            continue
+        normal = geometry.normal
+        value = {"x": normal.x, "y": normal.y, "z": normal.z}[axis]
+        if value * sign > 0.7:
+            found.append(face)
+    return found
+
+
+def fillet_corner_edges(comp, body, radius: float) -> None:
+    """Fillets the four upright corner edges: those on a side wall that rise."""
     edges = adsk.core.ObjectCollection.create()
     for edge in body.edges:
         geometry = edge.geometry
         if geometry.objectType != adsk.core.Line3D.classType():
             continue
         start, end = geometry.startPoint, geometry.endPoint
-        upright = abs(start.x - end.x) < 1e-6 and abs(start.z - end.z) < 1e-6
-        at_side = abs(abs(start.x) - cm(half)) < 1e-6
-        at_face = abs(start.z) < 1e-6 or abs(start.z + cm(BASE_SIDE)) < 1e-6
-        if upright and at_side and at_face:
+        rises = abs(start.y - end.y) > cm(1.0)
+        on_side = abs(abs(start.x) - cm(BASE_SIDE / 2)) < 1e-6 and abs(abs(end.x) - cm(BASE_SIDE / 2)) < 1e-6
+        if rises and on_side:
             edges.add(edge)
     if not edges.count:
         return
@@ -131,65 +158,101 @@ def round_corners(comp: adsk.fusion.Component, body, radius: float) -> None:
     fillets.add(fillet_input)
 
 
+def shell_open_bottom(comp, body, thickness: float) -> None:
+    faces = adsk.core.ObjectCollection.create()
+    for face in find_faces(body, "y", -1.0):
+        faces.add(face)
+    shells = comp.features.shellFeatures
+    shell_input = shells.createInput(faces, False)
+    shell_input.insideThickness = adsk.core.ValueInput.createByReal(cm(thickness))
+    shells.add(shell_input)
+
+
+def smallest_profile(sketch):
+    """A rectangle drawn inside a face yields the rectangle and the ring around
+    it; the rectangle is the smaller one."""
+    return min(sketch.profiles, key=lambda profile: profile.areaProperties().area)
+
+
+def front_faces(body):
+    """Forward-facing planar faces, largest first."""
+    faces = find_faces(body, "z", 1.0)
+    return sorted(faces, key=lambda face: face.area, reverse=True)
+
+
+def cut_on_face(comp, body, face, width: float, height: float, depth: float, offset_y: float = 0.0):
+    """Rectangle centred on a face, cut into the body along the face normal."""
+    sketch = comp.sketches.add(face)
+    box = face.boundingBox
+    center = adsk.core.Point3D.create(
+        (box.minPoint.x + box.maxPoint.x) / 2,
+        (box.minPoint.y + box.maxPoint.y) / 2,
+        (box.minPoint.z + box.maxPoint.z) / 2,
+    )
+    local = sketch.modelToSketchSpace(center)
+    corner_a = adsk.core.Point3D.create(local.x - cm(width / 2), local.y - cm(height / 2) + cm(offset_y), 0)
+    corner_b = adsk.core.Point3D.create(local.x + cm(width / 2), local.y + cm(height / 2) + cm(offset_y), 0)
+    sketch.sketchCurves.sketchLines.addTwoPointRectangle(corner_a, corner_b)
+
+    extrudes = comp.features.extrudeFeatures
+    ext_input = extrudes.createInput(smallest_profile(sketch), CUT)
+    ext_input.setDistanceExtent(False, adsk.core.ValueInput.createByReal(cm(-depth)))
+    ext_input.participantBodies = [body]
+    extrudes.add(ext_input)
+
+
 def build_base(builder: Builder):
-    """Plain solid plate: the board footprint plus a skirt on every side."""
-    return builder.slab(0.0, -BASE_W / 2, 0.0, BASE_W / 2, -BASE_D, BASE_T, NEW)
-
-
-def build_module_reference(builder: Builder):
-    """The OLED module laid on the front face, to judge how much of it it takes."""
-    face_center_y = BASE_T + COVER_H / 2
-    module = builder.panel(
-        0.0,
-        -MODULE_W / 2,
-        face_center_y - MODULE_H / 2,
-        MODULE_W / 2,
-        face_center_y + MODULE_H / 2,
-        MODULE_PCB_T,
-        NEW,
-    )
-    glass_center_y = face_center_y + GLASS_OFFSET_Y
-    builder.panel(
-        MODULE_PCB_T,
-        -GLASS_W / 2,
-        glass_center_y - GLASS_H / 2,
-        GLASS_W / 2,
-        glass_center_y + GLASS_H / 2,
-        GLASS_T,
-        JOIN,
-        module,
-    )
-    return module
-
-
-def build_cover(builder: Builder):
-    """Hollow cube sitting on the base: four walls and a roof, open below."""
+    """Plinth plus four feet."""
     half = BASE_SIDE / 2
-    cover = builder.slab(BASE_T, -half, 0.0, half, -BASE_SIDE, COVER_H, NEW)
+    base = builder.slab(FOOT_H, -half, 0.0, half, -BASE_SIDE, BASE_T, NEW)
+    for x in (-half + FOOT_INSET, half - FOOT_INSET):
+        for z in (-FOOT_INSET, -BASE_SIDE + FOOT_INSET):
+            builder.cylinder(0.0, x, z, FOOT_D, FOOT_H, JOIN, base)
+    return base
 
-    inner_half = half - COVER_WALL
-    builder.slab(
-        BASE_T,
-        -inner_half,
-        -COVER_WALL,
-        inner_half,
-        -(BASE_SIDE - COVER_WALL),
-        COVER_H - COVER_WALL,
+
+def build_cover(builder: Builder, comp):
+    """Leaning-front shell that sits on the plinth."""
+    bottom = FOOT_H + BASE_T
+    top = bottom + COVER_H
+    profile = [
+        (bottom, 0.0),
+        (top, -FRONT_LEAN),
+        (top, -BASE_SIDE),
+        (bottom, -BASE_SIDE),
+    ]
+    cover = builder.side_profile(-BASE_SIDE / 2, profile, BASE_SIDE, NEW)
+    fillet_corner_edges(comp, cover, CORNER_R)
+    shell_open_bottom(comp, cover, COVER_WALL)
+
+    # The bezel first, then the window through the pocket floor. Both faces are
+    # looked up again, because a cut invalidates the previous face.
+    cut_on_face(
+        comp, cover, front_faces(cover)[0], WINDOW_W + 2 * BEZEL_MARGIN, WINDOW_H + 2 * BEZEL_MARGIN, BEZEL_DEPTH
+    )
+    cut_on_face(comp, cover, front_faces(cover)[-1], WINDOW_W, WINDOW_H, COVER_WALL + 1.0)
+
+    # Back: the USB-C opening and a shallow panel for a label.
+    builder.panel(
+        -BASE_SIDE,
+        -USB_SLOT[0] / 2,
+        USB_CENTER_Y - USB_SLOT[1] / 2,
+        USB_SLOT[0] / 2,
+        USB_CENTER_Y + USB_SLOT[1] / 2,
+        COVER_WALL,
         CUT,
         cover,
     )
-
-    # Window for the display, centred on the glass rather than on the module.
-    window_center_y = BASE_T + COVER_H / 2 + GLASS_OFFSET_Y
-    window_w = GLASS_W - 2 * WINDOW_MARGIN
-    window_h = GLASS_H - 2 * WINDOW_MARGIN
+    panel_half = BASE_SIDE / 2 - BACK_PANEL_INSET
+    # Starts above the USB opening so the two never touch.
+    panel_bottom = USB_CENTER_Y + USB_SLOT[1] / 2 + 3.0
     builder.panel(
-        0.0,
-        -window_w / 2,
-        window_center_y - window_h / 2,
-        window_w / 2,
-        window_center_y + window_h / 2,
-        -COVER_WALL,
+        -BASE_SIDE,
+        -panel_half,
+        panel_bottom,
+        panel_half,
+        top - BACK_PANEL_INSET,
+        BACK_PANEL_DEPTH,
         CUT,
         cover,
     )
@@ -207,50 +270,24 @@ def run(context):
     try:
         open(LOG_PATH, "w").close()
         design = adsk.fusion.Design.cast(app.activeProduct)
-        # Always build into an empty scratch design. Deleting bodies would break
-        # the Fusion MCP, which holds references across the call and rolls the
-        # timeline back when it fails, so start a fresh document instead.
         if design is None or app.activeDocument.isSaved or design.rootComponent.bRepBodies.count:
             app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
             design = adsk.fusion.Design.cast(app.activeProduct)
+        comp = design.rootComponent
 
-        builder = Builder(design.rootComponent)
+        builder = Builder(comp)
         base = build_base(builder)
         base.name = "stand_base"
-        cover = build_cover(builder)
+        cover = build_cover(builder, comp)
         cover.name = "stand_cover"
-        for body in (base, cover):
-            round_corners(design.rootComponent, body, CORNER_R)
         app.activeViewport.fit()
-
-        if SHOW_MODULE:
-            build_module_reference(builder).name = "reference_display"
 
         export(design, base, "stand_base.3mf")
         export(design, cover, "stand_cover.3mf")
-        log("base {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
-        log("cover {} x {} x {} mm, wall {} mm".format(BASE_SIDE, COVER_H, BASE_SIDE, COVER_WALL))
-        log("assembled height {} mm".format(BASE_T + COVER_H))
-        log(
-            "corner radius {} mm; the board corners sit {} mm from the side walls".format(
-                CORNER_R, round((BASE_SIDE - BOARD_W) / 2, 2)
-            )
-        )
-        log(
-            "module {} x {} mm covers {:.0f}% of the {} mm face width, {:.0f}% of its height, {:.0f}% of its area".format(
-                MODULE_W,
-                MODULE_H,
-                100 * MODULE_W / BASE_SIDE,
-                BASE_SIDE,
-                100 * MODULE_H / BASE_SIDE,
-                100 * MODULE_W * MODULE_H / (BASE_SIDE * BASE_SIDE),
-            )
-        )
-        log(
-            "window {} x {} mm, centred {} mm below the face centre".format(
-                GLASS_W - 2 * WINDOW_MARGIN, GLASS_H - 2 * WINDOW_MARGIN, abs(GLASS_OFFSET_Y)
-            )
-        )
+        log("plinth {} x {} x {} mm on {} mm feet".format(BASE_SIDE, BASE_T, BASE_SIDE, FOOT_H))
+        log("cover {} mm tall, front leaning {} mm, wall {} mm".format(COVER_H, FRONT_LEAN, COVER_WALL))
+        log("window {} x {} mm in a {} mm bezel".format(WINDOW_W, WINDOW_H, BEZEL_DEPTH))
+        log("total height {} mm".format(FOOT_H + BASE_T + COVER_H))
     except Exception:
         import traceback
 
