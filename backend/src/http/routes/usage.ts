@@ -21,7 +21,10 @@ export function registerUsage(server: FastifyInstance, deps: ServerDeps): void {
     return reply.send(viewFor(deps, identity));
   });
 
-  // No auth today: there is no Anthropic credential to protect, and the /web is
-  // LAN-only. This gains a session check when accounts arrive.
-  server.get('/usage/web', async (_request, reply) => reply.send(viewFor(deps, DEFAULT_IDENTITY)));
+  server.get('/usage/local', async (request, reply) => {
+    if (!isLoopback(request.ip)) return reply.code(403).send({ error: 'local_only' });
+    return reply.send(viewFor(deps, DEFAULT_IDENTITY));
+  });
 }
+
+const isLoopback = (ip: string): boolean => ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';

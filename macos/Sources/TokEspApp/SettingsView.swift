@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var preferences: AppPreferences
+    @State private var pairingCode = ""
+    @State private var pairingStatus: String?
 
     var body: some View {
         Form {
@@ -35,6 +37,18 @@ struct SettingsView: View {
                     }
                 }
             }
+
+            Section("Display") {
+                TextField("Código do dispositivo", text: $pairingCode)
+                Button("Parear display") {
+                    Task { await approvePairing() }
+                }
+                if let pairingStatus {
+                    Text(pairingStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .formStyle(.grouped)
         .frame(width: 460, height: 340)
@@ -49,5 +63,15 @@ struct SettingsView: View {
             get: { preferences.isVisible(provider) },
             set: { preferences.setVisible($0, for: provider) }
         )
+    }
+
+    private func approvePairing() async {
+        do {
+            try await DevicePairingService().approve(code: pairingCode)
+            pairingCode = ""
+            pairingStatus = "Display pareado com sucesso."
+        } catch {
+            pairingStatus = error.localizedDescription
+        }
     }
 }

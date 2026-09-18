@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Installs the tokometer backend and web as launchd agents that start with the
-# Mac and restart if they crash.
+# Installs the tokometer backend as a launchd agent that starts with the Mac.
 #
 # Both run from a copy outside the repository on purpose: macOS privacy
 # protection blocks launchd agents from reading files inside ~/Documents.
-# Re-run after changing the backend or the web to deploy the new version. The
+# Re-run after changing the backend to deploy the new version. The
 # backend state (pairings and last usage) is never overwritten.
 set -euo pipefail
 
@@ -12,10 +11,6 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALL_DIR="${TOKESP_INSTALL_DIR:-$HOME/.local/share/tokesp}"
 DOMAIN="gui/$(id -u)"
 NODE_BIN="$(command -v node)"
-
-build_web() {
-  (cd "$REPO_DIR/web" && npm run build >/dev/null)
-}
 
 deploy_backend() {
   local target="$INSTALL_DIR/backend"
@@ -27,14 +22,6 @@ deploy_backend() {
   if [ ! -f "$target/state.json" ] && [ -f "$REPO_DIR/backend/state.json" ]; then
     install -m 600 "$REPO_DIR/backend/state.json" "$target/state.json"
   fi
-}
-
-deploy_web() {
-  local target="$INSTALL_DIR/web"
-  mkdir -p "$target"
-  rsync -a --delete \
-    "$REPO_DIR/web/package.json" "$REPO_DIR/web/vite.config.ts" "$REPO_DIR/web/dist" "$REPO_DIR/web/node_modules" \
-    "$target/"
 }
 
 # $1: label, $2: working directory, $3: log name, $4...: program arguments.
@@ -75,18 +62,13 @@ load_agent() {
 [ -n "$NODE_BIN" ] || { echo "node não encontrado no PATH" >&2; exit 1; }
 mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
 
-build_web
 unload_agent com.tokesp.backend
 unload_agent com.tokesp.web
 deploy_backend
-deploy_web
 
 write_plist com.tokesp.backend "$INSTALL_DIR/backend" tokesp-backend \
   "$NODE_BIN" --env-file=.env src/main.ts
-write_plist com.tokesp.web "$INSTALL_DIR/web" tokesp-web \
-  "$NODE_BIN" node_modules/vite/bin/vite.js preview
 load_agent com.tokesp.backend
-load_agent com.tokesp.web
 
-echo "Backend e web instalados em $INSTALL_DIR"
-echo "Logs: ~/Library/Logs/tokesp-backend.log e ~/Library/Logs/tokesp-web.log"
+echo "Backend instalado em $INSTALL_DIR"
+echo "Logs: ~/Library/Logs/tokesp-backend.log"

@@ -74,7 +74,7 @@ test('rejects ingest with a null percentage instead of storing 0', async () => {
   });
   assert.equal(response.statusCode, 400);
 
-  const usage = await server.inject({ method: 'GET', url: '/usage/web' });
+  const usage = await server.inject({ method: 'GET', url: '/usage/local' });
   assert.equal(usage.json().providers.claude.hasData, false);
 });
 
@@ -108,7 +108,7 @@ test('serves claude and codex side by side without mixing them', async () => {
   });
   assert.equal(codex.statusCode, 204);
 
-  const { providers } = (await server.inject({ method: 'GET', url: '/usage/web' })).json();
+  const { providers } = (await server.inject({ method: 'GET', url: '/usage/local' })).json();
   assert.equal(providers.claude.windows[0].usedPercentage, 23.5);
   assert.equal(providers.claude.context.inputTokens, 12_500);
   assert.equal(providers.codex.windows[0].usedPercentage, 38);
@@ -220,9 +220,9 @@ test('reports expired_token once the code TTL passes', async () => {
   assert.equal(response.json().error, 'expired_token');
 });
 
-test('serves the web view without a token', async () => {
+test('serves the local diagnostic view without a token', async () => {
   const server = build();
-  const response = await server.inject({ method: 'GET', url: '/usage/web' });
+  const response = await server.inject({ method: 'GET', url: '/usage/local' });
   assert.equal(response.statusCode, 200);
   assert.equal(response.json().providers.claude.hasData, false);
   assert.equal(response.json().providers.codex.hasData, false);
