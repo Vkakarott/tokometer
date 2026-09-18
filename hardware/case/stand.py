@@ -27,7 +27,8 @@ PADDING = 3.0
 BASE_T = 8.0
 BASE_W = 52.0
 BASE_D = BOARD_L + 2 * PADDING
-CORNER_R = 3.0  # upright corners
+CORNER_R = 3.0  # upright corners of the body
+BASE_R = 2.0  # the plinth is squarer than the body
 TOP_R = 2.0  # softer edge where the top meets the walls
 
 # --- Body
@@ -347,7 +348,7 @@ def run(context):
         builder = Builder(comp)
         base = build_base(builder)
         base.name = "stand_base"
-        fillet_corner_edges(comp, base, CORNER_R)
+        fillet_corner_edges(comp, base, BASE_R)
         display = build_display_mock(builder)
         display.name = "mock_display"
         body = build_body(builder, comp)
