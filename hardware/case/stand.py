@@ -29,16 +29,13 @@ PADDING = 3.0
 BASE_T = 8.0
 BASE_W = 52.0
 BASE_D = BOARD_L + 2 * PADDING
-CORNER_R = 1.5  # upright back corners of the body
+CORNER_R = 1.5  # edges of the rear housing: back uprights, top sides and back
 BASE_R = 1.5  # plinth corners
-TOP_R = 1.5  # edge where the top meets the walls
 
-# --- Front uprights: a narrow transition face (rounded bevel), not a big radius.
-# Constant section up the body.
-TRANSITION_FRONT = 4.0  # how far the band eats into the front face
-TRANSITION_SIDE = 3.0  # how far it runs back along the side
-FRONT_BLEND_R = 1.0  # front face into the band
-SIDE_BLEND_R = 1.0  # band into the side
+# --- Macintosh-style edges: a front bezel that wraps round, then a stepped seam.
+BEZEL_EDGE_R = 1.5  # small moulded radius round the front: both uprights and the top
+BEZEL_RETURN = 3.0  # flat return of the front piece onto the sides and top, square to the face
+SEAM_STEP = 0.5  # the rear bucket sits this much inside the front piece, sides and top
 
 # --- Body
 BODY_H = 60.0
@@ -194,22 +191,6 @@ def fillet_corner_edges(comp, body, radius: float) -> None:
     fillets.add(fillet_input)
 
 
-def upright_edges(body, front: bool):
-    """Straight corner edges on the side walls that rise; front or back pair."""
-    found = []
-    for edge in body.edges:
-        geometry = edge.geometry
-        if geometry.objectType != adsk.core.Line3D.classType():
-            continue
-        start, end = geometry.startPoint, geometry.endPoint
-        rises = abs(start.y - end.y) > cm(1.0)
-        on_side = all(abs(abs(point.x) - cm(BASE_W / 2)) < 1e-6 for point in (start, end))
-        at_front = max(start.z, end.z) > -cm(BASE_D / 2)
-        if rises and on_side and at_front == front:
-            found.append(edge)
-    return found
-
-
 def collection(items):
     result = adsk.core.ObjectCollection.create()
     for item in items:
@@ -217,78 +198,58 @@ def collection(items):
     return result
 
 
-def transition_faces(body):
-    """Planar faces facing both forward and sideways: the bevels on the front uprights."""
-    found = []
-    for face in body.faces:
-        geometry = face.geometry
-        if geometry.objectType != adsk.core.Plane.classType():
-            continue
-        normal = geometry.normal
-        if abs(normal.x) > 0.3 and normal.z > 0.3:
-            found.append(face)
-    return found
+def seam_z(y: float) -> float:
+    """Z of the bezel seam at height y: parallel to the leaning face, BEZEL_RETURN behind it."""
+    nz, _ = front_normal()
+    return -FRONT_LEAN * (y - BASE_T) / BODY_H - BEZEL_RETURN / nz
 
 
-def bevel_front_uprights(comp, body) -> None:
-    """Two-distance chamfer on each front upright, flipped if it lands the wrong way round."""
-    for sign in (-1.0, 1.0):
-        for flipped in (False, True):
-            feature = bevel_upright(comp, body, sign, flipped)
-            if abs(bevel_front_width(body, sign) - TRANSITION_FRONT) < 0.05:
-                break
-            feature.deleteMe()
-        else:
-            raise RuntimeError("bevel on the {} upright came out the wrong way".format(sign))
+def step_rear_housing(builder: Builder, body) -> None:
+    """Pulls the sides and top behind the seam in by SEAM_STEP."""
+    bottom, top = BASE_T, BASE_T + BODY_H
+    back = -BASE_D - 1.0
+    for x in (BASE_W / 2 - SEAM_STEP, -BASE_W / 2 - 1.0):
+        side = [(bottom - 1.0, seam_z(bottom - 1.0)), (top + 1.0, seam_z(top + 1.0)), (top + 1.0, back), (bottom - 1.0, back)]
+        builder.side_profile(x, side, SEAM_STEP + 1.0, CUT, body)
+    lid = [(top - SEAM_STEP, seam_z(top - SEAM_STEP)), (top + 1.0, seam_z(top + 1.0)), (top + 1.0, back), (top - SEAM_STEP, back)]
+    builder.side_profile(-BASE_W / 2 - 1.0, lid, BASE_W + 2.0, CUT, body)
 
 
-def bevel_upright(comp, body, sign: float, flipped: bool):
-    """Chamfers the front upright on the side of X given by sign."""
-    edge = next(e for e in upright_edges(body, front=True) if e.startVertex.geometry.x * sign > 0)
-    chamfers = comp.features.chamferFeatures
-    chamfer_input = chamfers.createInput2()
-    chamfer_input.chamferEdgeSets.addTwoDistancesChamferEdgeSet(
-        collection([edge]), value(TRANSITION_FRONT), value(TRANSITION_SIDE), flipped, False
-    )
-    return chamfers.add(chamfer_input)
-
-
-def bevel_front_width(body, sign: float) -> float:
-    """Width the bevel on one side takes off the front face, measured along X."""
-    for face in transition_faces(body):
-        box = face.boundingBox
-        if (box.minPoint.x > 0) == (sign > 0):
-            return round((box.maxPoint.x - box.minPoint.x) / cm(1), 3)
-    return -1.0
-
-
-def blend_bevels(comp, body) -> None:
-    """Small fillets on the two long edges of each bevel band."""
-    front_edges, side_edges = [], []
-    for face in transition_faces(body):
-        for edge in face.edges:
-            start, end = edge.startVertex.geometry, edge.endVertex.geometry
-            if abs(start.y - end.y) < cm(1.0):
-                continue
-            on_side = all(abs(abs(point.x) - cm(BASE_W / 2)) < 1e-6 for point in (start, end))
-            (side_edges if on_side else front_edges).append(edge)
+def round_bezel(comp, body) -> None:
+    """The full rounded edge around the front face: both uprights and the top."""
+    face = front_faces(body)[0]
+    bottom = cm(BASE_T)
+    edges = [
+        edge for edge in face.edges
+        if not all(abs(v.geometry.y - bottom) < 1e-6 for v in (edge.startVertex, edge.endVertex))
+    ]
     fillets = comp.features.filletFeatures
     fillet_input = fillets.createInput()
-    edge_sets = fillet_input.edgeSetInputs
-    edge_sets.addConstantRadiusEdgeSet(collection(front_edges), value(FRONT_BLEND_R), False)
-    edge_sets.addConstantRadiusEdgeSet(collection(side_edges), value(SIDE_BLEND_R), False)
+    fillet_input.edgeSetInputs.addConstantRadiusEdgeSet(collection(edges), value(BEZEL_EDGE_R), True)
     fillets.add(fillet_input)
 
 
-def shape_body_corners(comp, body) -> None:
-    """Bevel and soften the front uprights; the back ones keep a plain CORNER_R."""
-    bevel_front_uprights(comp, body)
-    blend_bevels(comp, body)
+def round_rear_housing(comp, body) -> None:
+    """Tighter edges on the rear housing; the seam step itself stays crisp."""
+    back_z = -cm(BASE_D)
+    edges = []
+    for edge in body.edges:
+        start, end = edge.startVertex.geometry, edge.endVertex.geometry
+        on_back = all(abs(point.z - back_z) < 1e-6 for point in (start, end))
+        rises = abs(start.y - end.y) > cm(1.0)
+        if on_back and (rises or abs(start.y - cm(BASE_T + BODY_H - SEAM_STEP)) < 1e-6):
+            edges.append(edge)  # back uprights and the top-back edge
+    for face in find_faces(body, "y", 1.0):
+        if abs(face.boundingBox.maxPoint.y - cm(BASE_T + BODY_H - SEAM_STEP)) > 1e-6:
+            continue
+        for edge in face.edges:
+            start, end = edge.startVertex.geometry, edge.endVertex.geometry
+            runs_back = abs(start.z - end.z) > cm(1.0)
+            if runs_back:
+                edges.append(edge)  # top-side edges of the rear housing
     fillets = comp.features.filletFeatures
     fillet_input = fillets.createInput()
-    fillet_input.edgeSetInputs.addConstantRadiusEdgeSet(
-        collection(upright_edges(body, front=False)), value(CORNER_R), False
-    )
+    fillet_input.edgeSetInputs.addConstantRadiusEdgeSet(collection(edges), value(CORNER_R), False)
     fillets.add(fillet_input)
 
 
@@ -346,22 +307,6 @@ def cut_on_face(comp, body, face, width: float, height: float, depth: float, off
 def build_base(builder: Builder):
     """Plain plinth standing on the table."""
     return builder.slab(0.0, -BASE_W / 2, 0.0, BASE_W / 2, -BASE_D, BASE_T, NEW)
-
-
-def fillet_top_edges(comp, body, radius: float) -> None:
-    """Softens every edge of the top face; the bottom stays square."""
-    top = BASE_T + BODY_H
-    edges = adsk.core.ObjectCollection.create()
-    for edge in body.edges:
-        points = [edge.startVertex.geometry, edge.endVertex.geometry]
-        if all(abs(point.y - cm(top)) < 1e-6 for point in points):
-            edges.add(edge)
-    if not edges.count:
-        return
-    fillets = comp.features.filletFeatures
-    fillet_input = fillets.createInput()
-    fillet_input.addConstantRadiusEdgeSet(edges, adsk.core.ValueInput.createByReal(cm(radius)), True)
-    fillets.add(fillet_input)
 
 
 def rounded_profile(builder: Builder, comp, z, half_w, center_y, half_h, radius):
@@ -430,19 +375,21 @@ def build_body(builder: Builder, comp):
         (bottom, -BASE_D),
     ]
     body = builder.side_profile(-BASE_W / 2, outer_profile, BASE_W, NEW)
-    shape_body_corners(comp, body)
-    fillet_top_edges(comp, body, TOP_R)
+    step_rear_housing(builder, body)
+    round_bezel(comp, body)
+    round_rear_housing(comp, body)
 
-    # Cavity: the front wall keeps 4 mm measured square to the leaning face.
+    # Cavity: 4 mm front square to the leaning face; WALL behind the seam step elsewhere.
     nz, _ = front_normal()
     front_thickness = PANEL_T / nz
+    side_wall = WALL + SEAM_STEP
     cavity = [
         (bottom, -front_thickness),
-        (top - WALL, -FRONT_LEAN * (top - WALL - bottom) / BODY_H - front_thickness),
-        (top - WALL, -(BASE_D - WALL)),
+        (top - side_wall, -FRONT_LEAN * (top - side_wall - bottom) / BODY_H - front_thickness),
+        (top - side_wall, -(BASE_D - WALL)),
         (bottom, -(BASE_D - WALL)),
     ]
-    builder.side_profile(-BASE_W / 2 + WALL, cavity, BASE_W - 2 * WALL, CUT, body)
+    builder.side_profile(-BASE_W / 2 + side_wall, cavity, BASE_W - 2 * side_wall, CUT, body)
 
     cut_funnel(comp, body)
     return body
@@ -593,10 +540,9 @@ def run(context):
         export(design, base, "stand_base.3mf")
         export(design, body, "stand_body.3mf")
         log("plinth {} x {} x {} mm".format(BASE_W, BASE_T, BASE_D))
-        log("front uprights: bevel {} mm into the front x {} mm into the side, blends {} / {} mm".format(
-            TRANSITION_FRONT, TRANSITION_SIDE, FRONT_BLEND_R, SIDE_BLEND_R
+        log("bezel edge {} mm, wrapping {} mm, seam step {} mm; rear housing edges {} mm".format(
+            BEZEL_EDGE_R, BEZEL_RETURN, SEAM_STEP, CORNER_R
         ))
-        log("back uprights {} mm, top edge {} mm".format(CORNER_R, TOP_R))
         log("body {} x {} x {} mm, {} mm walls, front leaning {} mm ({:.1f} deg)".format(
             BASE_W, BODY_H, BASE_D, WALL, FRONT_LEAN,
             math.degrees(math.atan2(FRONT_LEAN, BODY_H)),
