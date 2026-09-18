@@ -7,7 +7,7 @@ final class DisplayPairingPanelController: NSObject {
 
     override init() {
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 410),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 430),
             styleMask: [.titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -27,6 +27,7 @@ final class DisplayPairingPanelController: NSObject {
 }
 
 private struct DisplayPairingView: View {
+    @StateObject private var wifi = DisplayWifiConnector()
     @State private var pairingCode = ""
     @State private var pairingStatus: String?
     @State private var isPairing = false
@@ -41,12 +42,34 @@ private struct DisplayPairingView: View {
                     .foregroundStyle(.secondary)
             }
 
-            VStack(alignment: .leading, spacing: 14) {
-                PairingStep(number: "1", text: "No display, conecte-se à rede tokEsp-xxxx e abra 192.168.4.1.")
-                PairingStep(number: "2", text: "Escolha o Wi-Fi do local. O display mostrará um código ao conectar.")
-                PairingStep(number: "3", text: "Digite o código abaixo para finalizar.")
+            VStack(alignment: .leading, spacing: 12) {
+                Text("1. Conecte o Mac ao display")
+                    .font(.headline)
+                Text("O tokometer procura a rede tokEsp-xxxx e tenta conectar automaticamente. Depois abre a página de configuração do display.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Button(wifi.isConnectedToDisplay ? "Abrir configuração do display" : "Conectar ao display") {
+                        wifi.connectOrOpenPortal()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(wifi.isConnecting)
+                    Button("Abrir Wi-Fi") {
+                        wifi.openWifiSettings()
+                    }
+                    .buttonStyle(.bordered)
+                }
+                if !wifi.status.isEmpty {
+                    Text(wifi.status)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
+            Divider()
+
+            Text("2. Confirme o código do display")
+                .font(.headline)
             TextField("Código exibido no display", text: $pairingCode)
                 .textFieldStyle(.roundedBorder)
                 .focused($isCodeFocused)
@@ -69,8 +92,11 @@ private struct DisplayPairingView: View {
             }
         }
         .padding(28)
-        .frame(width: 440, height: 410)
-        .onAppear { isCodeFocused = true }
+        .frame(width: 440, height: 430)
+        .onAppear {
+            isCodeFocused = true
+            wifi.refresh()
+        }
     }
 
     private func approvePairing() async {
@@ -82,24 +108,6 @@ private struct DisplayPairingView: View {
             pairingStatus = "Display pareado com sucesso."
         } catch {
             pairingStatus = error.localizedDescription
-        }
-    }
-}
-
-private struct PairingStep: View {
-    let number: String
-    let text: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text(number)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.secondary)
-                .frame(width: 20, height: 20)
-                .background(.quaternary, in: Circle())
-            Text(text)
-                .font(.subheadline)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
