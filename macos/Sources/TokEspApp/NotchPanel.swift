@@ -65,7 +65,7 @@ final class NotchPanelController: NSObject {
         isExpanded = expanded
         let size = expanded ? PanelSize.expanded : PanelSize.compact
         guard let screen = targetScreen() else { return }
-        let screenFrame = screen.visibleFrame
+        let screenFrame = positioningFrame(for: screen)
         let y = preferences.tokonotchPosition.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
         let frame = NSRect(
             x: horizontalOrigin(in: screenFrame, width: size.width),
@@ -82,7 +82,7 @@ final class NotchPanelController: NSObject {
 
     private func position() {
         guard let screen = targetScreen() else { return }
-        let screenFrame = screen.visibleFrame
+        let screenFrame = positioningFrame(for: screen)
         let size = panel.frame.size
         let y = preferences.tokonotchPosition.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
         panel.setFrameOrigin(NSPoint(x: horizontalOrigin(in: screenFrame, width: size.width), y: y))
@@ -94,6 +94,14 @@ final class NotchPanelController: NSObject {
             return selected
         }
         return NSScreen.screens.first
+    }
+
+    private func positioningFrame(for screen: NSScreen) -> NSRect {
+        guard preferences.tokonotchPosition.edge == .top,
+              screen.displayID != NSScreen.screens.first?.displayID else {
+            return screen.visibleFrame
+        }
+        return screen.frame
     }
 
     private func horizontalOrigin(in frame: NSRect, width: CGFloat) -> CGFloat {
