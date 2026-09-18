@@ -27,9 +27,9 @@ PADDING = 3.0
 BASE_T = 8.0
 BASE_W = 52.0
 BASE_D = BOARD_L + 2 * PADDING
-CORNER_R = 2.0  # upright corners of the body, matching the plinth
-BASE_R = 2.0  # the plinth is squarer than the body
-TOP_R = 2.0  # softer edge where the top meets the walls
+CORNER_R = 1.5  # upright corners of the body
+BASE_R = 1.5  # plinth corners
+TOP_R = 1.5  # edge where the top meets the walls
 
 # --- Body
 BODY_H = 60.0
