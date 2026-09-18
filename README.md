@@ -1,28 +1,28 @@
 # tokEsp
 
 Mostra quanto das suas assinaturas **Claude** (Pro/Max) e **Codex** (ChatGPT)
-já foi consumido nas janelas de 5 horas e 7 dias — num dashboard web e num
-display OLED.
+já foi consumido nas janelas de 5 horas e 7 dias — num notch nativo do macOS e
+num display OLED opcional.
 
 **Não existe endpoint público de consumo de assinatura.** Os collectors leem o
 uso de cada conta pelas mesmas rotas internas que o Claude Code e o Codex usam,
 a cada 2 minutos (e, no Claude, também depois de cada resposta pelo hook
 `Stop`). Essas rotas não são documentadas e podem mudar; veja
-`collector/README.md`. O collector empurra; o backend guarda por provedor; o
-web e o ESP32 leem.
+`collector/README.md`. O app macOS consulta as fontes diretamente; o backend
+permanece como ponte temporária para o ESP32.
 
 ```
-Claude / Codex ──collector──► backend API ──► web (/ e /pair)
-                                   └──────► ESP32 (Bearer, via device flow)
+Claude / Codex ──► app macOS (notch)
+collector ───────► backend API ──► ESP32 (durante a migração)
 ```
 
 ## Componentes
 
 | Pasta | O que é |
 |---|---|
-| `backend/` | Node + TypeScript. Guarda o snapshot e expõe a API para web e device. |
+| `backend/` | Node + TypeScript. Ponte de snapshots e API do device. |
 | `collector/` | Envia o uso das contas Claude e Codex ao backend (hook `Stop` + launchd). A fonte do dado. |
-| `web/` | Vite + React. Dashboard e aprovação de pareamento. |
+| `macos/` | Aplicativo nativo: notch, coleta local e aprovação de pareamento. |
 | `firmware/` | ESP32 DevKit + OLED I2C externo (ou Heltec WiFi LoRa 32 V2). Consome `docs/device-api.md`. |
 
 ## Rodar
@@ -32,38 +32,32 @@ Claude / Codex ──collector──► backend API ──► web (/ e /pair)
 cd backend && npm install && cp .env.example .env
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 # cole o valor em TOKESP_COLLECTOR_TOKEN no .env
-# ajuste TOKESP_VERIFICATION_URI para http://<NOME-DA-MAQUINA>.local:43111/pair
 npm run dev   # porta 43110
 
-# web
-cd web && npm install && npm run dev   # porta 43111
-# o painel fica em / e o pareamento em /pair; o backend não serve o artefato buildado.
+# app macOS
+cd macos && swift run TokEsp
 
 # collector: veja collector/README.md
 ```
 
 ## Rodar como serviço (macOS)
 
-Para backend e web subirem sozinhos com o Mac e reiniciarem se caírem:
+Para o backend subir sozinho com o Mac e reiniciar se cair:
 
 ```bash
 ./services/install-services.sh
 ```
 
-O script gera o build do web, copia backend e web para
-`~/.local/share/tokesp` e carrega os agentes `com.tokesp.backend` e
-`com.tokesp.web` no launchd. A cópia é necessária porque o macOS impede agentes
+O script copia o backend para `~/.local/share/tokesp` e carrega o agente
+`com.tokesp.backend` no launchd. A cópia é necessária porque o macOS impede agentes
 do launchd de ler arquivos dentro de `~/Documents`. Rode de novo depois de
 mudar o código; o `state.json` instalado (pareamentos e último consumo) é
-preservado. Logs em `~/Library/Logs/tokesp-backend.log` e
-`~/Library/Logs/tokesp-web.log`.
+preservado. Logs em `~/Library/Logs/tokesp-backend.log`.
 
-Pare o `npm run dev` antes de instalar: as portas 43110 e 43111 são as mesmas.
 Para remover:
 
 ```bash
 launchctl bootout gui/$(id -u)/com.tokesp.backend
-launchctl bootout gui/$(id -u)/com.tokesp.web
 ```
 
 ## Testes
@@ -76,7 +70,7 @@ cd backend && npm test
 ./collector/test/usage_poll.test.sh
 ./collector/test/codex_usage.test.sh
 ./collector/test/codex_usage_poll.test.sh
-cd web && npm run build && npm run lint
+cd macos && swift test
 
 # firmware (na raiz, com PlatformIO)
 pio test -e native
@@ -128,4 +122,4 @@ sair deslocada, o painel é SH1106 — some `-DTOKESP_DISPLAY_SH1106` ao
 - `docs/superpowers/specs/2026-07-15-claude-usage-esp32-design.md` — desenho e o porquê
 - `docs/device-api.md` — contrato para o firmware
 - `collector/README.md` — configuração do statusline
-- `web/README.md` — execução do painel web
+- `macos/README.md` — execução do notch nativo
