@@ -157,19 +157,33 @@ private struct AeroNotchShape: Shape {
     func path(in rect: CGRect) -> Path {
         let inset = min(20, rect.width * 0.07)
         let cornerRadius = min(16, rect.height * 0.32)
+        let slopeHeight = rect.height - cornerRadius
+        let slopeLength = sqrt(inset * inset + slopeHeight * slopeHeight)
+        let controlDistance = min(12, slopeLength * 0.22)
+
+        let rightCurveStart = CGPoint(x: rect.maxX - inset, y: rect.maxY - cornerRadius)
+        let rightCurveEnd = CGPoint(x: rect.maxX - inset - cornerRadius, y: rect.maxY)
+        let leftCurveStart = CGPoint(x: rect.minX + inset, y: rect.maxY - cornerRadius)
+        let leftCurveEnd = CGPoint(x: rect.minX + inset + cornerRadius, y: rect.maxY)
+
+        let rightControl1 = CGPoint(
+            x: rightCurveStart.x - (inset / slopeLength * controlDistance),
+            y: rightCurveStart.y + (slopeHeight / slopeLength * controlDistance)
+        )
+        let rightControl2 = CGPoint(x: rightCurveEnd.x + controlDistance, y: rightCurveEnd.y)
+        let leftControl1 = CGPoint(
+            x: leftCurveStart.x + (inset / slopeLength * controlDistance),
+            y: leftCurveStart.y + (slopeHeight / slopeLength * controlDistance)
+        )
+        let leftControl2 = CGPoint(x: leftCurveEnd.x - controlDistance, y: leftCurveEnd.y)
+
         var path = Path()
         path.move(to: CGPoint(x: 0, y: 0))
         path.addLine(to: CGPoint(x: rect.maxX, y: 0))
-        path.addLine(to: CGPoint(x: rect.maxX - inset, y: rect.maxY - cornerRadius))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.maxX - inset - cornerRadius, y: rect.maxY),
-            control: CGPoint(x: rect.maxX - inset, y: rect.maxY)
-        )
-        path.addLine(to: CGPoint(x: rect.minX + inset + cornerRadius, y: rect.maxY))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.minX + inset, y: rect.maxY - cornerRadius),
-            control: CGPoint(x: rect.minX + inset, y: rect.maxY)
-        )
+        path.addLine(to: rightCurveStart)
+        path.addCurve(to: rightCurveEnd, control1: rightControl1, control2: rightControl2)
+        path.addLine(to: leftCurveEnd)
+        path.addCurve(to: leftCurveStart, control1: leftControl2, control2: leftControl1)
         path.closeSubpath()
         return path
     }
