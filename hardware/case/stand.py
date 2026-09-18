@@ -28,11 +28,12 @@ BASE_T = 8.0
 CORNER_R = 6.0  # the board still clears up to about 14 mm
 BASE_SIDE = BOARD_L + 2 * PADDING
 
-# --- Board reference body: shows where the ESP32 sits, never exported
+# --- Display mock (0.96" SSD1306 module), never exported
 PCB_T = 1.6
-CAN_W, CAN_L, CAN_T = 18.0, 25.5, 3.1  # the ESP-WROOM-32 metal can
-CAN_FRONT_GAP = 3.0  # from the front edge of the board to the can
-USB_W, USB_H, USB_L = 9.0, 3.2, 7.0  # the USB-C receptacle at the back edge
+MODULE_W, MODULE_H = 27.3, 27.8
+GLASS_W, GLASS_H, GLASS_T = 26.7, 19.3, 1.2
+GLASS_OFFSET_Y = -2.0  # the glass sits below centre, away from the pin header
+MODULE_FRONT_GAP = 2.0  # from the front edge of the base to the module
 
 LOG_PATH = "/tmp/tokometer_stand.log"
 EXPORT_DIR = "/Users/lucas/Documents/Projetos/Pessoal/harware/tokEsp/hardware/case"
@@ -194,21 +195,30 @@ def build_base(builder: Builder):
     return builder.slab(0.0, -half, 0.0, half, -BASE_SIDE, BASE_T, NEW)
 
 
-def build_board_reference(builder: Builder):
-    """The ESP32 DevKit laid on the base: board, module can and USB-C."""
-    top = BASE_T
-    half_w, half_l = BOARD_W / 2, BOARD_L / 2
-    front_z = -(BASE_SIDE / 2 - half_l)
-    back_z = front_z - BOARD_L
-
-    board = builder.slab(top, -half_w, front_z, half_w, back_z, PCB_T, NEW)
-
-    can_front = front_z - CAN_FRONT_GAP
-    builder.slab(top + PCB_T, -CAN_W / 2, can_front, CAN_W / 2, can_front - CAN_L, CAN_T, JOIN, board)
-    builder.slab(
-        top + PCB_T, -USB_W / 2, back_z + USB_L, USB_W / 2, back_z - 1.0, USB_H, JOIN, board
+def build_display_mock(builder: Builder):
+    """The OLED module standing on the base, glass facing front."""
+    bottom = BASE_T
+    module = builder.panel(
+        -MODULE_FRONT_GAP - PCB_T,
+        -MODULE_W / 2,
+        bottom,
+        MODULE_W / 2,
+        bottom + MODULE_H,
+        PCB_T,
+        NEW,
     )
-    return board
+    glass_center_y = bottom + MODULE_H / 2 + GLASS_OFFSET_Y
+    builder.panel(
+        -MODULE_FRONT_GAP,
+        -GLASS_W / 2,
+        glass_center_y - GLASS_H / 2,
+        GLASS_W / 2,
+        glass_center_y + GLASS_H / 2,
+        GLASS_T,
+        JOIN,
+        module,
+    )
+    return module
 
 
 def export(design: adsk.fusion.Design, body, filename: str) -> None:
@@ -231,14 +241,14 @@ def run(context):
         base = build_base(builder)
         base.name = "stand_base"
         fillet_corner_edges(comp, base, CORNER_R)
-        board = build_board_reference(builder)
-        board.name = "reference_board"
+        display = build_display_mock(builder)
+        display.name = "mock_display"
         app.activeViewport.fit()
 
         export(design, base, "stand_base.3mf")
         log("plinth {} x {} x {} mm".format(BASE_SIDE, BASE_T, BASE_SIDE))
-        log("board {} x {} mm resting at {} mm, {} mm clear at each end".format(
-            BOARD_L, BOARD_W, BASE_T, round((BASE_SIDE - BOARD_L) / 2, 2)
+        log("display mock {} x {} mm standing at the front, glass {} x {} mm".format(
+            MODULE_W, MODULE_H, GLASS_W, GLASS_H
         ))
     except Exception:
         import traceback
