@@ -43,7 +43,6 @@ final class UsageStore: ObservableObject {
                 observedAt: $0.observedAt
             )
         }
-        sourceMessage = message
     }
 
     func setDemoMode(_ enabled: Bool) {

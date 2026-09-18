@@ -9,10 +9,12 @@ enum ProviderFetchError: LocalizedError {
     case needsAuth(String)
     case unsupported(String)
     case unavailable(String)
+    case rateLimited(retryAfter: TimeInterval)
 
     var errorDescription: String? {
         switch self {
         case let .needsAuth(message), let .unsupported(message), let .unavailable(message): message
+        case let .rateLimited(retryAfter): "Atualização limitada; nova tentativa em \(Int(retryAfter / 60).formatted()) min"
         }
     }
 }
@@ -97,7 +99,8 @@ struct ClaudeUsageProvider: NativeUsageProvider {
             throw ProviderFetchError.needsAuth("Entre novamente no Claude Code")
         }
         guard http.statusCode != 429 else {
-            throw ProviderFetchError.unavailable("Claude limitou a atualização; tentando mais tarde")
+            let retryAfter = TimeInterval(http.value(forHTTPHeaderField: "Retry-After") ?? "") ?? 300
+            throw ProviderFetchError.rateLimited(retryAfter: max(300, retryAfter))
         }
         guard http.statusCode == 200 else {
             throw ProviderFetchError.unavailable("Claude indisponível (HTTP \(http.statusCode))")
@@ -125,11 +128,14 @@ struct ClaudeUsageProvider: NativeUsageProvider {
 final class NativePollingController {
     private let providers: [any NativeUsageProvider]
     private let store: UsageStore
+    private let legacyFallback: LegacySnapshotProvider
     private var task: Task<Void, Never>?
+    private var retryAfter: [ProviderID: Date] = [:]
 
-    init(providers: [any NativeUsageProvider], store: UsageStore) {
+    init(providers: [any NativeUsageProvider], store: UsageStore, legacyFallback: LegacySnapshotProvider = LegacySnapshotProvider()) {
         self.providers = providers
         self.store = store
+        self.legacyFallback = legacyFallback
     }
 
     func start() {
@@ -150,9 +156,17 @@ final class NativePollingController {
     func refresh() async {
         guard !store.isDemoMode else { return }
         for provider in providers {
+            if let next = retryAfter[provider.id], next > .now { continue }
             do {
                 store.apply(try await provider.fetch(now: .now))
             } catch {
+                if case let ProviderFetchError.rateLimited(delay) = error {
+                    retryAfter[provider.id] = .now.addingTimeInterval(delay)
+                }
+                if let fallback = try? await legacyFallback.load().canonicalSnapshots().first(where: { $0.id == provider.id }) {
+                    store.apply(fallback)
+                    continue
+                }
                 store.preserveLastGood(for: provider.id, error: error)
             }
         }

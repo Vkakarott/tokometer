@@ -3,7 +3,7 @@ import Foundation
 struct LegacySnapshotProvider {
     let endpoint: URL
 
-    init(endpoint: URL = URL(string: "http://127.0.0.1:43110/usage/web")!) {
+    init(endpoint: URL = URL(string: "http://127.0.0.1:43110/usage/local")!) {
         self.endpoint = endpoint
     }
 
