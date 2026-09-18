@@ -17,12 +17,13 @@ import adsk.fusion
 # --- Board: ESP32 DevKit 30-pin (ESP-WROOM-32), USB-C on a short edge
 BOARD_L, BOARD_W = 51.5, 28.5
 
-# --- Base
-PADDING = 3.0  # skirt around the board footprint, per side
+# --- Base: square, sized by the board's longest side plus a skirt
+PADDING = 3.0
 BASE_T = 4.0
 
-BASE_W = BOARD_W + 2 * PADDING
-BASE_D = BOARD_L + 2 * PADDING
+BASE_SIDE = BOARD_L + 2 * PADDING
+BASE_W = BASE_SIDE
+BASE_D = BASE_SIDE
 
 LOG_PATH = "/tmp/tokometer_stand.log"
 EXPORT_DIR = "/Users/lucas/Documents/Projetos/Pessoal/harware/tokEsp/hardware/case"
