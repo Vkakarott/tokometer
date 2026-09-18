@@ -35,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = UsageStore()
     let preferences = AppPreferences()
     lazy var polling = NativePollingController(
-        providers: [ClaudeUsageProvider(), CodexUsageProvider()],
+        providers: [ClaudeUsageProvider(), CodexUsageProvider(), CursorUsageProvider()],
         store: store
     )
     lazy var notch = NotchPanelController(store: store, preferences: preferences)

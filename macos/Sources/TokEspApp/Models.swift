@@ -3,6 +3,7 @@ import Foundation
 enum ProviderID: String, CaseIterable, Codable, CodingKey, Identifiable {
     case claude
     case codex
+    case cursor
 
     var id: String { rawValue }
 
@@ -22,6 +23,7 @@ enum ProviderID: String, CaseIterable, Codable, CodingKey, Identifiable {
         switch self {
         case .claude: "Claude"
         case .codex: "Codex"
+        case .cursor: "Cursor"
         }
     }
 }
@@ -49,6 +51,11 @@ enum ProviderStatus: Equatable {
         case .accessDenied: "Acesso negado"
         case let .unsupported(reason), let .error(reason): reason
         }
+    }
+
+    var isLive: Bool {
+        if case .ok = self { return true }
+        return false
     }
 }
 

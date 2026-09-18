@@ -2,7 +2,12 @@ import Foundation
 
 protocol NativeUsageProvider: Sendable {
     var id: ProviderID { get }
+    var refreshInterval: TimeInterval { get }
     func fetch(now: Date) async throws -> ProviderSnapshot
+}
+
+extension NativeUsageProvider {
+    var refreshInterval: TimeInterval { 60 }
 }
 
 enum ProviderFetchError: LocalizedError {
@@ -81,6 +86,7 @@ struct ClaudeUsageProvider: NativeUsageProvider {
     }
 
     var id: ProviderID { .claude }
+    var refreshInterval: TimeInterval { 300 }
 
     func fetch(now: Date) async throws -> ProviderSnapshot {
         let credentials = try KeychainReader.readClaudeCredentials()
@@ -124,6 +130,39 @@ struct ClaudeUsageProvider: NativeUsageProvider {
     }
 }
 
+struct CursorUsageProvider: NativeUsageProvider {
+    let stateFile: URL
+    let endpoint: URL
+
+    init(
+        stateFile: URL = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Application Support/Cursor/User/globalStorage/state.vscdb"),
+        endpoint: URL = URL(string: "https://cursor.com/api/usage-summary")!
+    ) {
+        self.stateFile = stateFile
+        self.endpoint = endpoint
+    }
+
+    var id: ProviderID { .cursor }
+    var refreshInterval: TimeInterval { 300 }
+
+    func fetch(now: Date) async throws -> ProviderSnapshot {
+        let token = try CursorStateReader.accessToken(from: stateFile)
+        var request = URLRequest(url: endpoint)
+        request.timeoutInterval = 10
+        request.setValue("WorkosCursorSessionToken=::\(token)", forHTTPHeaderField: "Cookie")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw ProviderFetchError.unavailable("Cursor não respondeu") }
+        guard http.statusCode != 401, http.statusCode != 403 else { throw ProviderFetchError.needsAuth("Entre novamente no Cursor") }
+        guard http.statusCode == 200 else { throw ProviderFetchError.unavailable("Cursor indisponível (HTTP \(http.statusCode))") }
+        let usage = try JSONDecoder().decode(CursorUsage.self, from: data)
+        let windows = usage.windows
+        guard !windows.isEmpty else {
+            throw ProviderFetchError.unsupported((usage.isUnlimited ?? false) ? "O plano Cursor é ilimitado" : "O Cursor não informou consumo")
+        }
+        return ProviderSnapshot(id: id, displayName: id.displayName, fidelity: .official, status: .ok, windows: windows, headlineID: windows.first?.id, hasData: true, observedAt: now)
+    }
+}
+
 @MainActor
 final class NativePollingController {
     private let providers: [any NativeUsageProvider]
@@ -131,6 +170,7 @@ final class NativePollingController {
     private let legacyFallback: LegacySnapshotProvider
     private var task: Task<Void, Never>?
     private var retryAfter: [ProviderID: Date] = [:]
+    private var lastAttempt: [ProviderID: Date] = [:]
 
     init(providers: [any NativeUsageProvider], store: UsageStore, legacyFallback: LegacySnapshotProvider = LegacySnapshotProvider()) {
         self.providers = providers
@@ -156,14 +196,17 @@ final class NativePollingController {
     func refresh() async {
         guard !store.isDemoMode else { return }
         for provider in providers {
-            if let next = retryAfter[provider.id], next > .now { continue }
+            let now = Date.now
+            if let next = retryAfter[provider.id], next > now { continue }
+            if let previous = lastAttempt[provider.id], now.timeIntervalSince(previous) < provider.refreshInterval { continue }
+            lastAttempt[provider.id] = now
             do {
                 store.apply(try await provider.fetch(now: .now))
             } catch {
                 if case let ProviderFetchError.rateLimited(delay) = error {
                     retryAfter[provider.id] = .now.addingTimeInterval(delay)
                 }
-                if let fallback = try? await legacyFallback.load().canonicalSnapshots().first(where: { $0.id == provider.id }) {
+                if let fallback = try? await legacyFallback.load().canonicalSnapshots().first(where: { $0.id == provider.id && $0.hasData }) {
                     store.apply(fallback)
                     continue
                 }
@@ -278,5 +321,69 @@ private enum KeychainReader {
             throw ProviderFetchError.needsAuth("Autorize o acesso ao login do Claude Code")
         }
         return try JSONDecoder().decode(ClaudeCredentials.self, from: output.fileHandleForReading.readDataToEndOfFile())
+    }
+}
+
+private enum CursorStateReader {
+    static func accessToken(from stateFile: URL) throws -> String {
+        guard FileManager.default.fileExists(atPath: stateFile.path) else {
+            throw ProviderFetchError.needsAuth("Abra o Cursor e entre na sua conta")
+        }
+        let process = Process()
+        let output = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
+        process.arguments = ["-readonly", stateFile.path, "SELECT value FROM ItemTable WHERE key='cursorAuth/accessToken';"]
+        process.standardOutput = output
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { throw ProviderFetchError.unavailable("Não foi possível ler a sessão do Cursor") }
+        let raw = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        let token = (try? JSONDecoder().decode(String.self, from: Data(raw.utf8))) ?? raw
+        guard token.split(separator: ".").count == 3 else { throw ProviderFetchError.needsAuth("Entre novamente no Cursor") }
+        return token
+    }
+}
+
+struct CursorUsage: Decodable {
+    let billingCycleEnd: String?
+    let isUnlimited: Bool?
+    let individualUsage: IndividualUsage?
+
+    enum CodingKeys: String, CodingKey {
+        case billingCycleEnd
+        case isUnlimited
+        case individualUsage
+    }
+
+    struct IndividualUsage: Decodable {
+        let plan: Plan?
+        let onDemand: Spend?
+    }
+
+    struct Plan: Decodable {
+        let totalPercentUsed: Double?
+        let apiPercentUsed: Double?
+    }
+
+    struct Spend: Decodable {
+        let enabled: Bool?
+        let used: Double?
+        let limit: Double?
+    }
+
+    var windows: [UsageWindow] {
+        let reset = billingCycleEnd.flatMap(CursorUsage.date)
+        let plan = individualUsage?.plan
+        var result: [UsageWindow] = []
+        if let total = plan?.totalPercentUsed { result.append(UsageWindow(id: "included", label: "Uso incluído", usedFraction: min(max(total / 100, 0), 1), resetsAt: reset)) }
+        if let api = plan?.apiPercentUsed, api > 0 { result.append(UsageWindow(id: "api", label: "Uso de API", usedFraction: min(max(api / 100, 0), 1), resetsAt: reset)) }
+        if individualUsage?.onDemand?.enabled == true, let used = individualUsage?.onDemand?.used, let limit = individualUsage?.onDemand?.limit, limit > 0 { result.append(UsageWindow(id: "on_demand", label: "Sob demanda", usedFraction: min(max(used / limit, 0), 1), resetsAt: reset)) }
+        return result
+    }
+
+    private static func date(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return fractional.date(from: value) ?? ISO8601DateFormatter().date(from: value)
     }
 }

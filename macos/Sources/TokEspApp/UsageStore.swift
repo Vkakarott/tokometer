@@ -72,6 +72,16 @@ final class UsageStore: ObservableObject {
                 hasData: true,
                 observedAt: .now
             ),
+            ProviderSnapshot(
+                id: .cursor,
+                displayName: ProviderID.cursor.displayName,
+                fidelity: .manual,
+                status: .ok,
+                windows: [UsageWindow(id: "included", label: "Uso incluído", usedFraction: 0.21, resetsAt: .now.addingTimeInterval(172_800))],
+                headlineID: "included",
+                hasData: true,
+                observedAt: .now
+            ),
         ]
         updatedAt = .now
         sourceMessage = "Dados de demonstração"

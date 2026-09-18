@@ -11,7 +11,7 @@ final class NotchPanelController: NSObject {
     init(store: UsageStore, preferences: AppPreferences) {
         self.preferences = preferences
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 310, height: 110),
+            contentRect: NSRect(x: 0, y: 0, width: 310, height: 180),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -56,6 +56,10 @@ private struct NotchView: View {
     @ObservedObject var preferences: AppPreferences
     @State private var expanded = false
 
+    private var hasLiveProvider: Bool {
+        store.snapshots.contains { $0.hasData && $0.status.isLive }
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             HStack(spacing: 8) {
@@ -64,15 +68,15 @@ private struct NotchView: View {
                 Text("tokEsp")
                     .font(.headline)
                 Spacer()
-                Text(store.sourceMessage == "Conectado ao serviço legado local" ? "LOCAL" : "OFFLINE")
+                Text(hasLiveProvider ? "LOCAL" : "OFFLINE")
                     .font(.caption2.weight(.bold))
-                    .foregroundStyle(store.sourceMessage == "Conectado ao serviço legado local" ? .green : .orange)
+                    .foregroundStyle(hasLiveProvider ? .green : .orange)
             }
             ForEach(store.snapshots.filter { preferences.isVisible($0.id) }) { snapshot in
                 ProviderRow(snapshot: snapshot, expanded: expanded)
             }
             if expanded {
-                Text("Clique para recolher · dados do serviço legado")
+                Text("Clique para recolher · dados locais do Mac")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

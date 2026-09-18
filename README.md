@@ -1,8 +1,8 @@
 # tokEsp
 
-Mostra quanto das suas assinaturas **Claude** (Pro/Max) e **Codex** (ChatGPT)
-já foi consumido nas janelas de 5 horas e 7 dias — num notch nativo do macOS e
-num display OLED opcional.
+Mostra quanto das suas assinaturas **Claude** (Pro/Max), **Codex** (ChatGPT) e
+**Cursor** foi consumido — num notch nativo do macOS e num display OLED
+opcional.
 
 **Não existe endpoint público de consumo de assinatura.** Os collectors leem o
 uso de cada conta pelas mesmas rotas internas que o Claude Code e o Codex usam,
@@ -12,7 +12,7 @@ a cada 2 minutos (e, no Claude, também depois de cada resposta pelo hook
 permanece como ponte temporária para o ESP32.
 
 ```
-Claude / Codex ──► app macOS (notch)
+Claude / Codex / Cursor ──► app macOS (notch)
 collector ───────► backend API ──► ESP32 (durante a migração)
 ```
 

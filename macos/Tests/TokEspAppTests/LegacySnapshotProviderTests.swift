@@ -67,3 +67,24 @@ func decodesBackendResponse() throws {
     #expect(view.providers[.claude]?.windows.first?.usedPercentage == 55)
     #expect(view.providers[.codex]?.windows.first?.id == "seven_day")
 }
+
+@Test("uses Cursor total percent for the included-usage headline")
+func decodesCursorUsage() throws {
+    let data = Data("""
+    {
+      "billingCycleEnd": "2026-09-24T03:32:15.933Z",
+      "isUnlimited": false,
+      "individualUsage": {
+        "plan": {"totalPercentUsed": 9.5, "apiPercentUsed": 19.0},
+        "onDemand": {"enabled": false}
+      }
+    }
+    """.utf8)
+
+    let usage = try JSONDecoder().decode(CursorUsage.self, from: data)
+
+    #expect(usage.windows.first?.id == "included")
+    #expect(usage.windows.first?.usedFraction == 0.095)
+    #expect(usage.windows.last?.id == "api")
+    #expect(usage.windows.last?.usedFraction == 0.19)
+}

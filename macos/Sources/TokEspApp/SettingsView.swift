@@ -15,7 +15,7 @@ struct SettingsView: View {
                 LabeledContent("Estado") {
                     Text(store.sourceMessage)
                 }
-                Text("Claude e Codex são consultados diretamente a partir das sessões deste Mac. O backend antigo não é usado para alimentar o notch.")
+                Text("Claude, Codex e Cursor são consultados diretamente a partir das sessões deste Mac. O backend antigo não é usado para alimentar o notch.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Toggle("Usar dados de demonstração", isOn: $preferences.demoMode)
@@ -51,7 +51,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 340)
+        .frame(width: 460, height: 390)
         .padding()
         .onChange(of: preferences.demoMode, initial: true) { _, enabled in
             store.setDemoMode(enabled)
