@@ -38,9 +38,9 @@ struct SettingsView: View {
                         Text(screenLabel(for: screen)).tag(screen.displayID ?? 0)
                     }
                 }
-                Picker("Borda", selection: $preferences.edge) {
-                    ForEach(NotchEdge.allCases) { edge in
-                        Text(edge.label).tag(edge)
+                Picker("Posição", selection: $preferences.tokonotchPosition) {
+                    ForEach(TokonotchPosition.allCases) { position in
+                        Text(position.label).tag(position)
                     }
                 }
             }

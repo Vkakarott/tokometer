@@ -37,7 +37,7 @@ final class NotchPanelController: NSObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.position() }
             .store(in: &subscriptions)
-        preferences.$edge
+        preferences.$tokonotchPosition
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.position() }
             .store(in: &subscriptions)
@@ -66,9 +66,9 @@ final class NotchPanelController: NSObject {
         let size = expanded ? PanelSize.expanded : PanelSize.compact
         guard let screen = targetScreen() else { return }
         let screenFrame = screen.visibleFrame
-        let y = preferences.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
+        let y = preferences.tokonotchPosition.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
         let frame = NSRect(
-            x: screenFrame.midX - size.width / 2,
+            x: horizontalOrigin(in: screenFrame, width: size.width),
             y: y,
             width: size.width,
             height: size.height
@@ -84,8 +84,8 @@ final class NotchPanelController: NSObject {
         guard let screen = targetScreen() else { return }
         let screenFrame = screen.visibleFrame
         let size = panel.frame.size
-        let y = preferences.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
-        panel.setFrameOrigin(NSPoint(x: screenFrame.midX - size.width / 2, y: y))
+        let y = preferences.tokonotchPosition.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
+        panel.setFrameOrigin(NSPoint(x: horizontalOrigin(in: screenFrame, width: size.width), y: y))
     }
 
     private func targetScreen() -> NSScreen? {
@@ -94,6 +94,14 @@ final class NotchPanelController: NSObject {
             return selected
         }
         return NSScreen.screens.first
+    }
+
+    private func horizontalOrigin(in frame: NSRect, width: CGFloat) -> CGFloat {
+        switch preferences.tokonotchPosition.horizontalPlacement {
+        case .leading: frame.minX
+        case .center: frame.midX - width / 2
+        case .trailing: frame.maxX - width
+        }
     }
 }
 
@@ -116,7 +124,7 @@ private struct NotchView: View {
 
     var body: some View {
         ZStack {
-            AeroNotchShape()
+            AeroNotchShape(position: preferences.tokonotchPosition)
                 .fill(.black.opacity(0.98))
 
             if let expandedSnapshot {
@@ -128,7 +136,7 @@ private struct NotchView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(AeroNotchShape())
+        .contentShape(AeroNotchShape(position: preferences.tokonotchPosition))
         .animation(.easeOut(duration: 0.12), value: expandedProvider)
         .onHover { hovering in
             hoverExitTask?.cancel()
@@ -177,6 +185,8 @@ private struct NotchView: View {
 }
 
 private struct AeroNotchShape: Shape {
+    let position: TokonotchPosition
+
     func path(in rect: CGRect) -> Path {
         let inset = min(20, rect.width * 0.07)
         let cornerRadius = min(16, rect.height * 0.32)
@@ -201,14 +211,30 @@ private struct AeroNotchShape: Shape {
         let leftControl2 = CGPoint(x: leftCurveEnd.x - controlDistance, y: leftCurveEnd.y)
 
         var path = Path()
-        path.move(to: CGPoint(x: 0, y: 0))
-        path.addLine(to: CGPoint(x: rect.maxX, y: 0))
-        path.addLine(to: rightCurveStart)
-        path.addCurve(to: rightCurveEnd, control1: rightControl1, control2: rightControl2)
-        path.addLine(to: leftCurveEnd)
-        path.addCurve(to: leftCurveStart, control1: leftControl2, control2: leftControl1)
+        switch position.horizontalPlacement {
+        case .leading:
+            path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            path.addLine(to: rightCurveStart)
+            path.addCurve(to: rightCurveEnd, control1: rightControl1, control2: rightControl2)
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        case .center:
+            path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            path.addLine(to: rightCurveStart)
+            path.addCurve(to: rightCurveEnd, control1: rightControl1, control2: rightControl2)
+            path.addLine(to: leftCurveEnd)
+            path.addCurve(to: leftCurveStart, control1: leftControl2, control2: leftControl1)
+        case .trailing:
+            path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.addLine(to: leftCurveEnd)
+            path.addCurve(to: leftCurveStart, control1: leftControl2, control2: leftControl1)
+        }
         path.closeSubpath()
-        return path
+        guard position.edge == .bottom else { return path }
+        return path.applying(CGAffineTransform(translationX: 0, y: rect.height).scaledBy(x: 1, y: -1))
     }
 }
 

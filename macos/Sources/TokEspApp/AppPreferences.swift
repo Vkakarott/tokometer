@@ -16,10 +16,53 @@ enum NotchEdge: String, CaseIterable, Identifiable {
     }
 }
 
+enum TokonotchPosition: String, CaseIterable, Identifiable {
+    case topLeading
+    case topCenter
+    case topTrailing
+    case bottomLeading
+    case bottomCenter
+    case bottomTrailing
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .topLeading: "Superior — esquerda"
+        case .topCenter: "Superior — centro"
+        case .topTrailing: "Superior — direita"
+        case .bottomLeading: "Inferior — esquerda"
+        case .bottomCenter: "Inferior — centro"
+        case .bottomTrailing: "Inferior — direita"
+        }
+    }
+
+    var edge: NotchEdge {
+        switch self {
+        case .topLeading, .topCenter, .topTrailing: .top
+        case .bottomLeading, .bottomCenter, .bottomTrailing: .bottom
+        }
+    }
+
+    var horizontalPlacement: HorizontalPlacement {
+        switch self {
+        case .topLeading, .bottomLeading: .leading
+        case .topCenter, .bottomCenter: .center
+        case .topTrailing, .bottomTrailing: .trailing
+        }
+    }
+}
+
+enum HorizontalPlacement {
+    case leading
+    case center
+    case trailing
+}
+
 @MainActor
 final class AppPreferences: ObservableObject {
-    @Published var edge: NotchEdge {
-        didSet { defaults.set(edge.rawValue, forKey: Keys.edge) }
+    @Published var tokonotchPosition: TokonotchPosition {
+        didSet { defaults.set(tokonotchPosition.rawValue, forKey: Keys.tokonotchPosition) }
     }
 
     @Published var visibleProviders: Set<ProviderID> {
@@ -48,7 +91,12 @@ final class AppPreferences: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        edge = NotchEdge(rawValue: defaults.string(forKey: Keys.edge) ?? "") ?? .top
+        if let storedPosition = defaults.string(forKey: Keys.tokonotchPosition),
+           let position = TokonotchPosition(rawValue: storedPosition) {
+            tokonotchPosition = position
+        } else {
+            tokonotchPosition = NotchEdge(rawValue: defaults.string(forKey: Keys.edge) ?? "") == .bottom ? .bottomCenter : .topCenter
+        }
         let storedProviders = defaults.stringArray(forKey: Keys.visibleProviders) ?? ProviderID.allCases.map(\.rawValue)
         visibleProviders = Set(storedProviders.compactMap(ProviderID.init(rawValue:)))
         demoMode = defaults.bool(forKey: Keys.demoMode)
@@ -76,6 +124,7 @@ final class AppPreferences: ObservableObject {
 
 private enum Keys {
     static let edge = "notch.edge"
+    static let tokonotchPosition = "tokonotch.position"
     static let visibleProviders = "notch.visibleProviders"
     static let demoMode = "app.demoMode"
     static let preferredScreenID = "tokonotch.preferredScreenID"
