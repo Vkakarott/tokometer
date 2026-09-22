@@ -35,7 +35,9 @@ struct ClaudeUsageProvider: NativeUsageProvider {
 
     func fetch(now: Date) async throws -> ProviderSnapshot {
         let known = newestReading()
-        if let known, known.isFresh(at: now) { return snapshot(known, now: now) }
+        if let known, known.isFresh(at: now), known.hasSubscriptionWindows {
+            return snapshot(known, now: now)
+        }
         do {
             return snapshot(try await poll(now: now), now: now)
         } catch {
@@ -117,6 +119,11 @@ struct ClaudeReading: Equatable {
 
     func isFresh(at now: Date) -> Bool {
         now.timeIntervalSince(observedAt) < ClaudePollGate.interval
+    }
+
+    var hasSubscriptionWindows: Bool {
+        let ids = Set(windows.map(\.id))
+        return ids.contains("five_hour") && ids.contains("seven_day")
     }
 }
 

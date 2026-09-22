@@ -57,10 +57,13 @@ private struct Fixture {
     }
 
     /// Writes the file exactly as collector/statusline.sh does.
-    func writeStatusline(observedAt: Date, fiveHour: Int = 30) throws {
+    func writeStatusline(observedAt: Date, fiveHour: Int = 30, includeFiveHour: Bool = true) throws {
+        let fiveHourWindow = includeFiveHour
+            ? #"{"id":"five_hour","usedPercentage":\#(fiveHour),"resetsAt":1790112600},"#
+            : ""
         let json = """
         {"provider":"claude-code","source":"mac","observedAt":\(Int(observedAt.timeIntervalSince1970)),\
-        "windows":[{"id":"five_hour","usedPercentage":\(fiveHour),"resetsAt":1790112600},\
+        "windows":[\(fiveHourWindow)\
         {"id":"seven_day","usedPercentage":92,"resetsAt":1790132400}],"fingerprint":"x"}
         """
         try Data(json.utf8).write(to: statusline.url)
@@ -78,6 +81,21 @@ func usesFreshStatusline() async throws {
     #expect(snapshot.status == .ok)
     #expect(fixture.fake.requests == 0)
     #expect(fixture.fake.tokenReads == 0)
+}
+
+@Test("polls when a fresh statusline reading omits a subscription window")
+func pollsWhenFreshStatuslineIsIncomplete() async throws {
+    let fixture = try Fixture()
+    try fixture.writeStatusline(observedAt: start.addingTimeInterval(-60), includeFiveHour: false)
+
+    let snapshot = try await fixture.provider.fetch(now: start)
+
+    #expect(snapshot.windows.count == 2)
+    #expect(snapshot.windows.first?.id == "five_hour")
+    #expect(snapshot.windows.first?.usedFraction == 0.21)
+    #expect(snapshot.windows.last?.id == "seven_day")
+    #expect(snapshot.windows.last?.usedFraction == 0.92)
+    #expect(fixture.fake.requests == 1)
 }
 
 @Test("polls once when the statusline is old, then waits 15 minutes")
