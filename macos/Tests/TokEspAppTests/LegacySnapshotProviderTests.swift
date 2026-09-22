@@ -88,3 +88,36 @@ func decodesCursorUsage() throws {
     #expect(usage.windows.last?.id == "api")
     #expect(usage.windows.last?.usedFraction == 0.19)
 }
+
+@Test("reads both Claude windows when resets_at has fractional seconds")
+func decodesClaudeUsageWithFractionalSeconds() throws {
+    let data = Data("""
+    {
+      "five_hour": {"utilization": 21.0, "resets_at": "2026-09-22T21:30:00.010643+00:00"},
+      "seven_day": {"utilization": 92.0, "resets_at": "2026-09-23T03:00:00.010662+00:00"},
+      "seven_day_opus": null
+    }
+    """.utf8)
+
+    let usage = try JSONDecoder().decode(ClaudeUsage.self, from: data)
+
+    #expect(usage.windows.map(\.id) == ["five_hour", "seven_day"])
+    #expect(usage.windows.first?.usedFraction == 0.21)
+    let reset = try #require(usage.windows.first?.resetsAt)
+    #expect(abs(reset.timeIntervalSince1970 - 1_790_112_600.010643) < 0.001)
+    #expect(usage.windows.last?.usedFraction == 0.92)
+}
+
+@Test("skips a Claude window without a reset time")
+func skipsClaudeWindowWithoutReset() throws {
+    let data = Data("""
+    {
+      "five_hour": {"utilization": 0.0, "resets_at": null},
+      "seven_day": {"utilization": 89.0, "resets_at": "2026-09-23T03:00:00+00:00"}
+    }
+    """.utf8)
+
+    let usage = try JSONDecoder().decode(ClaudeUsage.self, from: data)
+
+    #expect(usage.windows.map(\.id) == ["seven_day"])
+}

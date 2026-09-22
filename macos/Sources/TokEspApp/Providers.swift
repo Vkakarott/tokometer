@@ -111,9 +111,7 @@ struct ClaudeUsageProvider: NativeUsageProvider {
         guard http.statusCode == 200 else {
             throw ProviderFetchError.unavailable("Claude indisponível (HTTP \(http.statusCode))")
         }
-        let usage = try JSONDecoder().decode(ClaudeUsage.self, from: data)
-        let windows = [("five_hour", "5 horas", usage.fiveHour), ("seven_day", "7 dias", usage.sevenDay)]
-            .compactMap(UsageWindow.init(claude:))
+        let windows = try JSONDecoder().decode(ClaudeUsage.self, from: data).windows
         guard !windows.isEmpty else {
             throw ProviderFetchError.unsupported("O Claude não informou limites para esta conta")
         }
@@ -281,9 +279,14 @@ private struct ClaudeCredentials: Decodable {
     }
 }
 
-private struct ClaudeUsage: Decodable {
+struct ClaudeUsage: Decodable {
     let fiveHour: Window?
     let sevenDay: Window?
+
+    var windows: [UsageWindow] {
+        [("five_hour", "5 horas", fiveHour), ("seven_day", "7 dias", sevenDay)]
+            .compactMap(UsageWindow.init(claude:))
+    }
 
     enum CodingKeys: String, CodingKey {
         case fiveHour = "five_hour"
@@ -303,7 +306,7 @@ private struct ClaudeUsage: Decodable {
 
 private extension UsageWindow {
     init?(claude source: (String, String, ClaudeUsage.Window?)) {
-        guard let window = source.2, let utilization = window.utilization, let value = window.resetsAt, let reset = ISO8601DateFormatter().date(from: value) else { return nil }
+        guard let window = source.2, let utilization = window.utilization, let value = window.resetsAt, let reset = ISO8601Date.parse(value) else { return nil }
         self.init(id: source.0, label: source.1, usedFraction: min(max(utilization / 100, 0), 1), resetsAt: reset)
     }
 }
@@ -372,7 +375,7 @@ struct CursorUsage: Decodable {
     }
 
     var windows: [UsageWindow] {
-        let reset = billingCycleEnd.flatMap(CursorUsage.date)
+        let reset = billingCycleEnd.flatMap(ISO8601Date.parse)
         let plan = individualUsage?.plan
         var result: [UsageWindow] = []
         if let total = plan?.totalPercentUsed { result.append(UsageWindow(id: "included", label: "Uso incluído", usedFraction: min(max(total / 100, 0), 1), resetsAt: reset)) }
@@ -380,8 +383,12 @@ struct CursorUsage: Decodable {
         if individualUsage?.onDemand?.enabled == true, let used = individualUsage?.onDemand?.used, let limit = individualUsage?.onDemand?.limit, limit > 0 { result.append(UsageWindow(id: "on_demand", label: "Sob demanda", usedFraction: min(max(used / limit, 0), 1), resetsAt: reset)) }
         return result
     }
+}
 
-    private static func date(_ value: String) -> Date? {
+/// Parses ISO 8601 timestamps with or without fractional seconds; the default
+/// `ISO8601DateFormatter` rejects values like `2026-09-22T21:30:00.010643+00:00`.
+enum ISO8601Date {
+    static func parse(_ value: String) -> Date? {
         let fractional = ISO8601DateFormatter()
         fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return fractional.date(from: value) ?? ISO8601DateFormatter().date(from: value)
