@@ -64,6 +64,14 @@ struct UsageWindow: Equatable, Identifiable {
     let label: String
     let usedFraction: Double?
     let resetsAt: Date?
+
+    static func defaultLabel(for id: String) -> String {
+        switch id {
+        case "five_hour": "5 horas"
+        case "seven_day": "7 dias"
+        default: id
+        }
+    }
 }
 
 struct ProviderSnapshot: Equatable, Identifiable {
@@ -147,11 +155,5 @@ extension LegacyProvidersView {
 }
 
 private extension LegacyWindow {
-    var label: String {
-        switch id {
-        case "five_hour": "5 horas"
-        case "seven_day": "7 dias"
-        default: id
-        }
-    }
+    var label: String { UsageWindow.defaultLabel(for: id) }
 }

@@ -5,14 +5,24 @@ do tokometer.
 
 ## Como funciona
 
-Cada collector consulta o mesmo uso da conta que o próprio app mostra e envia
-ao backend com o provedor identificado. Como lê a conta, o número acompanha
-qualquer cliente daquele provedor.
-
 | Collector | Lê | Atualiza |
 |---|---|---|
-| `usage_poll.sh` | uso da conta Claude (tela `/usage` do Claude Code) | hook `Stop` do Claude Code + launchd a cada 2 min |
+| `statusline.sh` | limites que o Claude Code recebe a cada resposta | toda resposta do `claude` no terminal |
 | `codex_usage_poll.sh` | uso da conta ChatGPT (o que o Codex mostra) | launchd a cada 2 min (e `notify` do Codex, opcional) |
+
+**Por que a statusline é a fonte do Claude.** A cada resposta, o Claude Code já
+recebe os limites de 5 h e 7 dias e os entrega à statusline. Esse dado é
+documentado, chega justamente quando o consumo muda e não gasta nenhuma
+consulta. Ficar perguntando à rota da conta de tempos em tempos, como antes,
+dava HTTP 429 com frequência e travava a coleta por até uma hora.
+
+A statusline grava `~/.cache/tokesp/claude-statusline.json`, que o app macOS lê,
+e envia o mesmo dado ao backend, que alimenta o display ESP32.
+
+**Quando o dado passa de 15 min**, o app consulta a rota da conta por conta
+própria, no máximo uma vez a cada 15 min, com pausa após um 429 e sem insistir
+com um token que já foi recusado. É o que cobre a extensão do VS Code (que não
+roda statusline) e o uso feito no claude.ai.
 
 > **Riscos que você aceita ao usar:**
 > - As rotas de uso (`api.anthropic.com/api/oauth/usage` e
@@ -45,32 +55,29 @@ Rode os comandos a partir desta pasta (`collector/`).
    executar arquivos dentro de `~/Documents`. Rode de novo sempre que atualizar
    o collector.
 
-3. Adicione o hook do Claude ao `~/.claude/settings.json` (vale para a extensão
-   e o CLI), apontando para a cópia instalada:
+3. Aponte a statusline do Claude no `~/.claude/settings.json` para a cópia
+   instalada:
 
    ```json
    {
-     "hooks": {
-       "Stop": [
-         {
-           "hooks": [
-             { "type": "command", "command": "/Users/<voce>/.local/share/tokesp/usage_poll.sh --detach" }
-           ]
-         }
-       ]
+     "statusLine": {
+       "type": "command",
+       "command": "/Users/<voce>/.local/share/tokesp/statusline.sh",
+       "refreshInterval": 60
      }
    }
    ```
 
-Na primeira execução o macOS pode pedir acesso ao item
-"Claude Code-credentials": escolha **Sempre permitir**. Erros ficam em
-`~/Library/Logs/tokesp-usage-poll.log` e
+   `refreshInterval` é em segundos. Se você vinha do hook `Stop` com
+   `usage_poll.sh`, remova esse hook: ele não existe mais.
+
+Na primeira consulta de reserva o macOS pode pedir acesso ao item
+"Claude Code-credentials": escolha **Sempre permitir**. Erros do Codex ficam em
 `~/Library/Logs/tokesp-codex-usage-poll.log`.
 
-Para remover os agendamentos:
+Para remover o agendamento do Codex:
 
 ```bash
-launchctl bootout gui/$(id -u)/com.tokesp.usage-poll
 launchctl bootout gui/$(id -u)/com.tokesp.codex-usage-poll
 ```
 
@@ -86,30 +93,14 @@ notify = ["/Users/<voce>/.local/share/tokesp/codex_usage_poll.sh", "--detach"]
 Se já estiver em uso (por exemplo, pelo Computer Use do Codex), não troque:
 o agendamento de 2 minutos continua atualizando.
 
-## Alternativa sem credenciais para o Claude: statusline
+## Quando a statusline envia
 
-`statusline.sh` usa só dados documentados, mas **só o `claude` no terminal roda
-statusline**. A extensão do VS Code não envia nada, e o número só muda quando
-uma sessão do terminal recebe resposta. Em troca, ele também envia a contagem
-de tokens da janela de contexto.
-
-**Use uma fonte ou a outra, nunca as duas:** a statusline envia o número da
-última resposta daquela sessão e sobrescreveria o valor mais novo da conta.
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "/caminho/absoluto/para/collector/statusline.sh",
-    "refreshInterval": 60
-  }
-}
-```
-
-`refreshInterval` é em **segundos**. A statusline só envia quando os valores
-mudam em relação ao último envio aceito, e sessões ainda sem resposta da API
-não enviam nada. O controle fica em `~/.cache/tokesp/last-sent`; apague esse
-arquivo para forçar um novo envio.
+A statusline também se redesenha sozinha, e esses redesenhos não trazem dado
+novo. Por isso ela só grava e envia quando os valores mudam **ou** quando houve
+outra resposta da API na sessão (medida por `cost.total_api_duration_ms`). O
+controle fica em `~/.cache/tokesp/last-sent`; apague esse arquivo para forçar um
+novo envio. Sessões que ainda não receberam resposta não enviam nada, para não
+apagar o dado que o backend já tem.
 
 ## Usar em outra máquina
 
@@ -120,11 +111,12 @@ limites são da conta, então todas as máquinas mandam o mesmo número.
 
 - Claude: os limites só existem para assinantes **Pro/Max**. Codex: só com login
   por conta ChatGPT (não por chave de API).
+- **Só o `claude` no terminal roda statusline.** Na extensão do VS Code, o dado
+  do Claude só se atualiza pela consulta de reserva do app, a cada 15 min.
+- **Uso feito no claude.ai** (web ou celular) só aparece na próxima resposta do
+  Claude Code, ou na consulta de reserva.
+- **Com o app fechado e sem usar o terminal, nada atualiza.** O backend marca o
+  dado como antigo depois de 15 min, e o OLED mostra o aviso de desatualizado.
 - As rotas têm limite de frequência (a do Claude responde HTTP 429 com
-  facilidade). Os collectors consultam no máximo uma vez por minuto e, ao
-  receber 429, esperam o `Retry-After` (ou 5 minutos) antes de tentar de novo.
-- Os tokens de login expiram. Se o app ficar fechado por muito tempo, o envio
-  daquele provedor para até ele abrir de novo; web e OLED mostram o aviso de
-  dado antigo.
-- Com `usage_poll.sh`, o web não mostra a contagem de contexto: esse dado só
-  existe na statusline.
+  facilidade). O Codex consulta no máximo uma vez por minuto e, ao receber 429,
+  espera o `Retry-After` (ou 5 minutos) antes de tentar de novo.

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Installs the Claude and Codex usage collectors and their launchd agents.
+# Installs the Claude statusline and the Codex usage collector.
+#
+# Claude needs no agent: Claude Code hands the statusline its account limits
+# after every reply, and the macOS app polls the account route itself when that
+# data gets old. Codex still runs on a launchd agent.
 #
 # The scripts are copied out of the repository on purpose: macOS privacy
 # protection blocks launchd agents from running files inside ~/Documents.
@@ -13,8 +17,9 @@ DOMAIN="gui/$(id -u)"
 install_files() {
   mkdir -p "$INSTALL_DIR" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
   install -m 644 "$SOURCE_DIR/lib.sh" "$INSTALL_DIR/lib.sh"
-  install -m 755 "$SOURCE_DIR/usage_poll.sh" "$SOURCE_DIR/codex_usage_poll.sh" "$INSTALL_DIR/"
-  install -m 644 "$SOURCE_DIR/usage.jq" "$SOURCE_DIR/codex_usage.jq" "$INSTALL_DIR/"
+  install -m 755 "$SOURCE_DIR/statusline.sh" "$SOURCE_DIR/codex_usage_poll.sh" "$INSTALL_DIR/"
+  install -m 644 "$SOURCE_DIR/payload.jq" "$SOURCE_DIR/codex_usage.jq" "$INSTALL_DIR/"
+  rm -f "$INSTALL_DIR/usage_poll.sh" "$INSTALL_DIR/usage.jq"
 }
 
 # $1: agent label.
@@ -42,9 +47,16 @@ install_agent() {
   load_agent "$@"
 }
 
+# The Claude poller was replaced by the statusline; drop it if it is still loaded.
+remove_claude_agent() {
+  unload_agent com.tokesp.usage-poll
+  rm -f "$HOME/Library/LaunchAgents/com.tokesp.usage-poll.plist"
+}
+
 install_files
-install_agent com.tokesp.usage-poll usage_poll.sh tokesp-usage-poll
+remove_claude_agent
 install_agent com.tokesp.codex-usage-poll codex_usage_poll.sh tokesp-codex-usage-poll
 echo "Collectors instalados em $INSTALL_DIR"
-echo "Hook Stop do ~/.claude/settings.json: $INSTALL_DIR/usage_poll.sh --detach"
+echo "statusLine do ~/.claude/settings.json: $INSTALL_DIR/statusline.sh"
+echo "Remova do ~/.claude/settings.json o hook Stop com usage_poll.sh, se existir."
 echo "notify do ~/.codex/config.toml: [\"$INSTALL_DIR/codex_usage_poll.sh\", \"--detach\"]"

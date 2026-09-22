@@ -4,11 +4,12 @@ Mostra quanto das suas assinaturas **Claude** (Pro/Max), **Codex** (ChatGPT) e
 **Cursor** foi consumido — num tokonotch nativo do macOS e num display OLED
 opcional.
 
-**Não existe endpoint público de consumo de assinatura.** Os collectors leem o
-uso de cada conta pelas mesmas rotas internas que o Claude Code e o Codex usam,
-a cada 2 minutos (e, no Claude, também depois de cada resposta pelo hook
-`Stop`). Essas rotas não são documentadas e podem mudar; veja
-`collector/README.md`. O app macOS consulta as fontes diretamente; o backend
+**Não existe endpoint público de consumo de assinatura.** No Claude, a fonte é
+a **statusline**: o Claude Code entrega os limites de 5 h e 7 dias a cada
+resposta, sem gastar consulta. Quando esse dado passa de 15 min, o app macOS
+consulta a rota interna da conta como reserva, no máximo a cada 15 min. O Codex
+é lido de 2 em 2 minutos pela rota interna que o próprio Codex usa. Essas rotas
+não são documentadas e podem mudar; veja `collector/README.md`. O backend
 permanece como ponte temporária para o ESP32.
 
 ```
@@ -21,7 +22,7 @@ collector ───────► backend API ──► ESP32 (durante a migra�
 | Pasta | O que é |
 |---|---|
 | `backend/` | Node + TypeScript. Ponte de snapshots e API do device. |
-| `collector/` | Envia o uso das contas Claude e Codex ao backend (hook `Stop` + launchd). A fonte do dado. |
+| `collector/` | Statusline do Claude e poller do Codex. Alimenta o app e o backend. |
 | `macos/` | Aplicativo nativo: tokonotch, coleta local e aprovação de pareamento. |
 | `firmware/` | ESP32 DevKit + OLED I2C externo (ou Heltec WiFi LoRa 32 V2). Consome `docs/device-api.md`. |
 
@@ -67,8 +68,6 @@ launchctl bootout gui/$(id -u)/com.tokesp.backend
 cd backend && npm test
 ./collector/test/payload.test.sh
 ./collector/test/statusline.test.sh
-./collector/test/usage.test.sh
-./collector/test/usage_poll.test.sh
 ./collector/test/codex_usage.test.sh
 ./collector/test/codex_usage_poll.test.sh
 cd macos && swift test

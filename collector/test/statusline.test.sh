@@ -21,8 +21,10 @@ export TOKESP_CONFIG="$WORK/config.sh"
 export TOKESP_STATE_DIR="$WORK/state"
 export FAKE_CURL_LOG="$WORK/pushes.log"
 
-LIMITS_29='{"model":{"display_name":"Opus"},"rate_limits":{"five_hour":{"used_percentage":29,"resets_at":1800003600}}}'
-LIMITS_30='{"model":{"display_name":"Opus"},"rate_limits":{"five_hour":{"used_percentage":30,"resets_at":1800003600}}}'
+LIMITS_29='{"model":{"display_name":"Opus"},"session_id":"s1","cost":{"total_api_duration_ms":1000},"rate_limits":{"five_hour":{"used_percentage":29,"resets_at":1800003600}}}'
+# Same numbers, but a later reply: the API answered again, so the data is fresh.
+LIMITS_29_LATER='{"model":{"display_name":"Opus"},"session_id":"s1","cost":{"total_api_duration_ms":2000},"rate_limits":{"five_hour":{"used_percentage":29,"resets_at":1800003600}}}'
+LIMITS_30='{"model":{"display_name":"Opus"},"session_id":"s1","cost":{"total_api_duration_ms":3000},"rate_limits":{"five_hour":{"used_percentage":30,"resets_at":1800003600}}}'
 NO_DATA='{"model":{"display_name":"Opus"}}'
 
 push_count() {
@@ -53,19 +55,30 @@ render "$LIMITS_29"
 expect_pushes "first values are pushed" 1
 
 render "$LIMITS_29"
-expect_pushes "same values are not re-sent with a fresh timestamp" 1
+expect_pushes "a re-render without a new reply is not re-sent" 1
+
+render "$LIMITS_29_LATER"
+expect_pushes "the same values after a new reply are pushed" 2
 
 render "$NO_DATA"
-expect_pushes "a new empty session does not overwrite the last data" 1
+expect_pushes "a new empty session does not overwrite the last data" 2
 
 render "$LIMITS_30"
-expect_pushes "changed values are pushed" 2
+expect_pushes "changed values are pushed" 3
 
 FAKE_CURL_EXIT=22 render "$(printf '%s' "$LIMITS_29")"
-expect_pushes "values are pushed even when the backend rejects them" 3
+expect_pushes "values are pushed even when the backend rejects them" 4
 
 render "$LIMITS_29"
-expect_pushes "a rejected push is retried with the same values" 4
+expect_pushes "a rejected push is retried with the same values" 5
+
+snapshot="$TOKESP_STATE_DIR/claude-statusline.json"
+if [ "$(jq -r '.windows[0].usedPercentage, (.observedAt > 0)' "$snapshot" 2>/dev/null | tr '\n' ' ')" = "29 true " ]; then
+  echo "ok - the app snapshot file is written"
+else
+  echo "FAIL - app snapshot file: $(cat "$snapshot" 2>/dev/null)"
+  FAILURES=$((FAILURES + 1))
+fi
 
 output="$(printf '%s' "$LIMITS_29" | "$SCRIPT")"
 if [ "$output" = "Opus  5h 29%" ]; then

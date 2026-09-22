@@ -78,56 +78,6 @@ struct CodexUsageProvider: NativeUsageProvider {
     }
 }
 
-struct ClaudeUsageProvider: NativeUsageProvider {
-    let endpoint: URL
-
-    init(endpoint: URL = URL(string: "https://api.anthropic.com/api/oauth/usage")!) {
-        self.endpoint = endpoint
-    }
-
-    var id: ProviderID { .claude }
-    var refreshInterval: TimeInterval { 300 }
-
-    func fetch(now: Date) async throws -> ProviderSnapshot {
-        let credentials = try KeychainReader.readClaudeCredentials()
-        guard let token = credentials.claudeAiOauth?.accessToken else {
-            throw ProviderFetchError.needsAuth("Entre novamente no Claude Code")
-        }
-        var request = URLRequest(url: endpoint)
-        request.timeoutInterval = 10
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw ProviderFetchError.unavailable("Claude não respondeu")
-        }
-        guard http.statusCode != 401, http.statusCode != 403 else {
-            throw ProviderFetchError.needsAuth("Entre novamente no Claude Code")
-        }
-        guard http.statusCode != 429 else {
-            let retryAfter = TimeInterval(http.value(forHTTPHeaderField: "Retry-After") ?? "") ?? 300
-            throw ProviderFetchError.rateLimited(retryAfter: max(300, retryAfter))
-        }
-        guard http.statusCode == 200 else {
-            throw ProviderFetchError.unavailable("Claude indisponível (HTTP \(http.statusCode))")
-        }
-        let windows = try JSONDecoder().decode(ClaudeUsage.self, from: data).windows
-        guard !windows.isEmpty else {
-            throw ProviderFetchError.unsupported("O Claude não informou limites para esta conta")
-        }
-        return ProviderSnapshot(
-            id: id,
-            displayName: id.displayName,
-            fidelity: .derived,
-            status: .ok,
-            windows: windows,
-            headlineID: windows.first?.id,
-            hasData: true,
-            observedAt: now
-        )
-    }
-}
-
 struct CursorUsageProvider: NativeUsageProvider {
     let stateFile: URL
     let endpoint: URL
@@ -268,62 +218,6 @@ private extension UsageWindow {
         default: return nil
         }
         self.init(id: details.0, label: details.1, usedFraction: min(max(percentage / 100, 0), 1), resetsAt: Date(timeIntervalSince1970: resetAt))
-    }
-}
-
-private struct ClaudeCredentials: Decodable {
-    let claudeAiOauth: OAuth?
-
-    struct OAuth: Decodable {
-        let accessToken: String?
-    }
-}
-
-struct ClaudeUsage: Decodable {
-    let fiveHour: Window?
-    let sevenDay: Window?
-
-    var windows: [UsageWindow] {
-        [("five_hour", "5 horas", fiveHour), ("seven_day", "7 dias", sevenDay)]
-            .compactMap(UsageWindow.init(claude:))
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case fiveHour = "five_hour"
-        case sevenDay = "seven_day"
-    }
-
-    struct Window: Decodable {
-        let utilization: Double?
-        let resetsAt: String?
-
-        enum CodingKeys: String, CodingKey {
-            case utilization
-            case resetsAt = "resets_at"
-        }
-    }
-}
-
-private extension UsageWindow {
-    init?(claude source: (String, String, ClaudeUsage.Window?)) {
-        guard let window = source.2, let utilization = window.utilization, let value = window.resetsAt, let reset = ISO8601Date.parse(value) else { return nil }
-        self.init(id: source.0, label: source.1, usedFraction: min(max(utilization / 100, 0), 1), resetsAt: reset)
-    }
-}
-
-private enum KeychainReader {
-    static func readClaudeCredentials() throws -> ClaudeCredentials {
-        let process = Process()
-        let output = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
-        process.arguments = ["find-generic-password", "-s", "Claude Code-credentials", "-w"]
-        process.standardOutput = output
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            throw ProviderFetchError.needsAuth("Autorize o acesso ao login do Claude Code")
-        }
-        return try JSONDecoder().decode(ClaudeCredentials.self, from: output.fileHandleForReading.readDataToEndOfFile())
     }
 }
 
