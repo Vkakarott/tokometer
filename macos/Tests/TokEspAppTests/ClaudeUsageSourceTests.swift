@@ -107,7 +107,7 @@ func pollsWhenStatuslineIsOld() async throws {
     let again = try await fixture.provider.fetch(now: start.addingTimeInterval(60))
 
     #expect(polled.windows.first?.usedFraction == 0.21)
-    #expect(again.windows.first?.usedFraction == 0.21)
+    #expect(again.windows.first?.usedFraction == 0.30)
     #expect(again.status == .ok)
     #expect(fixture.fake.requests == 1)
 }
@@ -155,5 +155,18 @@ func prefersNewestReading() async throws {
     let snapshot = try await fixture.provider.fetch(now: start.addingTimeInterval(180))
 
     #expect(snapshot.windows.first?.usedFraction == 0.40)
+    #expect(fixture.fake.requests == 1)
+}
+
+@Test("keeps the higher usage when sources describe the same reset window")
+func keepsHigherUsageWithinSameWindow() async throws {
+    let fixture = try Fixture()
+    _ = try await fixture.provider.fetch(now: start)
+    try fixture.writeStatusline(observedAt: start.addingTimeInterval(60), fiveHour: 11)
+
+    let snapshot = try await fixture.provider.fetch(now: start.addingTimeInterval(120))
+
+    #expect(snapshot.windows.first?.id == "five_hour")
+    #expect(snapshot.windows.first?.usedFraction == 0.21)
     #expect(fixture.fake.requests == 1)
 }

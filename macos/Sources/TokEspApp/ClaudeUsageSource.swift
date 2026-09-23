@@ -47,9 +47,13 @@ struct ClaudeUsageProvider: NativeUsageProvider {
     }
 
     private func newestReading() -> ClaudeReading? {
-        [statusline.read(), pollCache.read()]
-            .compactMap { $0 }
-            .max { $0.observedAt < $1.observedAt }
+        let readings = [statusline.read(), pollCache.read()].compactMap { $0 }
+        guard let newest = readings.max(by: { $0.observedAt < $1.observedAt }) else { return nil }
+        let windows = Dictionary(grouping: readings.flatMap(\.windows), by: \.id)
+            .values
+            .compactMap(selectCurrentWindow)
+            .sorted { $0.id < $1.id }
+        return ClaudeReading(windows: windows, observedAt: newest.observedAt, fidelity: newest.fidelity)
     }
 
     private func poll(now: Date) async throws -> ClaudeReading {
@@ -109,6 +113,17 @@ struct ClaudeUsageProvider: NativeUsageProvider {
             hasData: true,
             observedAt: reading.observedAt
         )
+    }
+}
+
+private func selectCurrentWindow(_ candidates: [UsageWindow]) -> UsageWindow? {
+    candidates.reduce(nil) { current, candidate in
+        guard let current else { return candidate }
+        guard let currentReset = current.resetsAt, let candidateReset = candidate.resetsAt else { return candidate }
+        if abs(currentReset.timeIntervalSince(candidateReset)) < 60 {
+            return (candidate.usedFraction ?? 0) > (current.usedFraction ?? 0) ? candidate : current
+        }
+        return candidateReset > currentReset ? candidate : current
     }
 }
 

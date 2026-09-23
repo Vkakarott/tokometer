@@ -23,6 +23,39 @@ build_payload() {
     -f "$script_dir/payload.jq" 2>/dev/null
 }
 
+merge_with_snapshot() {
+  local payload="$1" previous
+  previous=$(cat "$SNAPSHOT_FILE" 2>/dev/null) || {
+    printf '%s' "$payload"
+    return
+  }
+
+  if printf '%s' "$payload" | jq -e --argjson previous "$previous" '
+    [
+      .windows[] as $incoming
+      | first($previous.windows[]? | select(.id == $incoming.id)) as $saved
+      | $saved != null
+        and (($saved.resetsAt - $incoming.resetsAt | fabs) < 60)
+        and $saved.usedPercentage > $incoming.usedPercentage
+    ] | length > 0 and all
+  ' >/dev/null 2>&1; then
+    return 1
+  fi
+
+  printf '%s' "$payload" | jq -c --argjson previous "$previous" '
+    .windows |= map(
+      . as $incoming
+      | first($previous.windows[]? | select(.id == $incoming.id)) as $saved
+      | if $saved == null then $incoming
+        elif (($saved.resetsAt - $incoming.resetsAt | fabs) < 60) then
+          if $saved.usedPercentage > $incoming.usedPercentage then $saved else $incoming end
+        elif $saved.resetsAt > $incoming.resetsAt then $saved
+        else $incoming
+        end
+    )
+  ' 2>/dev/null || printf '%s' "$payload"
+}
+
 # No API response in this session yet: keep the data we already have.
 has_data() {
   printf '%s' "$1" | jq -e '(.windows | length > 0) or has("context")' >/dev/null
@@ -58,7 +91,7 @@ push_if_changed() {
 }
 
 payload=$(build_payload)
-if [ -n "$payload" ] && has_data "$payload"; then
+if [ -n "$payload" ] && has_data "$payload" && payload=$(merge_with_snapshot "$payload"); then
   mark=$(fingerprint "$payload")
   save_snapshot "$payload" "$mark"
   if [ -n "${TOKESP_URL:-}" ] && [ -n "${TOKESP_TOKEN:-}" ]; then
