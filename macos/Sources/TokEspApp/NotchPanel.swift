@@ -331,6 +331,7 @@ private struct UsageLimit: View {
                 Text(resetDescription)
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.white.opacity(0.45))
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
     }
