@@ -327,7 +327,18 @@ private struct UsageLimit: View {
                 }
             }
             .frame(height: 3)
+            if let resetDescription {
+                Text(resetDescription)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.45))
+            }
         }
+    }
+
+    private var resetDescription: String? {
+        guard let resetsAt = window.resetsAt else { return nil }
+        guard resetsAt > .now else { return "Aguardando atualização" }
+        return "Redefine às \(resetsAt.formatted(date: .omitted, time: .shortened))"
     }
 }
 
