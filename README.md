@@ -7,7 +7,8 @@ opcional.
 **Não existe endpoint público de consumo de assinatura.** No Claude, a fonte é
 a **statusline**: o Claude Code entrega os limites de 5 h e 7 dias a cada
 resposta, sem gastar consulta. Quando esse dado passa de 15 min, o app macOS
-consulta a rota interna da conta como reserva, no máximo a cada 15 min. O Codex
+consulta a rota interna da conta como reserva; a cadência cai para 1 min quando
+o limite de 5 h chega a 90%. O Codex
 é lido de 2 em 2 minutos pela rota interna que o próprio Codex usa. Essas rotas
 não são documentadas e podem mudar; veja `collector/README.md`. O backend
 permanece como ponte temporária para o ESP32.

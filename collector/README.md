@@ -112,7 +112,8 @@ limites são da conta, então todas as máquinas mandam o mesmo número.
 - Claude: os limites só existem para assinantes **Pro/Max**. Codex: só com login
   por conta ChatGPT (não por chave de API).
 - **Só o `claude` no terminal roda statusline.** Na extensão do VS Code, o dado
-  do Claude só se atualiza pela consulta de reserva do app, a cada 15 min.
+  do Claude só se atualiza pela consulta de reserva do app, a cada 15 min (ou
+  a cada 1 min quando o limite de 5 h está em 90% ou mais).
 - **Uso feito no claude.ai** (web ou celular) só aparece na próxima resposta do
   Claude Code, ou na consulta de reserva.
 - **Com o app fechado e sem usar o terminal, nada atualiza.** O backend marca o

@@ -11,6 +11,13 @@ private let usageBody = Data("""
 }
 """.utf8)
 
+private let nearLimitUsageBody = Data("""
+{
+  "five_hour": {"utilization": 95.0, "resets_at": "2026-09-22T21:30:00.010643+00:00"},
+  "seven_day": {"utilization": 92.0, "resets_at": "2026-09-23T03:00:00.010662+00:00"}
+}
+""".utf8)
+
 /// Counts calls and serves scripted HTTP answers to the provider.
 private final class FakeClaude: @unchecked Sendable {
     private let lock = NSLock()
@@ -19,6 +26,7 @@ private final class FakeClaude: @unchecked Sendable {
     var token = "token-a"
     var status = 200
     var retryAfter: String?
+    var body = usageBody
 
     var requests: Int { lock.withLock { _requests } }
     var tokenReads: Int { lock.withLock { _tokenReads } }
@@ -32,7 +40,7 @@ private final class FakeClaude: @unchecked Sendable {
         lock.withLock { _requests += 1 }
         let headers = retryAfter.map { ["Retry-After": $0] }
         let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: headers)!
-        return (status == 200 ? usageBody : Data(), response)
+        return (status == 200 ? body : Data(), response)
     }
 }
 
@@ -110,6 +118,18 @@ func pollsWhenStatuslineIsOld() async throws {
     #expect(again.windows.first?.usedFraction == 0.30)
     #expect(again.status == .ok)
     #expect(fixture.fake.requests == 1)
+}
+
+@Test("refreshes near-limit Claude usage after one minute")
+func refreshesNearLimitUsage() async throws {
+    let fixture = try Fixture()
+    fixture.fake.body = nearLimitUsageBody
+
+    _ = try await fixture.provider.fetch(now: start)
+    let refreshed = try await fixture.provider.fetch(now: start.addingTimeInterval(61))
+
+    #expect(refreshed.windows.first?.usedFraction == 0.95)
+    #expect(fixture.fake.requests == 2)
 }
 
 @Test("keeps the last reading and backs off after a rate limit, even across restarts")

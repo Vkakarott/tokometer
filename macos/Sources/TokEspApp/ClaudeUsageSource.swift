@@ -6,7 +6,8 @@ import Foundation
 /// `collector/statusline.sh` writes a file after every Claude Code reply, which
 /// costs no request and is the documented data. The account usage route is a
 /// fallback: it is undocumented, rate limited per token and its token is only
-/// refreshed by Claude Code, so it is polled at most every 15 minutes.
+/// refreshed by Claude Code, so it is normally polled every 15 minutes and
+/// every minute near a limit.
 struct ClaudeUsageProvider: NativeUsageProvider {
     let statusline: ClaudeReadingFile
     let pollCache: ClaudeReadingFile
@@ -39,7 +40,7 @@ struct ClaudeUsageProvider: NativeUsageProvider {
             return snapshot(known, now: now)
         }
         do {
-            return snapshot(try await poll(now: now), now: now)
+            return snapshot(try await poll(now: now, knownWindows: known?.windows ?? []), now: now)
         } catch {
             guard let known else { throw error }
             return snapshot(known, now: now)
@@ -56,8 +57,8 @@ struct ClaudeUsageProvider: NativeUsageProvider {
         return ClaudeReading(windows: windows, observedAt: newest.observedAt, fidelity: newest.fidelity)
     }
 
-    private func poll(now: Date) async throws -> ClaudeReading {
-        guard gate.isOpen(at: now) else {
+    private func poll(now: Date, knownWindows: [UsageWindow]) async throws -> ClaudeReading {
+        guard gate.isOpen(at: now, knownWindows: knownWindows) else {
             throw ProviderFetchError.unavailable("Aguardando dados do Claude Code")
         }
         guard let token = try readToken(), !token.isEmpty else {
@@ -68,7 +69,7 @@ struct ClaudeUsageProvider: NativeUsageProvider {
             throw ProviderFetchError.needsAuth("Entre novamente no Claude Code")
         }
         let windows = try await requestWindows(token: token, tokenID: tokenID, now: now)
-        gate.recordSuccess(at: now)
+        gate.recordSuccess(at: now, windows: windows)
         let reading = ClaudeReading(windows: windows, observedAt: now, fidelity: .derived)
         try? pollCache.write(reading)
         return reading
@@ -133,7 +134,7 @@ struct ClaudeReading: Equatable {
     let fidelity: Fidelity
 
     func isFresh(at now: Date) -> Bool {
-        now.timeIntervalSince(observedAt) < ClaudePollGate.interval
+        now.timeIntervalSince(observedAt) < ClaudePollGate.interval(for: windows)
     }
 
     var hasSubscriptionWindows: Bool {
@@ -219,7 +220,9 @@ private extension UsageWindow {
 /// interval, a wait after a rate limit, and no retry with a token the server
 /// already rejected. Persisted, so restarting the app does not reset it.
 struct ClaudePollGate: Sendable {
-    static let interval: TimeInterval = 15 * 60
+    static let standardInterval: TimeInterval = 15 * 60
+    static let nearLimitInterval: TimeInterval = 60
+    static let nearLimitThreshold = 0.9
     static let minimumBackoff: TimeInterval = 300
     static let maximumBackoff: TimeInterval = 3_600
 
@@ -233,16 +236,28 @@ struct ClaudePollGate: Sendable {
         suiteName.flatMap(UserDefaults.init(suiteName:)) ?? .standard
     }
 
-    func isOpen(at now: Date) -> Bool {
-        now.timeIntervalSince1970 >= defaults.double(forKey: Key.nextPoll)
+    static func interval(for windows: [UsageWindow]) -> TimeInterval {
+        windows.contains { $0.id == "five_hour" && ($0.usedFraction ?? 0) >= nearLimitThreshold }
+            ? nearLimitInterval
+            : standardInterval
+    }
+
+    func isOpen(at now: Date, knownWindows: [UsageWindow]) -> Bool {
+        guard now.timeIntervalSince1970 >= defaults.double(forKey: Key.backoffUntil) else { return false }
+        if Self.interval(for: knownWindows) == Self.nearLimitInterval {
+            return now.timeIntervalSince1970 >= defaults.double(forKey: Key.lastPoll) + Self.nearLimitInterval
+        }
+        return now.timeIntervalSince1970 >= defaults.double(forKey: Key.nextPoll)
     }
 
     func rejects(_ tokenID: String) -> Bool {
         defaults.string(forKey: Key.rejectedToken) == tokenID
     }
 
-    func recordSuccess(at now: Date) {
-        defaults.set(now.addingTimeInterval(Self.interval).timeIntervalSince1970, forKey: Key.nextPoll)
+    func recordSuccess(at now: Date, windows: [UsageWindow]) {
+        defaults.set(now.timeIntervalSince1970, forKey: Key.lastPoll)
+        defaults.set(now.addingTimeInterval(Self.interval(for: windows)).timeIntervalSince1970, forKey: Key.nextPoll)
+        defaults.removeObject(forKey: Key.backoffUntil)
         defaults.removeObject(forKey: Key.rejectedToken)
     }
 
@@ -250,7 +265,7 @@ struct ClaudePollGate: Sendable {
     /// wait is never honored as is. Returns the wait actually applied.
     func recordRateLimit(at now: Date, retryAfter: TimeInterval?) -> TimeInterval {
         let wait = min(max(retryAfter ?? 0, Self.minimumBackoff), Self.maximumBackoff)
-        defaults.set(now.addingTimeInterval(wait).timeIntervalSince1970, forKey: Key.nextPoll)
+        defaults.set(now.addingTimeInterval(wait).timeIntervalSince1970, forKey: Key.backoffUntil)
         return wait
     }
 
@@ -265,6 +280,8 @@ struct ClaudePollGate: Sendable {
 
     private enum Key {
         static let nextPoll = "claude.nextPollAt"
+        static let lastPoll = "claude.lastPollAt"
+        static let backoffUntil = "claude.backoffUntil"
         static let rejectedToken = "claude.rejectedToken"
     }
 }
