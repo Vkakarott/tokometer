@@ -40,6 +40,9 @@ npm run dev   # porta 43110
 cd macos && ./scripts/build-app.sh
 open .build/TokEsp.app
 
+# instalar o app para iniciar automaticamente após o login
+./scripts/install-app.sh
+
 # collector: veja collector/README.md
 ```
 

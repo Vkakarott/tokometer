@@ -16,6 +16,20 @@ swift run TokEsp
 O ícone de menu permite atualizar a leitura, mostrar ou ocultar o tokonotch e abrir
 as configurações.
 
+## Iniciar com o Mac
+
+```bash
+cd macos && ./scripts/install-app.sh
+```
+
+O instalador copia o app para `~/.local/share/tokesp`, registra o LaunchAgent
+`com.tokesp.app` e o inicia a cada login. Para remover o início automático:
+
+```bash
+launchctl bootout gui/$(id -u)/com.tokesp.app
+rm ~/Library/LaunchAgents/com.tokesp.app.plist
+```
+
 ## Estado da migração
 
 Esta é a fase de compatibilidade. O app ainda não substitui os collectors, o
