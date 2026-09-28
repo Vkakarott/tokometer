@@ -339,7 +339,7 @@ private struct UsageLimit: View {
     private var resetDescription: String? {
         guard let resetsAt = window.resetsAt else { return nil }
         guard resetsAt > .now else { return "Aguardando atualização" }
-        return "Redefine às \(resetsAt.formatted(date: .omitted, time: .shortened))"
+        return "Redefine em \(resetsAt.formatted(date: .numeric, time: .shortened))"
     }
 }
 
