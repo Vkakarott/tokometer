@@ -95,6 +95,13 @@ void drawBootAnimationLine(GIFDRAW *draw) {
 
     const int first = max(0, -draw->iX);
     const int last = min(draw->iWidth, PANEL_WIDTH - draw->iX);
+    if (draw->ucDisposalMethod == 2) {
+        for (int index = first; index < last; ++index) {
+            if (draw->pPixels[index] == draw->ucTransparent) draw->pPixels[index] = draw->ucBackground;
+        }
+        draw->ucHasTransparency = 0;
+    }
+
     int start = first;
     while (start < last) {
         while (start < last && draw->ucHasTransparency && draw->pPixels[start] == draw->ucTransparent) ++start;
@@ -113,7 +120,7 @@ void drawBootAnimationLine(GIFDRAW *draw) {
 }
 
 void showBootAnimation() {
-    bootAnimation.begin(GIF_PALETTE_RGB565_BE);
+    bootAnimation.begin(GIF_PALETTE_RGB565_LE);
     const size_t size = bootAnimationEnd - bootAnimationStart;
     if (!bootAnimation.openFLASH(const_cast<uint8_t *>(bootAnimationStart), size, drawBootAnimationLine)) {
         log_e("Could not open the boot animation");
