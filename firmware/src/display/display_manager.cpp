@@ -1,7 +1,11 @@
 #include "display/display_manager.h"
 
 #include <U8g2lib.h>
+#if defined(TOKESP_BOARD_ESP32_JD9853)
+#include <SPI.h>
+#else
 #include <Wire.h>
+#endif
 
 #include "config/hardware_config.h"
 #include "display/frame_context.h"
@@ -9,6 +13,87 @@
 #include "timekeeping/ntp_clock.h"
 
 namespace {
+
+#if defined(TOKESP_BOARD_ESP32_JD9853)
+
+constexpr uint16_t PANEL_WIDTH = 240;
+constexpr uint16_t PANEL_HEIGHT = 296;
+constexpr uint16_t RENDER_WIDTH = 240;
+constexpr uint16_t RENDER_HEIGHT = 120;
+constexpr uint16_t RENDER_TOP = (PANEL_HEIGHT - RENDER_HEIGHT) / 2;
+constexpr uint16_t BACKGROUND_COLOR = 0x0000;
+constexpr uint16_t FOREGROUND_COLOR = 0xFFFF;
+constexpr uint32_t SPI_FREQUENCY = 20000000;
+constexpr uint32_t FRAME_INTERVAL_MS = 500;
+
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, U8X8_PIN_NONE);
+uint32_t lastFrameAtMs = 0;
+
+void writeCommand(uint8_t command, const uint8_t *data = nullptr, size_t size = 0) {
+    SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, SPI_MODE0));
+    digitalWrite(HardwareConfig::TFT_CS_PIN, LOW);
+    digitalWrite(HardwareConfig::TFT_DC_PIN, LOW);
+    SPI.transfer(command);
+    if (size != 0) {
+        digitalWrite(HardwareConfig::TFT_DC_PIN, HIGH);
+        SPI.writeBytes(data, size);
+    }
+    digitalWrite(HardwareConfig::TFT_CS_PIN, HIGH);
+    SPI.endTransaction();
+}
+
+void setAddressWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+    const uint16_t xEnd = x + width - 1;
+    const uint16_t yEnd = y + height - 1;
+    const uint8_t columns[] = {static_cast<uint8_t>(x >> 8), static_cast<uint8_t>(x),
+                               static_cast<uint8_t>(xEnd >> 8), static_cast<uint8_t>(xEnd)};
+    const uint8_t rows[] = {static_cast<uint8_t>(y >> 8), static_cast<uint8_t>(y),
+                            static_cast<uint8_t>(yEnd >> 8), static_cast<uint8_t>(yEnd)};
+    writeCommand(0x2A, columns, sizeof columns);
+    writeCommand(0x2B, rows, sizeof rows);
+    writeCommand(0x2C);
+}
+
+void writeSolidColor(uint16_t color, uint32_t pixelCount) {
+    SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, SPI_MODE0));
+    digitalWrite(HardwareConfig::TFT_CS_PIN, LOW);
+    digitalWrite(HardwareConfig::TFT_DC_PIN, HIGH);
+    const uint8_t pixel[] = {static_cast<uint8_t>(color >> 8), static_cast<uint8_t>(color)};
+    while (pixelCount-- != 0) SPI.writeBytes(pixel, sizeof pixel);
+    digitalWrite(HardwareConfig::TFT_CS_PIN, HIGH);
+    SPI.endTransaction();
+}
+
+void fillScreen(uint16_t color) {
+    setAddressWindow(0, 0, PANEL_WIDTH, PANEL_HEIGHT);
+    writeSolidColor(color, static_cast<uint32_t>(PANEL_WIDTH) * PANEL_HEIGHT);
+}
+
+bool sourcePixel(uint16_t x, uint16_t y) {
+    const uint8_t *buffer = display.getBufferPtr();
+    return (buffer[x + (y / 8) * 128] & (1U << (y & 7))) != 0;
+}
+
+void sendScaledBuffer() {
+    setAddressWindow(0, RENDER_TOP, RENDER_WIDTH, RENDER_HEIGHT);
+
+    SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, SPI_MODE0));
+    digitalWrite(HardwareConfig::TFT_CS_PIN, LOW);
+    digitalWrite(HardwareConfig::TFT_DC_PIN, HIGH);
+    for (uint16_t y = 0; y < RENDER_HEIGHT; ++y) {
+        const uint16_t sourceY = y * 64 / RENDER_HEIGHT;
+        for (uint16_t x = 0; x < RENDER_WIDTH; ++x) {
+            const uint16_t color = sourcePixel(x * 128 / RENDER_WIDTH, sourceY)
+                ? FOREGROUND_COLOR : BACKGROUND_COLOR;
+            SPI.transfer(color >> 8);
+            SPI.transfer(color);
+        }
+    }
+    digitalWrite(HardwareConfig::TFT_CS_PIN, HIGH);
+    SPI.endTransaction();
+}
+
+#else
 
 // Modules with the same pinout ship with either controller; the flag picks one.
 #if defined(TOKESP_DISPLAY_SH1106)
@@ -26,14 +111,38 @@ void logI2CDevices() {
     }
 }
 
+#endif
+
 }  // namespace
 
 void initializeDisplay() {
+#if defined(TOKESP_BOARD_ESP32_JD9853)
+    pinMode(HardwareConfig::TFT_CS_PIN, OUTPUT);
+    pinMode(HardwareConfig::TFT_DC_PIN, OUTPUT);
+    pinMode(HardwareConfig::TFT_RESET_PIN, OUTPUT);
+    digitalWrite(HardwareConfig::TFT_CS_PIN, HIGH);
+    SPI.begin(HardwareConfig::TFT_SCK_PIN, -1, HardwareConfig::TFT_MOSI_PIN,
+              HardwareConfig::TFT_CS_PIN);
+
+    digitalWrite(HardwareConfig::TFT_RESET_PIN, LOW);
+    delay(10);
+    digitalWrite(HardwareConfig::TFT_RESET_PIN, HIGH);
+    delay(120);
+
+    const uint8_t pixelFormat = 0x55;
+    writeCommand(0x3A, &pixelFormat, 1);
+    writeCommand(0x11);
+    delay(120);
+    writeCommand(0x29);
+    delay(50);
+    fillScreen(BACKGROUND_COLOR);
+#else
     if (HardwareConfig::LOG_I2C_SCAN_AT_BOOT) logI2CDevices();
     display.setI2CAddress(HardwareConfig::OLED_I2C_ADDRESS << 1);
     display.begin();
     display.clearBuffer();
     display.sendBuffer();
+#endif
 }
 
 void drawFrame(const AppState &state, uint32_t nowMs) {
@@ -44,5 +153,12 @@ void drawFrame(const AppState &state, uint32_t nowMs) {
 
     display.clearBuffer();
     renderScreen(display, state, context);
+#if defined(TOKESP_BOARD_ESP32_JD9853)
+    if (nowMs - lastFrameAtMs >= FRAME_INTERVAL_MS) {
+        sendScaledBuffer();
+        lastFrameAtMs = nowMs;
+    }
+#else
     display.sendBuffer();
+#endif
 }

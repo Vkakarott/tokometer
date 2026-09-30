@@ -104,7 +104,31 @@ modo de configuração após 15 segundos.
 
 ## Hardware do display
 
-O alvo padrão é uma **ESP32 DevKit (ESP-WROOM-32)** com um módulo **OLED I2C de
+O alvo padrão é uma **ESP32 DevKit (ESP-WROOM-32)** com um TFT IPS SPI
+**JD9853 240×296**:
+
+| Display | ESP32 |
+|---|---|
+| GND | GND |
+| VCC | 3V3 |
+| SCK / CLK | D18 |
+| MOSI / DIN / SDA | D23 |
+| CS | D5 |
+| DC / A0 | D2 |
+| RST | D4 |
+| BL / LED | 3V3 |
+
+```bash
+pio run -e esp32_jd9853 -t upload
+```
+
+O firmware mantém os layouts existentes e os amplia no painel enquanto o novo
+layout colorido é desenvolvido. O ambiente `esp32_i2c` preserva o suporte ao
+OLED antigo.
+
+### OLED I2C anterior
+
+Uma **ESP32 DevKit (ESP-WROOM-32)** também pode usar um módulo **OLED I2C de
 4 pinos** (SSD1306 0.96", endereço 0x3C):
 
 | Display | ESP32 |
@@ -115,7 +139,7 @@ O alvo padrão é uma **ESP32 DevKit (ESP-WROOM-32)** com um módulo **OLED I2C 
 | SDA | D21 |
 
 ```bash
-pio run -e esp32_i2c -t upload    # placa padrão
+pio run -e esp32_i2c -t upload    # OLED externo
 pio run -e heltec_wifi_lora_32_V2 -t upload    # placa com OLED embutido
 ```
 
