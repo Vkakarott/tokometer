@@ -200,6 +200,7 @@ void initializeDisplay() {
     delay(50);
     fillScreen(BACKGROUND_COLOR);
     showBootAnimation();
+    fillScreen(BACKGROUND_COLOR);
 #else
     if (HardwareConfig::LOG_I2C_SCAN_AT_BOOT) logI2CDevices();
     display.setI2CAddress(HardwareConfig::OLED_I2C_ADDRESS << 1);
