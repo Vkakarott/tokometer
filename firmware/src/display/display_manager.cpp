@@ -2,6 +2,7 @@
 
 #include <U8g2lib.h>
 #if defined(TOKESP_BOARD_ESP32_JD9853)
+#include <AnimatedGIF.h>
 #include <SPI.h>
 #else
 #include <Wire.h>
@@ -27,7 +28,11 @@ constexpr uint32_t SPI_FREQUENCY = 20000000;
 constexpr uint32_t FRAME_INTERVAL_MS = 500;
 
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, U8X8_PIN_NONE);
+AnimatedGIF bootAnimation;
 uint32_t lastFrameAtMs = 0;
+
+extern const uint8_t bootAnimationStart[] asm("_binary_firmware_assets_agents_pixel_boot_296x240_gif_start");
+extern const uint8_t bootAnimationEnd[] asm("_binary_firmware_assets_agents_pixel_boot_296x240_gif_end");
 
 void writeCommand(uint8_t command, const uint8_t *data = nullptr, size_t size = 0) {
     SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, SPI_MODE0));
@@ -67,6 +72,55 @@ void writeSolidColor(uint16_t color, uint32_t pixelCount) {
 void fillScreen(uint16_t color) {
     setAddressWindow(0, 0, PANEL_WIDTH, PANEL_HEIGHT);
     writeSolidColor(color, static_cast<uint32_t>(PANEL_WIDTH) * PANEL_HEIGHT);
+}
+
+void writePixelRow(uint16_t x, uint16_t y, const uint8_t *pixels, const uint16_t *palette,
+                   uint16_t length) {
+    setAddressWindow(x, y, length, 1);
+    SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, SPI_MODE0));
+    digitalWrite(HardwareConfig::TFT_CS_PIN, LOW);
+    digitalWrite(HardwareConfig::TFT_DC_PIN, HIGH);
+    for (uint16_t index = 0; index < length; ++index) {
+        const uint16_t color = palette[pixels[index]];
+        SPI.transfer(color >> 8);
+        SPI.transfer(color);
+    }
+    digitalWrite(HardwareConfig::TFT_CS_PIN, HIGH);
+    SPI.endTransaction();
+}
+
+void drawBootAnimationLine(GIFDRAW *draw) {
+    const int y = draw->iY + draw->y;
+    if (y < 0 || y >= PANEL_HEIGHT) return;
+
+    const int first = max(0, -draw->iX);
+    const int last = min(draw->iWidth, PANEL_WIDTH - draw->iX);
+    int start = first;
+    while (start < last) {
+        while (start < last && draw->ucHasTransparency && draw->pPixels[start] == draw->ucTransparent) ++start;
+        const int end = draw->ucHasTransparency
+            ? [&]() {
+                int index = start;
+                while (index < last && draw->pPixels[index] != draw->ucTransparent) ++index;
+                return index;
+            }()
+            : last;
+        if (start < end) {
+            writePixelRow(draw->iX + start, y, draw->pPixels + start, draw->pPalette, end - start);
+        }
+        start = end;
+    }
+}
+
+void showBootAnimation() {
+    bootAnimation.begin(GIF_PALETTE_RGB565_BE);
+    const size_t size = bootAnimationEnd - bootAnimationStart;
+    if (!bootAnimation.openFLASH(const_cast<uint8_t *>(bootAnimationStart), size, drawBootAnimationLine)) {
+        log_e("Could not open the boot animation");
+        return;
+    }
+    while (bootAnimation.playFrame(true, nullptr)) delay(1);
+    bootAnimation.close();
 }
 
 bool sourcePixel(uint16_t x, uint16_t y) {
@@ -138,6 +192,7 @@ void initializeDisplay() {
     writeCommand(0x29);
     delay(50);
     fillScreen(BACKGROUND_COLOR);
+    showBootAnimation();
 #else
     if (HardwareConfig::LOG_I2C_SCAN_AT_BOOT) logI2CDevices();
     display.setI2CAddress(HardwareConfig::OLED_I2C_ADDRESS << 1);
