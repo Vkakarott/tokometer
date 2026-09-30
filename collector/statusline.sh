@@ -23,6 +23,8 @@ build_payload() {
     -f "$script_dir/payload.jq" 2>/dev/null
 }
 
+# A window the previous snapshot lacks is kept as is. `// null` matters: binding
+# `first(empty)` yields nothing, and the window would silently disappear.
 merge_with_snapshot() {
   local payload="$1" previous
   previous=$(cat "$SNAPSHOT_FILE" 2>/dev/null) || {
@@ -33,7 +35,7 @@ merge_with_snapshot() {
   if printf '%s' "$payload" | jq -e --argjson previous "$previous" '
     [
       .windows[] as $incoming
-      | first($previous.windows[]? | select(.id == $incoming.id)) as $saved
+      | (first($previous.windows[]? | select(.id == $incoming.id)) // null) as $saved
       | $saved != null
         and (($saved.resetsAt - $incoming.resetsAt | fabs) < 60)
         and $saved.usedPercentage > $incoming.usedPercentage
@@ -45,7 +47,7 @@ merge_with_snapshot() {
   printf '%s' "$payload" | jq -c --argjson previous "$previous" '
     .windows |= map(
       . as $incoming
-      | first($previous.windows[]? | select(.id == $incoming.id)) as $saved
+      | (first($previous.windows[]? | select(.id == $incoming.id)) // null) as $saved
       | if $saved == null then $incoming
         elif (($saved.resetsAt - $incoming.resetsAt | fabs) < 60) then
           if $saved.usedPercentage > $incoming.usedPercentage then $saved else $incoming end

@@ -109,6 +109,17 @@ else
   FAILURES=$((FAILURES + 1))
 fi
 
+# A snapshot left without windows (by an older version) must not swallow new ones.
+printf '{"provider":"claude-code","source":"old","observedAt":1,"windows":[]}' > "$snapshot"
+render "$(printf '%s' "$NEXT_WINDOW" | jq -c '.cost.total_api_duration_ms = 30')"
+if [ "$(jq -r '.windows[0].usedPercentage' "$snapshot" 2>/dev/null)" = "3" ]; then
+  echo "ok - a window missing from the saved snapshot is kept"
+else
+  echo "FAIL - after an empty snapshot: $(jq -c '.windows' "$snapshot" 2>/dev/null)"
+  FAILURES=$((FAILURES + 1))
+fi
+expect_pushes "a window missing from the saved snapshot is pushed" 7
+
 output="$(printf '%s' "$LIMITS_29" | "$SCRIPT")"
 if [ "$output" = "Opus  5h 29%" ]; then
   echo "ok - status line text is still printed"
