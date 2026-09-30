@@ -56,9 +56,11 @@ merge_with_snapshot() {
   ' 2>/dev/null || printf '%s' "$payload"
 }
 
-# No API response in this session yet: keep the data we already have.
+# No limits in this reply (no API response yet, or a client such as the VS Code
+# extension that sends only the context): keep the data we already have. The
+# backend replaces the whole snapshot, so a context-only push erases the limits.
 has_data() {
-  printf '%s' "$1" | jq -e '(.windows | length > 0) or has("context")' >/dev/null
+  printf '%s' "$1" | jq -e '.windows | length > 0' >/dev/null
 }
 
 # What makes the data new: the values, or another reply in this session. The

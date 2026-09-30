@@ -64,6 +64,10 @@ expect_pushes "the same values after a new reply are pushed" 2
 render "$NO_DATA"
 expect_pushes "a new empty session does not overwrite the last data" 2
 
+CONTEXT_ONLY='{"model":{"display_name":"Opus"},"session_id":"s3","cost":{"total_api_duration_ms":500},"context_window":{"total_input_tokens":800,"total_output_tokens":20,"context_window_size":200000,"used_percentage":1}}'
+render "$CONTEXT_ONLY"
+expect_pushes "a reply without limits does not erase the backend's limits" 2
+
 render "$LIMITS_30"
 expect_pushes "changed values are pushed" 3
 

@@ -99,7 +99,8 @@ A statusline também se redesenha sozinha, e esses redesenhos não trazem dado
 novo. Por isso ela só grava e envia quando os valores mudam **ou** quando houve
 outra resposta da API na sessão (medida por `cost.total_api_duration_ms`). O
 controle fica em `~/.cache/tokesp/last-sent`; apague esse arquivo para forçar um
-novo envio. Sessões que ainda não receberam resposta não enviam nada, para não
+novo envio. Sessões que ainda não receberam resposta, e clientes que entregam só
+o contexto sem os limites (como a extensão do VS Code), não enviam nada, para não
 apagar o dado que o backend já tem.
 
 ## Usar em outra máquina
