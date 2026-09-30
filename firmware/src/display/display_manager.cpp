@@ -223,6 +223,32 @@ void drawUsageCard(int16_t x, int16_t y, int16_t width, int16_t height, const ch
     nativeCanvas.print(reset[0] == '\0' ? "aguardando horario" : reset);
 }
 
+void drawCompactUsageCard(int16_t x, int16_t y, const char *title, const UsageWindow &window,
+                          int64_t nowSeconds, uint16_t color) {
+    constexpr int16_t width = 128;
+    constexpr int16_t height = 76;
+    nativeCanvas.fillRoundRect(x, y, width, height, 10, SURFACE_COLOR);
+    nativeCanvas.drawRoundRect(x, y, width, height, 10, BORDER_COLOR);
+    nativeCanvas.setTextColor(SECONDARY_COLOR);
+    nativeCanvas.setTextSize(1);
+    nativeCanvas.setCursor(x + 12, y + 12);
+    nativeCanvas.print(title);
+
+    char value[8];
+    char reset[12];
+    formatPrimaryValue(window, value, sizeof value);
+    formatResetIn(window, nowSeconds, reset, sizeof reset);
+    nativeCanvas.setTextColor(color);
+    nativeCanvas.setTextSize(3);
+    nativeCanvas.setCursor(x + 12, y + 25);
+    nativeCanvas.print(value);
+    drawProgressBar(x + 12, y + 49, width - 24, usageFillFraction(window), color);
+    nativeCanvas.setTextColor(MUTED_COLOR);
+    nativeCanvas.setTextSize(1);
+    nativeCanvas.setCursor(x + 12, y + 65);
+    nativeCanvas.print(reset[0] == '\0' ? "--" : reset);
+}
+
 UsageView liveUsageView(UsageView view, const AppState &state, uint32_t nowMs) {
     view.ageSeconds += (nowMs - state.usageFetchedAtMs) / 1000;
     view.stale = view.stale || state.lastFetchFailed;
@@ -249,12 +275,27 @@ void drawNativeUsageScreen(const AppState &state, const FrameContext &context) {
     nativeCanvas.drawFastHLine(16, 37, PANEL_WIDTH - 32, BORDER_COLOR);
 
     if (state.layout == UsageLayout::Comparison) {
-        drawUsageCard(16, 54, 128, 164, "CLAUDE", claude.fiveHour, context.nowSeconds, PRIMARY_COLOR);
-        drawUsageCard(152, 54, 128, 164, "CODEX", codex.fiveHour, context.nowSeconds, WARNING_COLOR);
+        nativeCanvas.setTextColor(FOREGROUND_COLOR);
+        nativeCanvas.setTextSize(1);
+        nativeCanvas.setCursor(16, 49);
+        nativeCanvas.print("CLAUDE");
+        drawCompactUsageCard(16, 58, "5 HORAS", claude.fiveHour, context.nowSeconds, PRIMARY_COLOR);
+        drawCompactUsageCard(152, 58, "7 DIAS", claude.sevenDay, context.nowSeconds, PRIMARY_COLOR);
+        nativeCanvas.setTextColor(FOREGROUND_COLOR);
+        nativeCanvas.setTextSize(1);
+        nativeCanvas.setCursor(16, 143);
+        nativeCanvas.print("CODEX");
+        drawCompactUsageCard(16, 152, "5 HORAS", codex.fiveHour, context.nowSeconds, WARNING_COLOR);
+        drawCompactUsageCard(152, 152, "7 DIAS", codex.sevenDay, context.nowSeconds, WARNING_COLOR);
         return;
     }
 
     const UsageView &view = state.layout == UsageLayout::ClaudeCards ? claude : codex;
+    if (!view.hasData) {
+        drawCenteredText("SEM DADOS", 96, 3, FOREGROUND_COLOR);
+        drawCenteredText("CONFIRA O COLLECTOR", 146, 2, MUTED_COLOR);
+        return;
+    }
     const uint16_t color = state.layout == UsageLayout::ClaudeCards ? PRIMARY_COLOR : WARNING_COLOR;
     drawUsageCard(16, 54, 128, 164, "5 HORAS", view.fiveHour, context.nowSeconds, color);
     drawUsageCard(152, 54, 128, 164, "7 DIAS", view.sevenDay, context.nowSeconds, color);

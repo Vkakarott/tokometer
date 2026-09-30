@@ -28,6 +28,8 @@ char portalSsid[20] = "tokEsp";
 bool provisioning = false;
 uint32_t connectionStartedAtMs = 0;
 
+void startProvisioning();
+
 void networkKey(char *out, size_t size, const char *prefix, uint8_t index) {
     snprintf(out, size, "%s%u", prefix, index);
 }
@@ -116,7 +118,11 @@ void connectToAvailableKnownNetwork() {
         }
     }
     WiFi.scanDelete();
-    connectToKnownNetwork(selected >= 0 ? selected : 0);
+    if (selected < 0) {
+        startProvisioning();
+        return;
+    }
+    connectToKnownNetwork(selected);
 }
 
 bool tryNextKnownNetwork() {
