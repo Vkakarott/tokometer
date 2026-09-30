@@ -18,8 +18,9 @@ static void test_parse_usage_reads_both_providers() {
             {"id":"five_hour","usedPercentage":38,"resetsAt":1738443600}
         ],"ageSeconds":10,"stale":true,"hasData":true,"context":null},
         "cursor":{"windows":[
-            {"id":"five_hour","usedPercentage":12,"resetsAt":1738447200},
-            {"id":"seven_day","usedPercentage":44,"resetsAt":1738990000}
+            {"id":"included","usedPercentage":12,"resetsAt":1738990000},
+            {"id":"api","usedPercentage":44,"resetsAt":1738990000},
+            {"id":"on_demand","usedPercentage":7.5,"resetsAt":1738990000}
         ],"ageSeconds":5,"stale":false,"hasData":true,"context":null}
     }})";
     ProvidersUsage usage;
@@ -39,8 +40,34 @@ static void test_parse_usage_reads_both_providers() {
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 38.0f, usage.codex.fiveHour.usedPercentage);
     TEST_ASSERT_FALSE(usage.codex.sevenDay.present);
     TEST_ASSERT_TRUE(usage.cursor.hasData);
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 12.0f, usage.cursor.fiveHour.usedPercentage);
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 44.0f, usage.cursor.sevenDay.usedPercentage);
+    TEST_ASSERT_TRUE(usage.cursor.included.present && usage.cursor.included.known);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 12.0f, usage.cursor.included.usedPercentage);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 44.0f, usage.cursor.api.usedPercentage);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 7.5f, usage.cursor.onDemand.usedPercentage);
+    TEST_ASSERT_TRUE(usage.cursor.included.resetsAt == 1738990000);
+    TEST_ASSERT_FALSE(usage.cursor.fiveHour.present);
+    TEST_ASSERT_FALSE(usage.cursor.sevenDay.present);
+}
+
+static void test_parse_cursor_unknown_and_missing_windows_remain_distinct() {
+    const char *json = R"({"providers":{
+        "cursor":{"windows":[
+            {"id":"included","usedPercentage":null,"resetsAt":1},
+            {"id":"on_demand","usedPercentage":null,"resetsAt":1}
+        ],"ageSeconds":1200,"stale":true,"hasData":true}}})";
+    ProvidersUsage usage;
+
+    TEST_ASSERT_TRUE(parseUsage(json, usage));
+    TEST_ASSERT_TRUE(usage.cursor.hasData);
+    TEST_ASSERT_TRUE(usage.cursor.stale);
+    TEST_ASSERT_EQUAL_UINT32(1200, usage.cursor.ageSeconds);
+    TEST_ASSERT_TRUE(usage.cursor.included.present);
+    TEST_ASSERT_FALSE(usage.cursor.included.known);
+    TEST_ASSERT_TRUE(usage.cursor.onDemand.present);
+    TEST_ASSERT_FALSE(usage.cursor.onDemand.known);
+    TEST_ASSERT_FALSE(usage.cursor.api.present);
+    TEST_ASSERT_FALSE(usage.cursor.fiveHour.present);
+    TEST_ASSERT_FALSE(usage.cursor.sevenDay.present);
 }
 
 static void test_parse_usage_null_percentage_is_unknown() {
@@ -178,6 +205,7 @@ static void test_encode_request_rejects_small_buffer() {
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_parse_usage_reads_both_providers);
+    RUN_TEST(test_parse_cursor_unknown_and_missing_windows_remain_distinct);
     RUN_TEST(test_parse_usage_null_percentage_is_unknown);
     RUN_TEST(test_parse_usage_without_data);
     RUN_TEST(test_parse_usage_ignores_context);

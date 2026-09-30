@@ -111,7 +111,7 @@ test('serves Claude, Codex, and Cursor side by side without mixing them', async 
     provider: 'cursor',
     source: 'laptop',
     observedAt: NOW,
-    windows: [{ id: 'five_hour', usedPercentage: 12, resetsAt: NOW + 18_000 }],
+    windows: [{ id: 'included', usedPercentage: 12, resetsAt: NOW + 864_000 }],
   });
   assert.equal(cursor.statusCode, 204);
 
@@ -121,6 +121,73 @@ test('serves Claude, Codex, and Cursor side by side without mixing them', async 
   assert.equal(providers.codex.windows[0].usedPercentage, 38);
   assert.equal(providers.codex.context, null);
   assert.equal(providers.cursor.windows[0].usedPercentage, 12);
+  assert.equal(providers.cursor.windows[0].id, 'included');
+});
+
+test('preserves Cursor billing windows through ingest, stale data, and reset', async () => {
+  const nowRef = { value: NOW };
+  const server = build(nowRef);
+  const windows = [
+    { id: 'included', usedPercentage: 21, resetsAt: NOW + 3600 },
+    { id: 'api', usedPercentage: 8, resetsAt: NOW + 3600 },
+    { id: 'on_demand', usedPercentage: 12.5, resetsAt: NOW + 3600 },
+  ];
+  const response = await server.inject({
+    method: 'POST',
+    url: '/ingest',
+    headers: { authorization: 'Bearer collector-secret' },
+    payload: { provider: 'cursor', source: 'test', observedAt: NOW, windows },
+  });
+  assert.equal(response.statusCode, 204);
+
+  const current = (await server.inject({ method: 'GET', url: '/usage/local' })).json().providers.cursor;
+  assert.equal(current.hasData, true);
+  assert.equal(current.stale, false);
+  assert.deepEqual(current.windows, windows);
+
+  nowRef.value += 1000;
+  const stale = (await server.inject({ method: 'GET', url: '/usage/local' })).json().providers.cursor;
+  assert.equal(stale.stale, true);
+  assert.equal(stale.ageSeconds, 1000);
+  assert.deepEqual(stale.windows, windows);
+
+  nowRef.value = NOW + 3601;
+  const expired = (await server.inject({ method: 'GET', url: '/usage/local' })).json().providers.cursor;
+  assert.deepEqual(expired.windows, windows.map((window) => ({ ...window, usedPercentage: null })));
+});
+
+test('does not fabricate absent Cursor billing windows', async () => {
+  const server = build();
+  const window = { id: 'included', usedPercentage: 0, resetsAt: NOW + 3600 };
+  const response = await server.inject({
+    method: 'POST',
+    url: '/ingest',
+    headers: { authorization: 'Bearer collector-secret' },
+    payload: { provider: 'cursor', source: 'test', observedAt: NOW, windows: [window] },
+  });
+  assert.equal(response.statusCode, 204);
+  const cursor = (await server.inject({ method: 'GET', url: '/usage/local' })).json().providers.cursor;
+  assert.deepEqual(cursor.windows, [window]);
+  assert.equal(cursor.hasData, true, 'known zero is still data');
+});
+
+test('rejects unknown Cursor percentages without creating a zero usage snapshot', async () => {
+  const server = build();
+  for (const id of ['included', 'api', 'on_demand']) {
+    const response = await server.inject({
+      method: 'POST',
+      url: '/ingest',
+      headers: { authorization: 'Bearer collector-secret' },
+      payload: {
+        provider: 'cursor', source: 'test', observedAt: NOW,
+        windows: [{ id, usedPercentage: null, resetsAt: NOW + 3600 }],
+      },
+    });
+    assert.equal(response.statusCode, 400);
+  }
+  const cursor = (await server.inject({ method: 'GET', url: '/usage/local' })).json().providers.cursor;
+  assert.equal(cursor.hasData, false);
+  assert.deepEqual(cursor.windows, []);
 });
 
 test('rejects ingest with a numeric string percentage', async () => {

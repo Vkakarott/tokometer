@@ -98,6 +98,24 @@ armazenamento e recomece o pareamento.
 Ele descreve a janela da sessão atual, não o consumo da assinatura; o firmware
 pode ignorá-lo.
 
+### Cursor billing windows
+
+The ingest and device contracts also accept `included`, `api`, and `on_demand`
+window IDs. These identify Cursor's included plan usage, API usage, and optional
+on-demand spending allowance. Their `resetsAt` value is the billing cycle's end,
+not a five-hour or seven-day reset. Keep these IDs separate from `five_hour` and
+`seven_day`; do not convert one window type into another.
+
+All three windows are optional. A missing window is unavailable, not zero.
+`POST /ingest` requires a numeric percentage for each submitted window; collectors
+must omit unavailable readings. `GET /usage` preserves the window IDs and returns
+`usedPercentage: null` after the reported reset time, using the same freshness and
+unknown-value rules as other providers. Percentages do not imply token counts or
+an absolute token limit.
+
+Cursor remains `hasData: false` until a collector submits a real snapshot. The
+macOS app forwards its Cursor readings (see `macos/README.md`).
+
 ## 3. As três regras que o display precisa respeitar
 
 Estas não são casos de borda. São o produto — é o que impede o display de

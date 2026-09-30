@@ -1,4 +1,4 @@
-export type WindowId = 'five_hour' | 'seven_day';
+export type WindowId = 'five_hour' | 'seven_day' | 'included' | 'api' | 'on_demand';
 
 export type ProviderId = 'claude' | 'codex' | 'cursor';
 

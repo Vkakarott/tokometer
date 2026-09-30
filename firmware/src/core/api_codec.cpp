@@ -31,6 +31,9 @@ UsageWindow *windowById(const char *id, UsageView &view) {
     if (id == nullptr) return nullptr;
     if (strcmp(id, "five_hour") == 0) return &view.fiveHour;
     if (strcmp(id, "seven_day") == 0) return &view.sevenDay;
+    if (strcmp(id, "included") == 0) return &view.included;
+    if (strcmp(id, "api") == 0) return &view.api;
+    if (strcmp(id, "on_demand") == 0) return &view.onDemand;
     return nullptr;
 }
 

@@ -17,7 +17,7 @@ const bodySchema = {
         type: 'object',
         required: ['id', 'usedPercentage', 'resetsAt'],
         properties: {
-          id: { type: 'string', enum: ['five_hour', 'seven_day'] },
+          id: { type: 'string', enum: ['five_hour', 'seven_day', 'included', 'api', 'on_demand'] },
           usedPercentage: { type: 'number', minimum: 0, maximum: 100 },
           resetsAt: { type: 'number' },
         },

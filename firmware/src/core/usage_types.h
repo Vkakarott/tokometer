@@ -18,6 +18,9 @@ struct UsageView {
     uint32_t ageSeconds = 0;
     bool stale = false;
     bool hasData = false;
+    UsageWindow included;
+    UsageWindow api;
+    UsageWindow onDemand;
 };
 
 // Usage of every provider the backend reports. A provider the backend never
