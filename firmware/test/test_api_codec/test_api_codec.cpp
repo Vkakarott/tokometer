@@ -16,7 +16,11 @@ static void test_parse_usage_reads_both_providers() {
         ],"ageSeconds":42,"stale":false,"hasData":true,"context":null},
         "codex":{"windows":[
             {"id":"five_hour","usedPercentage":38,"resetsAt":1738443600}
-        ],"ageSeconds":10,"stale":true,"hasData":true,"context":null}
+        ],"ageSeconds":10,"stale":true,"hasData":true,"context":null},
+        "cursor":{"windows":[
+            {"id":"five_hour","usedPercentage":12,"resetsAt":1738447200},
+            {"id":"seven_day","usedPercentage":44,"resetsAt":1738990000}
+        ],"ageSeconds":5,"stale":false,"hasData":true,"context":null}
     }})";
     ProvidersUsage usage;
 
@@ -34,6 +38,9 @@ static void test_parse_usage_reads_both_providers() {
     TEST_ASSERT_EQUAL_UINT32(10, usage.codex.ageSeconds);
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 38.0f, usage.codex.fiveHour.usedPercentage);
     TEST_ASSERT_FALSE(usage.codex.sevenDay.present);
+    TEST_ASSERT_TRUE(usage.cursor.hasData);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 12.0f, usage.cursor.fiveHour.usedPercentage);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 44.0f, usage.cursor.sevenDay.usedPercentage);
 }
 
 static void test_parse_usage_null_percentage_is_unknown() {
@@ -47,6 +54,7 @@ static void test_parse_usage_null_percentage_is_unknown() {
     TEST_ASSERT_TRUE(usage.claude.fiveHour.present);
     TEST_ASSERT_FALSE(usage.claude.fiveHour.known);
     TEST_ASSERT_FALSE(usage.codex.hasData);
+    TEST_ASSERT_FALSE(usage.cursor.hasData);
 }
 
 static void test_parse_usage_without_data() {
@@ -58,6 +66,7 @@ static void test_parse_usage_without_data() {
     TEST_ASSERT_TRUE(parseUsage(json, usage));
     TEST_ASSERT_FALSE(usage.claude.hasData);
     TEST_ASSERT_FALSE(usage.codex.hasData);
+    TEST_ASSERT_FALSE(usage.cursor.hasData);
 }
 
 static void test_parse_usage_ignores_context() {
@@ -90,6 +99,7 @@ static void test_parse_usage_missing_provider_block_is_no_data() {
     TEST_ASSERT_TRUE(parseUsage(json, usage));
     TEST_ASSERT_TRUE(usage.claude.hasData);
     TEST_ASSERT_FALSE(usage.codex.hasData);
+    TEST_ASSERT_FALSE(usage.cursor.hasData);
 }
 
 static void test_parse_usage_rejects_invalid_payloads() {

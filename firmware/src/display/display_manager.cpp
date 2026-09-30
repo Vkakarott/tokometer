@@ -30,27 +30,39 @@ constexpr uint16_t PRIMARY_COLOR = 0xA7FF;
 constexpr uint16_t SECONDARY_COLOR = 0xBDF7;
 constexpr uint16_t MUTED_COLOR = 0x8410;
 constexpr uint16_t WARNING_COLOR = 0xFD20;
+constexpr uint16_t CODEX_COLOR = 0x4E73;
+constexpr uint16_t CURSOR_COLOR = 0xB81F;
 constexpr uint32_t SPI_FREQUENCY = 20000000;
 constexpr uint32_t FRAME_INTERVAL_MS = 500;
 constexpr uint32_t PANEL_PIXELS = static_cast<uint32_t>(PANEL_WIDTH) * PANEL_HEIGHT;
-constexpr uint32_t NATIVE_FRAME_BUFFER_SIZE = (PANEL_PIXELS + 3) / 4;
+constexpr uint32_t NATIVE_FRAME_BUFFER_SIZE = (PANEL_PIXELS + 1) / 2;
 
 AnimatedGIF bootAnimation;
 uint32_t lastFrameAtMs = 0;
 uint8_t nativeFrameBuffer[NATIVE_FRAME_BUFFER_SIZE];
 uint8_t nativeLineBuffer[PANEL_WIDTH * 2];
-constexpr uint16_t NATIVE_PALETTE[] = {
+uint16_t nativePalette[] = {
     BACKGROUND_COLOR,
     SURFACE_COLOR,
-    PRIMARY_COLOR,
+    BORDER_COLOR,
+    MUTED_COLOR,
     FOREGROUND_COLOR,
+    PRIMARY_COLOR,
+    WARNING_COLOR,
+    CODEX_COLOR,
+    CURSOR_COLOR,
 };
 
 uint8_t nativeColorIndex(uint16_t color) {
     if (color == BACKGROUND_COLOR) return 0;
-    if (color == SURFACE_COLOR || color == BORDER_COLOR || color == MUTED_COLOR) return 1;
-    if (color == PRIMARY_COLOR || color == WARNING_COLOR) return 2;
-    return 3;
+    if (color == SURFACE_COLOR) return 1;
+    if (color == BORDER_COLOR) return 2;
+    if (color == MUTED_COLOR) return 3;
+    if (color == PRIMARY_COLOR) return 5;
+    if (color == WARNING_COLOR) return 6;
+    if (color == CODEX_COLOR) return 7;
+    if (color == CURSOR_COLOR) return 8;
+    return 4;
 }
 
 class NativeCanvas : public Adafruit_GFX {
@@ -60,15 +72,15 @@ public:
     void drawPixel(int16_t x, int16_t y, uint16_t color) override {
         if (x < 0 || x >= PANEL_WIDTH || y < 0 || y >= PANEL_HEIGHT) return;
         const uint32_t pixel = static_cast<uint32_t>(y) * PANEL_WIDTH + x;
-        const uint32_t byte = pixel / 4;
-        const uint8_t shift = (3 - pixel % 4) * 2;
-        nativeFrameBuffer[byte] = (nativeFrameBuffer[byte] & ~(0x03 << shift)) |
+        const uint32_t byte = pixel / 2;
+        const uint8_t shift = (1 - pixel % 2) * 4;
+        nativeFrameBuffer[byte] = (nativeFrameBuffer[byte] & ~(0x0F << shift)) |
                                   (nativeColorIndex(color) << shift);
     }
 
     void fillScreen(uint16_t color) override {
         const uint8_t index = nativeColorIndex(color);
-        memset(nativeFrameBuffer, index * 0x55, sizeof nativeFrameBuffer);
+        memset(nativeFrameBuffer, (index << 4) | index, sizeof nativeFrameBuffer);
     }
 };
 
@@ -260,50 +272,142 @@ uint32_t pairingSecondsLeft(const AppState &state, uint32_t nowMs) {
     return elapsed >= state.pairCode.expiresInSeconds ? 0 : state.pairCode.expiresInSeconds - elapsed;
 }
 
-void drawNativeUsageScreen(const AppState &state, const FrameContext &context) {
-    const UsageView claude = liveUsageView(state.usage.claude, state, context.nowMs);
-    const UsageView codex = liveUsageView(state.usage.codex, state, context.nowMs);
+void drawCenteredAt(const char *text, int16_t centerX, int16_t y, uint8_t size, uint16_t color) {
+    int16_t x1;
+    int16_t y1;
+    uint16_t width;
+    uint16_t height;
+    nativeCanvas.setTextSize(size);
+    nativeCanvas.getTextBounds(text, 0, y, &x1, &y1, &width, &height);
+    nativeCanvas.setTextColor(color);
+    nativeCanvas.setCursor(centerX - width / 2, y);
+    nativeCanvas.print(text);
+}
+
+void drawFrameChrome(const char *title, const FrameContext &context) {
     nativeCanvas.fillScreen(BACKGROUND_COLOR);
     nativeCanvas.setTextColor(FOREGROUND_COLOR);
     nativeCanvas.setTextSize(2);
     nativeCanvas.setCursor(16, 14);
-    nativeCanvas.print(state.layout == UsageLayout::ClaudeCards ? "CLAUDE" : "TOKESP");
+    nativeCanvas.print(title);
     nativeCanvas.setTextColor(MUTED_COLOR);
     nativeCanvas.setTextSize(1);
     nativeCanvas.setCursor(247, 18);
     nativeCanvas.print(context.clockText);
+    nativeCanvas.drawLine(12, 8, 52, 8, BORDER_COLOR);
+    nativeCanvas.drawLine(12, 8, 8, 12, BORDER_COLOR);
+    nativeCanvas.drawLine(8, 12, 8, 224, BORDER_COLOR);
+    nativeCanvas.drawLine(8, 224, 12, 228, BORDER_COLOR);
+    nativeCanvas.drawLine(12, 228, 52, 228, BORDER_COLOR);
+    nativeCanvas.drawLine(244, 8, 284, 8, BORDER_COLOR);
+    nativeCanvas.drawLine(284, 8, 288, 12, BORDER_COLOR);
+    nativeCanvas.drawLine(288, 12, 288, 224, BORDER_COLOR);
+    nativeCanvas.drawLine(288, 224, 284, 228, BORDER_COLOR);
+    nativeCanvas.drawLine(244, 228, 284, 228, BORDER_COLOR);
     nativeCanvas.drawFastHLine(16, 37, PANEL_WIDTH - 32, BORDER_COLOR);
+}
+
+void drawProviderMini(int16_t y, const char *name, const UsageView &view, uint16_t accent) {
+    constexpr int16_t x = 170;
+    nativeCanvas.fillRoundRect(x, y, 110, 49, 8, SURFACE_COLOR);
+    nativeCanvas.drawRoundRect(x, y, 110, 49, 8, BORDER_COLOR);
+    nativeCanvas.setTextColor(FOREGROUND_COLOR);
+    nativeCanvas.setTextSize(1);
+    nativeCanvas.setCursor(x + 10, y + 10);
+    nativeCanvas.print(name);
+    char value[8];
+    formatPrimaryValue(view.fiveHour, value, sizeof value);
+    nativeCanvas.setTextColor(accent);
+    nativeCanvas.setTextSize(2);
+    nativeCanvas.setCursor(x + 10, y + 24);
+    nativeCanvas.print(view.hasData ? value : "--%");
+    drawProgressBar(x + 50, y + 30, 48, usageFillFraction(view.fiveHour), accent);
+}
+
+void drawProviderDashboard(const char *name, const UsageView &view, const ProvidersUsage &all,
+                           const FrameContext &context, uint16_t accent) {
+    drawFrameChrome("TOKENS", context);
+    nativeCanvas.fillRoundRect(16, 53, 142, 163, 12, SURFACE_COLOR);
+    nativeCanvas.drawRoundRect(16, 53, 142, 163, 12, BORDER_COLOR);
+    drawCenteredAt(name, 87, 64, 2, FOREGROUND_COLOR);
+    nativeCanvas.drawCircle(87, 130, 52, BORDER_COLOR);
+    nativeCanvas.drawCircle(87, 130, 48, accent);
+    nativeCanvas.drawCircle(87, 130, 39, BORDER_COLOR);
+
+    char fiveHour[8];
+    char sevenDay[8];
+    char reset[12];
+    formatPrimaryValue(view.fiveHour, fiveHour, sizeof fiveHour);
+    formatPrimaryValue(view.sevenDay, sevenDay, sizeof sevenDay);
+    formatResetIn(view.fiveHour, context.nowSeconds, reset, sizeof reset);
+    drawCenteredAt(view.hasData ? fiveHour : "--%", 87, 108, 4, accent);
+    drawCenteredAt("5 HORAS", 87, 143, 1, SECONDARY_COLOR);
+    drawProgressBar(37, 156, 100, usageFillFraction(view.fiveHour), accent);
+    drawCenteredAt(reset[0] == '\0' ? "SEM HORARIO" : reset, 87, 171, 1, MUTED_COLOR);
+    nativeCanvas.drawFastHLine(30, 184, 114, BORDER_COLOR);
+    drawCenteredAt("7 DIAS", 55, 193, 1, SECONDARY_COLOR);
+    drawCenteredAt(view.hasData ? sevenDay : "--%", 119, 189, 2, accent);
+    drawProgressBar(30, 202, 114, usageFillFraction(view.sevenDay), accent);
+    drawProviderMini(55, "CLAUDE", all.claude, WARNING_COLOR);
+    drawProviderMini(111, "CODEX", all.codex, CODEX_COLOR);
+    drawProviderMini(167, "CURSOR", all.cursor, CURSOR_COLOR);
+    if (view.stale) drawCenteredAt("DADOS DESATUALIZADOS", 225, 222, 1, FOREGROUND_COLOR);
+}
+
+void drawOverviewRow(int16_t y, const char *name, const UsageView &view, uint16_t accent,
+                     int64_t nowSeconds) {
+    nativeCanvas.fillRoundRect(16, y, 264, 50, 8, SURFACE_COLOR);
+    nativeCanvas.drawRoundRect(16, y, 264, 50, 8, BORDER_COLOR);
+    nativeCanvas.setTextColor(FOREGROUND_COLOR);
+    nativeCanvas.setTextSize(1);
+    nativeCanvas.setCursor(28, y + 11);
+    nativeCanvas.print(name);
+    char fiveHour[8];
+    char sevenDay[8];
+    char reset[12];
+    formatPrimaryValue(view.fiveHour, fiveHour, sizeof fiveHour);
+    formatPrimaryValue(view.sevenDay, sevenDay, sizeof sevenDay);
+    formatResetIn(view.fiveHour, nowSeconds, reset, sizeof reset);
+    nativeCanvas.setTextColor(accent);
+    nativeCanvas.setTextSize(2);
+    nativeCanvas.setCursor(105, y + 23);
+    nativeCanvas.print(view.hasData ? fiveHour : "--%");
+    nativeCanvas.setCursor(197, y + 23);
+    nativeCanvas.print(view.hasData ? sevenDay : "--%");
+    nativeCanvas.setTextColor(MUTED_COLOR);
+    nativeCanvas.setTextSize(1);
+    nativeCanvas.setCursor(105, y + 40);
+    nativeCanvas.print(reset[0] == '\0' ? "5H" : reset);
+    nativeCanvas.setCursor(197, y + 40);
+    nativeCanvas.print("7 DIAS");
+}
+
+void drawNativeUsageScreen(const AppState &state, const FrameContext &context) {
+    const UsageView claude = liveUsageView(state.usage.claude, state, context.nowMs);
+    const UsageView codex = liveUsageView(state.usage.codex, state, context.nowMs);
+    const UsageView cursor = liveUsageView(state.usage.cursor, state, context.nowMs);
+    const ProvidersUsage all{claude, codex, cursor};
 
     if (state.layout == UsageLayout::Comparison) {
-        nativeCanvas.setTextColor(FOREGROUND_COLOR);
-        nativeCanvas.setTextSize(1);
-        nativeCanvas.setCursor(16, 49);
-        nativeCanvas.print("CLAUDE");
-        drawCompactUsageCard(16, 58, "5 HORAS", claude.fiveHour, context.nowSeconds, PRIMARY_COLOR);
-        drawCompactUsageCard(152, 58, "7 DIAS", claude.sevenDay, context.nowSeconds, PRIMARY_COLOR);
-        nativeCanvas.setTextColor(FOREGROUND_COLOR);
-        nativeCanvas.setTextSize(1);
-        nativeCanvas.setCursor(16, 143);
-        nativeCanvas.print("CODEX");
-        drawCompactUsageCard(16, 152, "5 HORAS", codex.fiveHour, context.nowSeconds, WARNING_COLOR);
-        drawCompactUsageCard(152, 152, "7 DIAS", codex.sevenDay, context.nowSeconds, WARNING_COLOR);
+        drawFrameChrome("TODOS", context);
+        drawOverviewRow(55, "CLAUDE", claude, PRIMARY_COLOR, context.nowSeconds);
+        drawOverviewRow(115, "CODEX", codex, CODEX_COLOR, context.nowSeconds);
+        drawOverviewRow(175, "CURSOR", cursor, CURSOR_COLOR, context.nowSeconds);
         return;
     }
 
-    const UsageView &view = state.layout == UsageLayout::ClaudeCards ? claude : codex;
-    if (!view.hasData) {
-        drawCenteredText("SEM DADOS", 96, 3, FOREGROUND_COLOR);
-        drawCenteredText("CONFIRA O COLLECTOR", 146, 2, MUTED_COLOR);
-        return;
-    }
-    const uint16_t color = state.layout == UsageLayout::ClaudeCards ? PRIMARY_COLOR : WARNING_COLOR;
-    drawUsageCard(16, 54, 128, 164, "5 HORAS", view.fiveHour, context.nowSeconds, color);
-    drawUsageCard(152, 54, 128, 164, "7 DIAS", view.sevenDay, context.nowSeconds, color);
-    if (view.stale) {
-        nativeCanvas.setTextColor(WARNING_COLOR);
-        nativeCanvas.setTextSize(1);
-        nativeCanvas.setCursor(16, 228);
-        nativeCanvas.print("dados desatualizados");
+    switch (state.layout) {
+        case UsageLayout::CodexDiagonal:
+            drawProviderDashboard("CODEX", codex, all, context, CODEX_COLOR);
+            break;
+        case UsageLayout::ClaudeCards:
+            drawProviderDashboard("CLAUDE", claude, all, context, WARNING_COLOR);
+            break;
+        case UsageLayout::CursorCards:
+            drawProviderDashboard("CURSOR", cursor, all, context, CURSOR_COLOR);
+            break;
+        case UsageLayout::Comparison:
+            break;
     }
 }
 
@@ -358,8 +462,8 @@ void sendNativeCanvas() {
     for (uint16_t y = 0; y < PANEL_HEIGHT; ++y) {
         for (uint16_t x = 0; x < PANEL_WIDTH; ++x) {
             const uint32_t pixel = static_cast<uint32_t>(y) * PANEL_WIDTH + x;
-            const uint8_t colorIndex = (nativeFrameBuffer[pixel / 4] >> ((3 - pixel % 4) * 2)) & 0x03;
-            const uint16_t color = NATIVE_PALETTE[colorIndex];
+            const uint8_t colorIndex = (nativeFrameBuffer[pixel / 2] >> ((1 - pixel % 2) * 4)) & 0x0F;
+            const uint16_t color = nativePalette[colorIndex];
             nativeLineBuffer[x * 2] = color >> 8;
             nativeLineBuffer[x * 2 + 1] = color;
         }

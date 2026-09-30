@@ -25,4 +25,5 @@ struct UsageView {
 struct ProvidersUsage {
     UsageView claude;
     UsageView codex;
+    UsageView cursor;
 };

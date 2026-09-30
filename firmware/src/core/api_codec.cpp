@@ -125,6 +125,7 @@ bool parseUsage(const char *json, ProvidersUsage &out) {
     ProvidersUsage usage;
     if (!parseProvider(providers["claude"], usage.claude)) return false;
     if (!parseProvider(providers["codex"], usage.codex)) return false;
+    if (!parseProvider(providers["cursor"], usage.cursor)) return false;
     out = usage;
     return true;
 }

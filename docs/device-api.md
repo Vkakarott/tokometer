@@ -54,7 +54,7 @@ O código é **de uso único** e vale 5 minutos.
 
 Header: `Authorization: Bearer <access_token>`
 
-Resposta `200`, com um bloco por provedor. **Os dois provedores sempre vêm**:
+Resposta `200`, com um bloco por provedor. **Claude, Codex e Cursor sempre vêm**:
 um provedor que nunca enviou nada chega com `hasData: false`.
 
 ```json
@@ -78,6 +78,13 @@ um provedor que nunca enviou nada chega com `hasData: false`.
       "ageSeconds": 10,
       "stale": false,
       "hasData": true,
+      "context": null
+    },
+    "cursor": {
+      "windows": [],
+      "ageSeconds": 0,
+      "stale": false,
+      "hasData": false,
       "context": null
     }
   }

@@ -1,13 +1,14 @@
 export type WindowId = 'five_hour' | 'seven_day';
 
-export type ProviderId = 'claude' | 'codex';
+export type ProviderId = 'claude' | 'codex' | 'cursor';
 
-export const PROVIDER_IDS: readonly ProviderId[] = ['claude', 'codex'];
+export const PROVIDER_IDS: readonly ProviderId[] = ['claude', 'codex', 'cursor'];
 
 /** Collectors name the tool they read from; views name the provider. */
 export const PROVIDER_BY_COLLECTOR = {
   'claude-code': 'claude',
   codex: 'codex',
+  cursor: 'cursor',
 } as const satisfies Record<string, ProviderId>;
 
 export type CollectorName = keyof typeof PROVIDER_BY_COLLECTOR;

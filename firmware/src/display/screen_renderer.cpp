@@ -17,6 +17,7 @@ ProvidersUsage liveUsage(const AppState &state, uint32_t nowMs) {
     return ProvidersUsage{
         liveView(state.usage.claude, state, nowMs),
         liveView(state.usage.codex, state, nowMs),
+        liveView(state.usage.cursor, state, nowMs),
     };
 }
 

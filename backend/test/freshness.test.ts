@@ -76,6 +76,7 @@ test('lists every provider, reporting no data for one that never reported', () =
   );
   assert.equal(view.providers.claude.hasData, true);
   assert.equal(view.providers.codex.hasData, false, 'a silent provider is "no data", not 0%');
+  assert.equal(view.providers.cursor.hasData, false, 'a silent Cursor is "no data", not 0%');
 });
 
 test('computes freshness per provider', () => {
@@ -86,6 +87,7 @@ test('computes freshness per provider', () => {
   );
   assert.equal(view.providers.claude.stale, false);
   assert.equal(view.providers.codex.stale, true);
+  assert.equal(view.providers.cursor.stale, true);
 });
 
 test('at exactly resetsAt the window is not yet rolled over', () => {

@@ -19,10 +19,11 @@ enum class AppScreen {
 enum class UsageLayout : uint8_t {
     CodexDiagonal,
     ClaudeCards,
-    Comparison
+    Comparison,
+    CursorCards
 };
 
-constexpr uint8_t USAGE_LAYOUT_COUNT = 3;
+constexpr uint8_t USAGE_LAYOUT_COUNT = 4;
 
 struct AppState {
     WifiStatus wifiStatus = WifiStatus::Disconnected;

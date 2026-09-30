@@ -89,7 +89,7 @@ test('rejects ingest from an unknown collector', async () => {
   assert.equal(response.statusCode, 400);
 });
 
-test('serves claude and codex side by side without mixing them', async () => {
+test('serves Claude, Codex, and Cursor side by side without mixing them', async () => {
   const server = build();
   const ingest = (body: object) =>
     server.inject({
@@ -107,12 +107,20 @@ test('serves claude and codex side by side without mixing them', async () => {
     windows: [{ id: 'five_hour', usedPercentage: 38, resetsAt: NOW + 18_000 }],
   });
   assert.equal(codex.statusCode, 204);
+  const cursor = await ingest({
+    provider: 'cursor',
+    source: 'laptop',
+    observedAt: NOW,
+    windows: [{ id: 'five_hour', usedPercentage: 12, resetsAt: NOW + 18_000 }],
+  });
+  assert.equal(cursor.statusCode, 204);
 
   const { providers } = (await server.inject({ method: 'GET', url: '/usage/local' })).json();
   assert.equal(providers.claude.windows[0].usedPercentage, 23.5);
   assert.equal(providers.claude.context.inputTokens, 12_500);
   assert.equal(providers.codex.windows[0].usedPercentage, 38);
   assert.equal(providers.codex.context, null);
+  assert.equal(providers.cursor.windows[0].usedPercentage, 12);
 });
 
 test('rejects ingest with a numeric string percentage', async () => {
@@ -197,6 +205,7 @@ test('walks the full pairing flow and then serves usage to the device', async ()
   assert.equal(providers.claude.windows[0].usedPercentage, 23.5);
   assert.equal(providers.claude.context.inputTokens, 12_500);
   assert.equal(providers.codex.hasData, false);
+  assert.equal(providers.cursor.hasData, false);
 });
 
 test('reports expired_token once the code TTL passes', async () => {
@@ -226,4 +235,5 @@ test('serves the local diagnostic view without a token', async () => {
   assert.equal(response.statusCode, 200);
   assert.equal(response.json().providers.claude.hasData, false);
   assert.equal(response.json().providers.codex.hasData, false);
+  assert.equal(response.json().providers.cursor.hasData, false);
 });

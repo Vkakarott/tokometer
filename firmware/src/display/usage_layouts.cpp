@@ -226,5 +226,8 @@ void drawUsageScreen(U8G2 &display, UsageLayout layout, const ProvidersUsage &us
         case UsageLayout::Comparison:
             drawComparisonLayout(display, usage, context);
             break;
+        case UsageLayout::CursorCards:
+            drawProviderScreen(display, "Cursor", usage.cursor, context, drawCardsLayout);
+            break;
     }
 }
