@@ -252,6 +252,7 @@ WifiStatus updateWifi() {
             return WifiStatus::Failed;
         case WL_CONNECTION_LOST:
             return WifiStatus::Disconnected;
+        case WL_NO_SSID_AVAIL:
         case WL_DISCONNECTED:
             if (millis() - connectionStartedAtMs >= CONNECT_TIMEOUT_MS && !tryNextKnownNetwork()) startProvisioning();
             return WifiStatus::Disconnected;
