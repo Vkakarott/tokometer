@@ -116,14 +116,21 @@ final class NativePollingController {
     private let providers: [any NativeUsageProvider]
     private let store: UsageStore
     private let legacyFallback: LegacySnapshotProvider
+    private let publisher: BackendPublisher?
     private var task: Task<Void, Never>?
     private var retryAfter: [ProviderID: Date] = [:]
     private var lastAttempt: [ProviderID: Date] = [:]
 
-    init(providers: [any NativeUsageProvider], store: UsageStore, legacyFallback: LegacySnapshotProvider = LegacySnapshotProvider()) {
+    init(
+        providers: [any NativeUsageProvider],
+        store: UsageStore,
+        legacyFallback: LegacySnapshotProvider = LegacySnapshotProvider(),
+        publisher: BackendPublisher? = nil
+    ) {
         self.providers = providers
         self.store = store
         self.legacyFallback = legacyFallback
+        self.publisher = publisher
     }
 
     func start() {
@@ -149,7 +156,9 @@ final class NativePollingController {
             if let previous = lastAttempt[provider.id], now.timeIntervalSince(previous) < provider.refreshInterval { continue }
             lastAttempt[provider.id] = now
             do {
-                store.apply(try await provider.fetch(now: .now))
+                let snapshot = try await provider.fetch(now: .now)
+                store.apply(snapshot)
+                await publisher?.publish(snapshot)
             } catch {
                 if case let ProviderFetchError.rateLimited(delay) = error {
                     retryAfter[provider.id] = .now.addingTimeInterval(delay)

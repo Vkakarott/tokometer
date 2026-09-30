@@ -36,6 +36,15 @@ Esta é a fase de compatibilidade. O app ainda não substitui os collectors, o
 backend, o painel web nem o firmware. A próxima fase move Claude e Codex para
 providers nativos do aplicativo.
 
+## Envio ao display
+
+O app envia ao backend (`POST /ingest`) o que coleta de Claude, Codex e Cursor,
+e é isso que alimenta o display ESP32. Ele usa a mesma URL e o mesmo token dos
+collectors, lidos de `~/.config/tokesp/config.sh` (veja `collector/README.md`);
+sem esse arquivo, nada é enviado. Cada leitura vai uma vez só, e leituras sem
+janelas completas nunca são enviadas, para não apagar o dado que o backend já
+tem. Falhas aparecem no Console do macOS (subsistema `com.tokesp.app`).
+
 ## Verificar
 
 ```bash

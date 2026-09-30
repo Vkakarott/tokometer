@@ -90,7 +90,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let preferences = AppPreferences()
     lazy var polling = NativePollingController(
         providers: [ClaudeUsageProvider(), CodexUsageProvider(), CursorUsageProvider()],
-        store: store
+        store: store,
+        publisher: BackendPublisher()
     )
     lazy var notch = NotchPanelController(store: store, preferences: preferences)
     lazy var onboarding = OnboardingPanelController(
