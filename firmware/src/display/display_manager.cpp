@@ -130,7 +130,7 @@ void initializeDisplay() {
     delay(120);
 
     const uint8_t pixelFormat = 0x55;
-    const uint8_t memoryAccessControl = 0x68;
+    const uint8_t memoryAccessControl = 0xA8;
     writeCommand(0x3A, &pixelFormat, 1);
     writeCommand(0x36, &memoryAccessControl, 1);
     writeCommand(0x11);
