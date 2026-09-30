@@ -201,7 +201,8 @@ void startProvisioning() {
     WiFi.macAddress(mac);
     snprintf(portalSsid, sizeof portalSsid, "tokEsp-%02X%02X", mac[4], mac[5]);
 
-    WiFi.mode(WIFI_AP_STA);
+    WiFi.disconnect();
+    WiFi.mode(WIFI_AP);
     WiFi.softAP(portalSsid);
     dnsServer.start(53, "*", WiFi.softAPIP());
     portal.on("/", HTTP_GET, sendPortalPage);

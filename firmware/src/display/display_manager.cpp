@@ -16,10 +16,10 @@ namespace {
 
 #if defined(TOKESP_BOARD_ESP32_JD9853)
 
-constexpr uint16_t PANEL_WIDTH = 240;
-constexpr uint16_t PANEL_HEIGHT = 296;
-constexpr uint16_t RENDER_WIDTH = 240;
-constexpr uint16_t RENDER_HEIGHT = 120;
+constexpr uint16_t PANEL_WIDTH = 296;
+constexpr uint16_t PANEL_HEIGHT = 240;
+constexpr uint16_t RENDER_WIDTH = 296;
+constexpr uint16_t RENDER_HEIGHT = 148;
 constexpr uint16_t RENDER_TOP = (PANEL_HEIGHT - RENDER_HEIGHT) / 2;
 constexpr uint16_t BACKGROUND_COLOR = 0x0000;
 constexpr uint16_t FOREGROUND_COLOR = 0xFFFF;
@@ -130,7 +130,9 @@ void initializeDisplay() {
     delay(120);
 
     const uint8_t pixelFormat = 0x55;
+    const uint8_t memoryAccessControl = 0x68;
     writeCommand(0x3A, &pixelFormat, 1);
+    writeCommand(0x36, &memoryAccessControl, 1);
     writeCommand(0x11);
     delay(120);
     writeCommand(0x29);
