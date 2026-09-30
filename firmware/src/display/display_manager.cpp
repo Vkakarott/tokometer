@@ -5,7 +5,8 @@
 #include <Adafruit_GFX.h>
 #include <AnimatedGIF.h>
 #include <SPI.h>
-#include <cstring>
+#include "display/indexed_canvas.h"
+#include "display/tft_renderer.h"
 #else
 #include <Wire.h>
 #endif
@@ -20,71 +21,21 @@ namespace {
 
 #if defined(TOKESP_BOARD_ESP32_JD9853)
 
-constexpr uint16_t PANEL_WIDTH = 296;
-constexpr uint16_t PANEL_HEIGHT = 240;
-constexpr uint16_t BACKGROUND_COLOR = 0x0000;
-constexpr uint16_t FOREGROUND_COLOR = 0xFFFF;
-constexpr uint16_t SURFACE_COLOR = 0x10A2;
-constexpr uint16_t BORDER_COLOR = 0x2945;
-constexpr uint16_t PRIMARY_COLOR = 0xA7FF;
-constexpr uint16_t SECONDARY_COLOR = 0xBDF7;
-constexpr uint16_t MUTED_COLOR = 0x8410;
-constexpr uint16_t WARNING_COLOR = 0xFD20;
-constexpr uint16_t CODEX_COLOR = 0x4E73;
-constexpr uint16_t CURSOR_COLOR = 0xB81F;
+constexpr uint16_t PANEL_WIDTH = IndexedCanvas::Width;
+constexpr uint16_t PANEL_HEIGHT = IndexedCanvas::Height;
+constexpr uint16_t BACKGROUND_COLOR = TftColor::Background;
+constexpr uint16_t FOREGROUND_COLOR = TftColor::Text;
+constexpr uint16_t PRIMARY_COLOR = TftColor::Cyan;
+constexpr uint16_t SECONDARY_COLOR = TftColor::Text;
+constexpr uint16_t MUTED_COLOR = TftColor::Muted;
+constexpr uint16_t WARNING_COLOR = TftColor::Orange;
 constexpr uint32_t SPI_FREQUENCY = 20000000;
 constexpr uint32_t FRAME_INTERVAL_MS = 500;
-constexpr uint32_t PANEL_PIXELS = static_cast<uint32_t>(PANEL_WIDTH) * PANEL_HEIGHT;
-constexpr uint32_t NATIVE_FRAME_BUFFER_SIZE = (PANEL_PIXELS + 1) / 2;
 
 AnimatedGIF bootAnimation;
 uint32_t lastFrameAtMs = 0;
-uint8_t nativeFrameBuffer[NATIVE_FRAME_BUFFER_SIZE];
 uint8_t nativeLineBuffer[PANEL_WIDTH * 2];
-uint16_t nativePalette[] = {
-    BACKGROUND_COLOR,
-    SURFACE_COLOR,
-    BORDER_COLOR,
-    MUTED_COLOR,
-    FOREGROUND_COLOR,
-    PRIMARY_COLOR,
-    WARNING_COLOR,
-    CODEX_COLOR,
-    CURSOR_COLOR,
-};
-
-uint8_t nativeColorIndex(uint16_t color) {
-    if (color == BACKGROUND_COLOR) return 0;
-    if (color == SURFACE_COLOR) return 1;
-    if (color == BORDER_COLOR) return 2;
-    if (color == MUTED_COLOR) return 3;
-    if (color == PRIMARY_COLOR) return 5;
-    if (color == WARNING_COLOR) return 6;
-    if (color == CODEX_COLOR) return 7;
-    if (color == CURSOR_COLOR) return 8;
-    return 4;
-}
-
-class NativeCanvas : public Adafruit_GFX {
-public:
-    NativeCanvas() : Adafruit_GFX(PANEL_WIDTH, PANEL_HEIGHT) {}
-
-    void drawPixel(int16_t x, int16_t y, uint16_t color) override {
-        if (x < 0 || x >= PANEL_WIDTH || y < 0 || y >= PANEL_HEIGHT) return;
-        const uint32_t pixel = static_cast<uint32_t>(y) * PANEL_WIDTH + x;
-        const uint32_t byte = pixel / 2;
-        const uint8_t shift = (1 - pixel % 2) * 4;
-        nativeFrameBuffer[byte] = (nativeFrameBuffer[byte] & ~(0x0F << shift)) |
-                                  (nativeColorIndex(color) << shift);
-    }
-
-    void fillScreen(uint16_t color) override {
-        const uint8_t index = nativeColorIndex(color);
-        memset(nativeFrameBuffer, (index << 4) | index, sizeof nativeFrameBuffer);
-    }
-};
-
-NativeCanvas nativeCanvas;
+IndexedCanvas nativeCanvas;
 
 extern const uint8_t bootAnimationStart[] asm("_binary_firmware_assets_agents_pixel_boot_296x240_gif_start");
 extern const uint8_t bootAnimationEnd[] asm("_binary_firmware_assets_agents_pixel_boot_296x240_gif_end");
@@ -186,79 +137,18 @@ void showBootAnimation() {
 }
 
 void drawCenteredText(const char *text, int16_t y, uint8_t size, uint16_t color) {
-    int16_t x1;
-    int16_t y1;
-    uint16_t width;
-    uint16_t height;
-    nativeCanvas.setTextSize(size);
-    nativeCanvas.getTextBounds(text, 0, y, &x1, &y1, &width, &height);
+    int16_t x1, y1;
+    uint16_t width, height;
+    nativeCanvas.setFont();
+    do {
+        nativeCanvas.setTextSize(size);
+        nativeCanvas.getTextBounds(text, 0, y, &x1, &y1, &width, &height);
+        if (width <= PANEL_WIDTH - 32 || size <= 1) break;
+        --size;
+    } while (true);
     nativeCanvas.setTextColor(color);
-    nativeCanvas.setCursor((PANEL_WIDTH - width) / 2, y);
+    nativeCanvas.setCursor((PANEL_WIDTH - width) / 2 - x1, y);
     nativeCanvas.print(text);
-}
-
-void drawProgressBar(int16_t x, int16_t y, int16_t width, float fraction, uint16_t color) {
-    nativeCanvas.drawRoundRect(x, y, width, 10, 5, BORDER_COLOR);
-    const int16_t fill = static_cast<int16_t>((width - 4) * fraction);
-    if (fill > 0) nativeCanvas.fillRoundRect(x + 2, y + 2, fill, 6, 3, color);
-}
-
-void drawUsageCard(int16_t x, int16_t y, int16_t width, int16_t height, const char *title,
-                   const UsageWindow &window, int64_t nowSeconds, uint16_t color) {
-    nativeCanvas.fillRoundRect(x, y, width, height, 12, SURFACE_COLOR);
-    nativeCanvas.drawRoundRect(x, y, width, height, 12, BORDER_COLOR);
-    nativeCanvas.setTextColor(SECONDARY_COLOR);
-    nativeCanvas.setTextSize(2);
-    nativeCanvas.setCursor(x + 16, y + 15);
-    nativeCanvas.print(title);
-
-    if (!window.present) {
-        nativeCanvas.setTextColor(MUTED_COLOR);
-        nativeCanvas.setTextSize(2);
-        nativeCanvas.setCursor(x + 16, y + 62);
-        nativeCanvas.print("SEM DADOS");
-        return;
-    }
-
-    char value[8];
-    char reset[12];
-    formatPrimaryValue(window, value, sizeof value);
-    formatResetIn(window, nowSeconds, reset, sizeof reset);
-    nativeCanvas.setTextColor(color);
-    nativeCanvas.setTextSize(4);
-    nativeCanvas.setCursor(x + 16, y + 48);
-    nativeCanvas.print(value);
-    drawProgressBar(x + 16, y + height - 43, width - 32, usageFillFraction(window), color);
-    nativeCanvas.setTextColor(MUTED_COLOR);
-    nativeCanvas.setTextSize(1);
-    nativeCanvas.setCursor(x + 16, y + height - 23);
-    nativeCanvas.print(reset[0] == '\0' ? "aguardando horario" : reset);
-}
-
-void drawCompactUsageCard(int16_t x, int16_t y, const char *title, const UsageWindow &window,
-                          int64_t nowSeconds, uint16_t color) {
-    constexpr int16_t width = 128;
-    constexpr int16_t height = 76;
-    nativeCanvas.fillRoundRect(x, y, width, height, 10, SURFACE_COLOR);
-    nativeCanvas.drawRoundRect(x, y, width, height, 10, BORDER_COLOR);
-    nativeCanvas.setTextColor(SECONDARY_COLOR);
-    nativeCanvas.setTextSize(1);
-    nativeCanvas.setCursor(x + 12, y + 12);
-    nativeCanvas.print(title);
-
-    char value[8];
-    char reset[12];
-    formatPrimaryValue(window, value, sizeof value);
-    formatResetIn(window, nowSeconds, reset, sizeof reset);
-    nativeCanvas.setTextColor(color);
-    nativeCanvas.setTextSize(3);
-    nativeCanvas.setCursor(x + 12, y + 25);
-    nativeCanvas.print(value);
-    drawProgressBar(x + 12, y + 49, width - 24, usageFillFraction(window), color);
-    nativeCanvas.setTextColor(MUTED_COLOR);
-    nativeCanvas.setTextSize(1);
-    nativeCanvas.setCursor(x + 12, y + 65);
-    nativeCanvas.print(reset[0] == '\0' ? "--" : reset);
 }
 
 UsageView liveUsageView(UsageView view, const AppState &state, uint32_t nowMs) {
@@ -272,143 +162,16 @@ uint32_t pairingSecondsLeft(const AppState &state, uint32_t nowMs) {
     return elapsed >= state.pairCode.expiresInSeconds ? 0 : state.pairCode.expiresInSeconds - elapsed;
 }
 
-void drawCenteredAt(const char *text, int16_t centerX, int16_t y, uint8_t size, uint16_t color) {
-    int16_t x1;
-    int16_t y1;
-    uint16_t width;
-    uint16_t height;
-    nativeCanvas.setTextSize(size);
-    nativeCanvas.getTextBounds(text, 0, y, &x1, &y1, &width, &height);
-    nativeCanvas.setTextColor(color);
-    nativeCanvas.setCursor(centerX - width / 2, y);
-    nativeCanvas.print(text);
-}
-
-void drawFrameChrome(const char *title, const FrameContext &context) {
-    nativeCanvas.fillScreen(BACKGROUND_COLOR);
-    nativeCanvas.setTextColor(FOREGROUND_COLOR);
-    nativeCanvas.setTextSize(2);
-    nativeCanvas.setCursor(16, 14);
-    nativeCanvas.print(title);
-    nativeCanvas.setTextColor(MUTED_COLOR);
-    nativeCanvas.setTextSize(1);
-    nativeCanvas.setCursor(247, 18);
-    nativeCanvas.print(context.clockText);
-    nativeCanvas.drawLine(12, 8, 52, 8, BORDER_COLOR);
-    nativeCanvas.drawLine(12, 8, 8, 12, BORDER_COLOR);
-    nativeCanvas.drawLine(8, 12, 8, 224, BORDER_COLOR);
-    nativeCanvas.drawLine(8, 224, 12, 228, BORDER_COLOR);
-    nativeCanvas.drawLine(12, 228, 52, 228, BORDER_COLOR);
-    nativeCanvas.drawLine(244, 8, 284, 8, BORDER_COLOR);
-    nativeCanvas.drawLine(284, 8, 288, 12, BORDER_COLOR);
-    nativeCanvas.drawLine(288, 12, 288, 224, BORDER_COLOR);
-    nativeCanvas.drawLine(288, 224, 284, 228, BORDER_COLOR);
-    nativeCanvas.drawLine(244, 228, 284, 228, BORDER_COLOR);
-    nativeCanvas.drawFastHLine(16, 37, PANEL_WIDTH - 32, BORDER_COLOR);
-}
-
-void drawProviderMini(int16_t y, const char *name, const UsageView &view, uint16_t accent) {
-    constexpr int16_t x = 170;
-    nativeCanvas.fillRoundRect(x, y, 110, 49, 8, SURFACE_COLOR);
-    nativeCanvas.drawRoundRect(x, y, 110, 49, 8, BORDER_COLOR);
-    nativeCanvas.setTextColor(FOREGROUND_COLOR);
-    nativeCanvas.setTextSize(1);
-    nativeCanvas.setCursor(x + 10, y + 10);
-    nativeCanvas.print(name);
-    char value[8];
-    formatPrimaryValue(view.fiveHour, value, sizeof value);
-    nativeCanvas.setTextColor(accent);
-    nativeCanvas.setTextSize(2);
-    nativeCanvas.setCursor(x + 10, y + 24);
-    nativeCanvas.print(view.hasData ? value : "--%");
-    drawProgressBar(x + 50, y + 30, 48, usageFillFraction(view.fiveHour), accent);
-}
-
-void drawProviderDashboard(const char *name, const UsageView &view, const ProvidersUsage &all,
-                           const FrameContext &context, uint16_t accent) {
-    drawFrameChrome("TOKENS", context);
-    nativeCanvas.fillRoundRect(16, 53, 142, 163, 12, SURFACE_COLOR);
-    nativeCanvas.drawRoundRect(16, 53, 142, 163, 12, BORDER_COLOR);
-    drawCenteredAt(name, 87, 64, 2, FOREGROUND_COLOR);
-    nativeCanvas.drawCircle(87, 130, 52, BORDER_COLOR);
-    nativeCanvas.drawCircle(87, 130, 48, accent);
-    nativeCanvas.drawCircle(87, 130, 39, BORDER_COLOR);
-
-    char fiveHour[8];
-    char sevenDay[8];
-    char reset[12];
-    formatPrimaryValue(view.fiveHour, fiveHour, sizeof fiveHour);
-    formatPrimaryValue(view.sevenDay, sevenDay, sizeof sevenDay);
-    formatResetIn(view.fiveHour, context.nowSeconds, reset, sizeof reset);
-    drawCenteredAt(view.hasData ? fiveHour : "--%", 87, 108, 4, accent);
-    drawCenteredAt("5 HORAS", 87, 143, 1, SECONDARY_COLOR);
-    drawProgressBar(37, 156, 100, usageFillFraction(view.fiveHour), accent);
-    drawCenteredAt(reset[0] == '\0' ? "SEM HORARIO" : reset, 87, 171, 1, MUTED_COLOR);
-    nativeCanvas.drawFastHLine(30, 184, 114, BORDER_COLOR);
-    drawCenteredAt("7 DIAS", 55, 193, 1, SECONDARY_COLOR);
-    drawCenteredAt(view.hasData ? sevenDay : "--%", 119, 189, 2, accent);
-    drawProgressBar(30, 202, 114, usageFillFraction(view.sevenDay), accent);
-    drawProviderMini(55, "CLAUDE", all.claude, WARNING_COLOR);
-    drawProviderMini(111, "CODEX", all.codex, CODEX_COLOR);
-    drawProviderMini(167, "CURSOR", all.cursor, CURSOR_COLOR);
-    if (view.stale) drawCenteredAt("DADOS DESATUALIZADOS", 225, 222, 1, FOREGROUND_COLOR);
-}
-
-void drawOverviewRow(int16_t y, const char *name, const UsageView &view, uint16_t accent,
-                     int64_t nowSeconds) {
-    nativeCanvas.fillRoundRect(16, y, 264, 50, 8, SURFACE_COLOR);
-    nativeCanvas.drawRoundRect(16, y, 264, 50, 8, BORDER_COLOR);
-    nativeCanvas.setTextColor(FOREGROUND_COLOR);
-    nativeCanvas.setTextSize(1);
-    nativeCanvas.setCursor(28, y + 11);
-    nativeCanvas.print(name);
-    char fiveHour[8];
-    char sevenDay[8];
-    char reset[12];
-    formatPrimaryValue(view.fiveHour, fiveHour, sizeof fiveHour);
-    formatPrimaryValue(view.sevenDay, sevenDay, sizeof sevenDay);
-    formatResetIn(view.fiveHour, nowSeconds, reset, sizeof reset);
-    nativeCanvas.setTextColor(accent);
-    nativeCanvas.setTextSize(2);
-    nativeCanvas.setCursor(105, y + 23);
-    nativeCanvas.print(view.hasData ? fiveHour : "--%");
-    nativeCanvas.setCursor(197, y + 23);
-    nativeCanvas.print(view.hasData ? sevenDay : "--%");
-    nativeCanvas.setTextColor(MUTED_COLOR);
-    nativeCanvas.setTextSize(1);
-    nativeCanvas.setCursor(105, y + 40);
-    nativeCanvas.print(reset[0] == '\0' ? "5H" : reset);
-    nativeCanvas.setCursor(197, y + 40);
-    nativeCanvas.print("7 DIAS");
-}
-
 void drawNativeUsageScreen(const AppState &state, const FrameContext &context) {
-    const UsageView claude = liveUsageView(state.usage.claude, state, context.nowMs);
-    const UsageView codex = liveUsageView(state.usage.codex, state, context.nowMs);
-    const UsageView cursor = liveUsageView(state.usage.cursor, state, context.nowMs);
-    const ProvidersUsage all{claude, codex, cursor};
-
-    if (state.layout == UsageLayout::Comparison) {
-        drawFrameChrome("TODOS", context);
-        drawOverviewRow(55, "CLAUDE", claude, PRIMARY_COLOR, context.nowSeconds);
-        drawOverviewRow(115, "CODEX", codex, CODEX_COLOR, context.nowSeconds);
-        drawOverviewRow(175, "CURSOR", cursor, CURSOR_COLOR, context.nowSeconds);
-        return;
-    }
-
-    switch (state.layout) {
-        case UsageLayout::CodexDiagonal:
-            drawProviderDashboard("CODEX", codex, all, context, CODEX_COLOR);
-            break;
-        case UsageLayout::ClaudeCards:
-            drawProviderDashboard("CLAUDE", claude, all, context, WARNING_COLOR);
-            break;
-        case UsageLayout::CursorCards:
-            drawProviderDashboard("CURSOR", cursor, all, context, CURSOR_COLOR);
-            break;
-        case UsageLayout::Comparison:
-            break;
-    }
+    const ProvidersUsage usage{
+        liveUsageView(state.usage.claude, state, context.nowMs),
+        liveUsageView(state.usage.codex, state, context.nowMs),
+        liveUsageView(state.usage.cursor, state, context.nowMs),
+    };
+    const uint8_t provider = state.layout == UsageLayout::ClaudeCards ? 1 :
+                             state.layout == UsageLayout::CursorCards ? 2 : 0;
+    renderTftUsage(nativeCanvas, usage, provider, state.layout == UsageLayout::Comparison,
+                   state.sevenDay, context);
 }
 
 void drawNativeStatusScreen(const AppState &state, const FrameContext &context) {
@@ -461,9 +224,7 @@ void sendNativeCanvas() {
     digitalWrite(HardwareConfig::TFT_DC_PIN, HIGH);
     for (uint16_t y = 0; y < PANEL_HEIGHT; ++y) {
         for (uint16_t x = 0; x < PANEL_WIDTH; ++x) {
-            const uint32_t pixel = static_cast<uint32_t>(y) * PANEL_WIDTH + x;
-            const uint8_t colorIndex = (nativeFrameBuffer[pixel / 2] >> ((1 - pixel % 2) * 4)) & 0x0F;
-            const uint16_t color = nativePalette[colorIndex];
+            const uint16_t color = nativeCanvas.pixelColor(x, y);
             nativeLineBuffer[x * 2] = color >> 8;
             nativeLineBuffer[x * 2 + 1] = color;
         }
@@ -530,6 +291,16 @@ void initializeDisplay() {
 }
 
 void drawFrame(const AppState &state, uint32_t nowMs) {
+#if defined(TOKESP_BOARD_ESP32_JD9853)
+    static AppScreen lastScreen = AppScreen::Error;
+    static UsageLayout lastLayout = UsageLayout::Comparison;
+    static bool lastPeriod = false;
+    if (nowMs - lastFrameAtMs < FRAME_INTERVAL_MS && state.screen == lastScreen &&
+        state.layout == lastLayout && state.sevenDay == lastPeriod) return;
+    lastScreen = state.screen;
+    lastLayout = state.layout;
+    lastPeriod = state.sevenDay;
+#endif
     FrameContext context;
     context.nowMs = nowMs;
     context.nowSeconds = currentEpochSeconds();
@@ -541,10 +312,8 @@ void drawFrame(const AppState &state, uint32_t nowMs) {
     } else {
         drawNativeStatusScreen(state, context);
     }
-    if (nowMs - lastFrameAtMs >= FRAME_INTERVAL_MS) {
-        sendNativeCanvas();
-        lastFrameAtMs = nowMs;
-    }
+    sendNativeCanvas();
+    lastFrameAtMs = nowMs;
 #else
     display.clearBuffer();
     renderScreen(display, state, context);

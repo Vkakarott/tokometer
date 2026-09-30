@@ -29,7 +29,17 @@ void showError(AppState &state, const char *message, uint32_t nowMs) {
 }
 
 void handleButton(AppState &state, uint32_t nowMs) {
+#if defined(TOKESP_BOARD_ESP32_JD9853)
+    const ButtonAction action = pollButtonAction(nowMs);
+    if (state.screen != AppScreen::ShowingUsage) return;
+    if (action == ButtonAction::LongPress) {
+        state.sevenDay = !state.sevenDay;
+        return;
+    }
+    if (action != ButtonAction::ShortPress) return;
+#else
     if (!pollButtonPress(nowMs) || state.screen != AppScreen::ShowingUsage) return;
+#endif
 
     const uint8_t next = (static_cast<uint8_t>(state.layout) + 1) % USAGE_LAYOUT_COUNT;
     state.layout = static_cast<UsageLayout>(next);

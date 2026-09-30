@@ -29,6 +29,7 @@ struct AppState {
     WifiStatus wifiStatus = WifiStatus::Disconnected;
     AppScreen screen = AppScreen::ConnectingWifi;
     UsageLayout layout = UsageLayout::CodexDiagonal;
+    bool sevenDay = false;
 
     bool hasToken = false;
     char accessToken[sizeof(TokenPoll::accessToken)] = "";
