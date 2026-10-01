@@ -1,5 +1,8 @@
 #include "ble/speedbike_link.h"
 
+#include <cctype>
+#include <cstring>
+#include <string>
 #include <NimBLEDevice.h>
 #include <esp32-hal-log.h>
 
@@ -18,9 +21,26 @@ NimBLEClient *client = nullptr;
 NimBLERemoteCharacteristic *writeCharacteristic = nullptr;
 portMUX_TYPE ringMutex = portMUX_INITIALIZER_UNLOCKED;
 
+bool namesMatchIgnoreCase(const std::string &candidate, const char *expected) {
+    const size_t expectedLength = strlen(expected);
+    if (candidate.length() != expectedLength) {
+        return false;
+    }
+
+    for (size_t index = 0; index < expectedLength; ++index) {
+        const unsigned char candidateByte = static_cast<unsigned char>(candidate[index]);
+        const unsigned char expectedByte = static_cast<unsigned char>(expected[index]);
+        if (std::tolower(candidateByte) != std::tolower(expectedByte)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 class ScanCallbacks : public NimBLEScanCallbacks {
     void onResult(const NimBLEAdvertisedDevice *candidate) override {
-        if (candidate->getName() != SpeedBikeConfig::DeviceName) {
+        if (!namesMatchIgnoreCase(candidate->getName(), SpeedBikeConfig::DeviceName)) {
             return;
         }
         targetAddress = candidate->getAddress();
