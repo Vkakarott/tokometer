@@ -1,0 +1,3 @@
+#include <unity.h>
+#include "core/gauge_geometry.h"
+void test_angles(){TEST_ASSERT_FLOAT_WITHIN(.01f,150,rpmToAngleDegrees(0));TEST_ASSERT_FLOAT_WITHIN(.01f,270,rpmToAngleDegrees(6000));TEST_ASSERT_FLOAT_WITHIN(.01f,390,rpmToAngleDegrees(12000));TEST_ASSERT_FLOAT_WITHIN(.01f,390,rpmToAngleDegrees(65535));} void test_points(){const GaugePoint top=pointOnArc(148,124,100,270);TEST_ASSERT_EQUAL_INT16(148,top.x);TEST_ASSERT_EQUAL_INT16(24,top.y);const GaugePoint low=pointOnArc(148,124,100,150);TEST_ASSERT_EQUAL_INT16(61,low.x);TEST_ASSERT_EQUAL_INT16(174,low.y);} int main(int,char**){UNITY_BEGIN();RUN_TEST(test_angles);RUN_TEST(test_points);return UNITY_END();}
