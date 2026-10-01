@@ -1,7 +1,4 @@
 #include <Arduino.h>
-#if !defined(TOKESP_BOARD_ESP32_JD9853)
-#include <Wire.h>
-#endif
 #include "app/app_controller.h"
 #include "config/hardware_config.h"
 #include "display/display_manager.h"
@@ -21,13 +18,6 @@ AppState appState;
 
 void setup() {
     Serial.begin(115200);
-
-#if !defined(TOKESP_BOARD_ESP32_JD9853)
-    Wire.begin(
-        HardwareConfig::OLED_SDA_PIN,
-        HardwareConfig::OLED_SCL_PIN
-    );
-#endif
 
     initializeDisplay();
     initializeButton();
