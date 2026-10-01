@@ -36,6 +36,11 @@ size_t buildPasswordFrame(uint8_t *out, size_t capacity) {
     return buildFrame(0x57, 0x58, payload, sizeof payload, out, capacity);
 }
 
+size_t buildPasswordLogin(uint8_t *out, size_t capacity) {
+    const uint8_t payload[] = {0x0c, 1, 1, 1, 1, 1, 1};
+    return buildFrame(0x57, 0x58, payload, sizeof payload, out, capacity);
+}
+
 void FrameDecoder::push(const uint8_t *bytes, size_t length) {
     for (size_t index = 0; index < length; ++index) {
         if (size_ == sizeof bytes_) {
@@ -89,10 +94,10 @@ void FrameDecoder::discardFirst() {
 }
 
 FrameKind classifyFrame(const DecodedFrame &frame) {
-    if (frame.op == 0x52 && frame.command == 0x58 && frame.length == 1 && frame.payload[0] == 1) {
+    if (frame.op == 0x52 && frame.command == 0x58 && frame.length == 1) {
         return FrameKind::PasswordRequest;
     }
-    if (frame.op == 0x41 && frame.command == 0x58) {
+    if (frame.op == 0x41 && frame.command == 0x58 && frame.length == 1) {
         return FrameKind::SessionAck;
     }
     if (frame.op == 0x41 && frame.command == 0x44 && frame.length == 20) {

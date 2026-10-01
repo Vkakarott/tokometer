@@ -98,6 +98,9 @@ bool SpeedBikeLink::connect() {
     NimBLERemoteCharacteristic *notifyCharacteristic = service->getCharacteristic("fff1");
     writeCharacteristic = service->getCharacteristic("fff2");
     if (!notifyCharacteristic || !writeCharacteristic || !notifyCharacteristic->subscribe(true, notifyCallback)) { client->disconnect(); return false; }
+    log_i("fff2 write=%d no-response=%d; fff1 notify=%d indicate=%d",
+          writeCharacteristic->canWrite(), writeCharacteristic->canWriteNoResponse(),
+          notifyCharacteristic->canNotify(), notifyCharacteristic->canIndicate());
     connected = true;
     return true;
 }
@@ -105,4 +108,13 @@ bool SpeedBikeLink::connect() {
 bool SpeedBikeLink::takeConnected() { const bool result = connected; connected = false; return result; }
 bool SpeedBikeLink::takeDisconnected() { const bool result = disconnected; disconnected = false; if (result) log_w("speedbike disconnected: %d", disconnectReason); return result; }
 bool SpeedBikeLink::popByte(uint8_t &byte) { portENTER_CRITICAL(&ringMutex); const bool result = ring.pop(byte); portEXIT_CRITICAL(&ringMutex); return result; }
-bool SpeedBikeLink::write(const uint8_t *bytes, size_t length) { return writeCharacteristic && writeCharacteristic->writeValue(bytes, length, false); }
+bool SpeedBikeLink::write(const uint8_t *bytes, size_t length) {
+    char hex[49] = "";
+    size_t offset = 0;
+    for (size_t index = 0; index < length && offset + 3 < sizeof hex; ++index) {
+        offset += snprintf(hex + offset, sizeof hex - offset, "%02X ", bytes[index]);
+    }
+    const bool result = writeCharacteristic && writeCharacteristic->writeValue(bytes, length, false);
+    log_i("TX %sresult=%d", hex, result);
+    return result;
+}

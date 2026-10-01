@@ -18,7 +18,9 @@ struct SessionOutput {
     bool startScan = false;
     bool connect = false;
     bool sendNotice = false;
-    bool sendPassword = false;
+    bool sendPasswordCreate = false;
+    bool sendPasswordLogin = false;
+    bool wrongPassword = false;
     bool hasRpm = false;
     uint16_t rpm = 0;
     bool noData = false;
@@ -37,6 +39,7 @@ public:
 
 private:
     void enterReconnectWait(uint32_t nowMs);
+    void sendNotice(uint32_t nowMs);
     void startStreaming(uint32_t nowMs);
     void publishDashboard(const DecodedFrame &frame, uint32_t nowMs);
 
@@ -44,6 +47,6 @@ private:
     uint32_t stateSinceMs_ = 0;
     uint32_t lastNoticeAtMs_ = 0;
     uint32_t lastDataAtMs_ = 0;
-    uint8_t noticeAttempts_ = 0;
+    uint8_t noticeCount_ = 0;
     SessionOutput output_{};
 };

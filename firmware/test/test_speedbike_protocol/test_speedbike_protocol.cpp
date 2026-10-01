@@ -10,6 +10,20 @@ void test_builders_append_expected_crc() {
     TEST_ASSERT_EQUAL_HEX8(0x9f, bytes[12]);
 }
 
+void test_password_login_frame() {
+    uint8_t bytes[16]{};
+    const uint8_t expected[] = {0x54, 0x46, 0x57, 0x58, 7, 0x0c, 1, 1, 1, 1, 1, 1, 0x9e};
+    TEST_ASSERT_EQUAL_UINT(sizeof expected, buildPasswordLogin(bytes, sizeof bytes));
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(expected, bytes, sizeof expected);
+}
+
+void test_password_request_with_any_code() {
+    const DecodedFrame firstRequest{0x52, 0x58, 1, {0}};
+    const DecodedFrame secondRequest{0x52, 0x58, 1, {2}};
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(FrameKind::PasswordRequest), static_cast<int>(classifyFrame(firstRequest)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(FrameKind::PasswordRequest), static_cast<int>(classifyFrame(secondRequest)));
+}
+
 void test_known_crc_values() {
     const uint8_t request[] = {0x54, 0x46, 0x52, 0x58, 1, 1};
     const uint8_t answer[] = {0x54, 0x46, 0x41, 0x5a, 1, 1};
@@ -19,7 +33,7 @@ void test_known_crc_values() {
 
 void test_classifies_password_request_and_session_ack() {
     const DecodedFrame request{0x52, 0x58, 1, {1}};
-    const DecodedFrame acknowledgement{0x41, 0x58, 0, {}};
+    const DecodedFrame acknowledgement{0x41, 0x58, 1, {1}};
     TEST_ASSERT_EQUAL_INT(static_cast<int>(FrameKind::PasswordRequest), static_cast<int>(classifyFrame(request)));
     TEST_ASSERT_EQUAL_INT(static_cast<int>(FrameKind::SessionAck), static_cast<int>(classifyFrame(acknowledgement)));
 }
@@ -90,6 +104,8 @@ void test_decoder_reassembles_dashboard_from_three_chunks() {
 int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_builders_append_expected_crc);
+    RUN_TEST(test_password_login_frame);
+    RUN_TEST(test_password_request_with_any_code);
     RUN_TEST(test_known_crc_values);
     RUN_TEST(test_classifies_password_request_and_session_ack);
     RUN_TEST(test_parses_dashboard_rpm);

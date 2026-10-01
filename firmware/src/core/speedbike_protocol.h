@@ -34,5 +34,6 @@ size_t buildFrame(uint8_t op, uint8_t command, const uint8_t *payload, uint8_t l
                   uint8_t *out, size_t capacity);
 size_t buildSessionNotice(uint8_t *out, size_t capacity);
 size_t buildPasswordFrame(uint8_t *out, size_t capacity);
+size_t buildPasswordLogin(uint8_t *out, size_t capacity);
 FrameKind classifyFrame(const DecodedFrame &frame);
 bool parseDashboardRpm(const DecodedFrame &frame, uint16_t &rpm);

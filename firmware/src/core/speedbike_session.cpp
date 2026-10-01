@@ -9,13 +9,11 @@ void SpeedBikeSession::tick(uint32_t nowMs) {
         output_.startScan = true;
         return;
     }
-    if (state_ == SessionState::AwaitingPasswordRequest &&
-        nowMs - lastNoticeAtMs_ >= SpeedBikeConfig::PasswordRequestRetryMs) {
-        if (noticeAttempts_ < SpeedBikeConfig::PasswordRequestAttempts) {
-            ++noticeAttempts_;
-            lastNoticeAtMs_ = nowMs;
-            output_.sendNotice = true;
-        } else {
+    if (state_ == SessionState::AwaitingPasswordRequest) {
+        if (noticeCount_ < 3 && nowMs - lastNoticeAtMs_ >= 1200) {
+            sendNotice(nowMs);
+        }
+        if (nowMs - stateSinceMs_ >= SpeedBikeConfig::PasswordRequestTimeoutMs) {
             enterReconnectWait(nowMs);
         }
         return;
@@ -53,9 +51,8 @@ void SpeedBikeSession::linkConnected(uint32_t nowMs) {
     }
     state_ = SessionState::AwaitingPasswordRequest;
     stateSinceMs_ = nowMs;
-    lastNoticeAtMs_ = nowMs;
-    noticeAttempts_ = 1;
-    output_.sendNotice = true;
+    noticeCount_ = 0;
+    sendNotice(nowMs);
 }
 
 void SpeedBikeSession::linkDisconnected(uint32_t nowMs) {
@@ -77,12 +74,30 @@ void SpeedBikeSession::frame(const DecodedFrame &frame, uint32_t nowMs) {
     if (state_ == SessionState::AwaitingPasswordRequest && kind == FrameKind::PasswordRequest) {
         state_ = SessionState::Authenticating;
         stateSinceMs_ = nowMs;
-        output_.sendPassword = true;
+        if (frame.payload[0] == 1) {
+            output_.sendPasswordCreate = true;
+        } else {
+            output_.sendPasswordLogin = true;
+        }
         return;
     }
     if (state_ == SessionState::Authenticating && kind == FrameKind::SessionAck) {
-        startStreaming(nowMs);
+        if (frame.payload[0] == 1) {
+            startStreaming(nowMs);
+        } else if (frame.payload[0] == 4) {
+            output_.sendPasswordCreate = true;
+            stateSinceMs_ = nowMs;
+        } else if (frame.payload[0] == 2) {
+            output_.wrongPassword = true;
+            enterReconnectWait(nowMs);
+        }
     }
+}
+
+void SpeedBikeSession::sendNotice(uint32_t nowMs) {
+    output_.sendNotice = true;
+    lastNoticeAtMs_ = nowMs;
+    ++noticeCount_;
 }
 
 SessionState SpeedBikeSession::state() const {

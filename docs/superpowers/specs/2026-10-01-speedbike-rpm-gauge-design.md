@@ -66,12 +66,14 @@ crc = (0x100 - (sum(previous_bytes) & 0xff)) & 0xff
 
 ### Authentication Exchange
 
-1. The device sends the session notice: `TF W X 01 0A`.
-2. The module requests the password: `TF R X 01 01 BA`.
-3. The device sends the default password: `TF W X 07 0B 01 01 01 01 01 01`.
-4. The expected acknowledgement begins `TF A X`; its full captured form is unavailable.
+The runtime authentication flow is sourced from `mobile-app` `usePasswordFlow.ts` and `useUpdateFlow.ts`. The `jiga-ble` flow is for the factory jig only.
 
-Authentication succeeds upon receiving either any `TF A X` frame or the first valid dashboard frame. This deliberately loose rule accommodates the uncaptured acknowledgement, with the accepted trade-off that authentication can be marked early in the worst case.
+1. Send the session notice `TF W X 01 0A` initially, then resend it every 1.2 seconds for up to three total sends.
+2. The module answers `TF R X 01 <code>`.
+3. For request code `1`, create the password with `TF W X 07 0B` followed by `111111`. For every other request code, log in with `TF W X 07 0C` followed by `111111`.
+4. The module acknowledges with `TF A X 01 <code>`: code `1` completes authentication, code `2` means the password was rejected and causes a reconnect, and code `4` requests the create-password frame again. Ignore other acknowledgement codes.
+
+A valid dashboard frame received before the password exchange starts streaming directly because the module is already authenticated.
 
 ### Dashboard Frames
 
