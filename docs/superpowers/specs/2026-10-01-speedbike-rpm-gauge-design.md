@@ -140,7 +140,7 @@ Render a 296 x 240 gauge region with:
 - A red zone on the arc and labels from 10,000 RPM upward.
 - A thick needle that turns red above 10,000 RPM.
 - A large digital RPM readout and the `RPM` label.
-- A Purple/PurpleDim palette below the red zone and Red/RedDim within it.
+- The normal arc, ticks, labels, and needle use Cyan/CyanDim; the 10,000+ zone and the needle above 10,000 use Red/RedDim. Palette entries Purple/PurpleDim (Cursor-only, removed) are replaced by Red/RedDim, keeping 16 entries.
 
 The displayed needle is smoothed approximately every 33 ms by moving 0.25 of the remaining distance to the target; it snaps to the target when the difference is below 20 RPM. Both target and displayed values are clamped to 0--12,000 RPM. The digital readout displays the real target RPM, not the smoothed needle value.
 
@@ -150,7 +150,7 @@ Redraw the gauge canvas and push only the gauge rectangle over SPI at approximat
 
 ### Keep
 
-- `display_manager`, including region push support.
+- `display_manager`, including region push support; it owns the boot logo and status screens via `drawCenteredText`.
 - Indexed canvas support.
 - `drawCenteredText`.
 - `board_esp32_jd9853.h`.
@@ -166,7 +166,7 @@ Redraw the gauge canvas and push only the gauge rectangle over SPI at approximat
 | `core/rpm_smoother` | Hardware-free needle smoothing and clamping. |
 | `ble/speedbike_link` | NimBLE scan/connect/subscribe/write operations, received bytes, and link state. |
 | `app/app_controller` | Non-blocking application state machine. |
-| `display/gauge_renderer` | Logo, status, and RPM gauge rendering. |
+| `display/gauge_renderer` | RPM gauge rendering only (arc, ticks, labels, needle, readout). |
 
 Add the `h2zero/NimBLE-Arduino` dependency. It is preferred over Bluedroid to preserve memory beside the approximately 35 KB canvas and GIF requirements.
 
