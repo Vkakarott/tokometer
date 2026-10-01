@@ -7,7 +7,7 @@
 namespace TftColor {
 enum : uint16_t {
     Background, Surface, Track, Border, Text, Muted, Cyan, CyanDim,
-    Orange, OrangeDim, Mint, MintDim, Purple, PurpleDim, OrangeHot, DimText
+    Orange, OrangeDim, Mint, MintDim, Red, RedDim, OrangeHot, DimText
 };
 constexpr uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
     return ((r & 0xf8) << 8) | ((g & 0xfc) << 3) | (b >> 3);
@@ -16,7 +16,7 @@ constexpr uint16_t Palette[] = {
     rgb565(2, 8, 15), rgb565(5, 14, 24), rgb565(24, 44, 63), rgb565(16, 59, 84),
     rgb565(233, 245, 255), rgb565(143, 175, 199), rgb565(0, 208, 255), rgb565(0, 105, 159),
     rgb565(255, 186, 66), rgb565(126, 65, 25), rgb565(42, 244, 195), rgb565(11, 107, 90),
-    rgb565(199, 142, 255), rgb565(92, 51, 134), rgb565(255, 119, 52), rgb565(73, 106, 133)
+    rgb565(255, 64, 64), rgb565(128, 24, 24), rgb565(255, 119, 52), rgb565(73, 106, 133)
 };
 }
 
