@@ -10,8 +10,14 @@ void SpeedBikeSession::tick(uint32_t nowMs) {
         return;
     }
     if (state_ == SessionState::AwaitingPasswordRequest &&
-        nowMs - stateSinceMs_ >= SpeedBikeConfig::PasswordRequestTimeoutMs) {
-        enterReconnectWait(nowMs);
+        nowMs - lastNoticeAtMs_ >= SpeedBikeConfig::PasswordRequestRetryMs) {
+        if (noticeAttempts_ < SpeedBikeConfig::PasswordRequestAttempts) {
+            ++noticeAttempts_;
+            lastNoticeAtMs_ = nowMs;
+            output_.sendNotice = true;
+        } else {
+            enterReconnectWait(nowMs);
+        }
         return;
     }
     if (state_ == SessionState::Authenticating &&
@@ -47,6 +53,8 @@ void SpeedBikeSession::linkConnected(uint32_t nowMs) {
     }
     state_ = SessionState::AwaitingPasswordRequest;
     stateSinceMs_ = nowMs;
+    lastNoticeAtMs_ = nowMs;
+    noticeAttempts_ = 1;
     output_.sendNotice = true;
 }
 

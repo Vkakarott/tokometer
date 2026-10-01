@@ -42,6 +42,8 @@ private:
 
     SessionState state_ = SessionState::Boot;
     uint32_t stateSinceMs_ = 0;
+    uint32_t lastNoticeAtMs_ = 0;
     uint32_t lastDataAtMs_ = 0;
+    uint8_t noticeAttempts_ = 0;
     SessionOutput output_{};
 };
