@@ -87,3 +87,24 @@ void FrameDecoder::discardFirst() {
     }
     --size_;
 }
+
+FrameKind classifyFrame(const DecodedFrame &frame) {
+    if (frame.op == 0x52 && frame.command == 0x58 && frame.length == 1 && frame.payload[0] == 1) {
+        return FrameKind::PasswordRequest;
+    }
+    if (frame.op == 0x41 && frame.command == 0x58) {
+        return FrameKind::SessionAck;
+    }
+    if (frame.op == 0x41 && frame.command == 0x44 && frame.length == 20) {
+        return FrameKind::Dashboard;
+    }
+    return FrameKind::Other;
+}
+
+bool parseDashboardRpm(const DecodedFrame &frame, uint16_t &rpm) {
+    if (classifyFrame(frame) != FrameKind::Dashboard) {
+        return false;
+    }
+    rpm = static_cast<uint16_t>((frame.payload[2] << 8) | frame.payload[3]);
+    return true;
+}

@@ -10,6 +10,33 @@ void test_builders_append_expected_crc() {
     TEST_ASSERT_EQUAL_HEX8(0x9f, bytes[12]);
 }
 
+void test_known_crc_values() {
+    const uint8_t request[] = {0x54, 0x46, 0x52, 0x58, 1, 1};
+    const uint8_t answer[] = {0x54, 0x46, 0x41, 0x5a, 1, 1};
+    TEST_ASSERT_EQUAL_HEX8(0xba, speedbikeCrc(request, sizeof request));
+    TEST_ASSERT_EQUAL_HEX8(0xc9, speedbikeCrc(answer, sizeof answer));
+}
+
+void test_classifies_password_request_and_session_ack() {
+    const DecodedFrame request{0x52, 0x58, 1, {1}};
+    const DecodedFrame acknowledgement{0x41, 0x58, 0, {}};
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(FrameKind::PasswordRequest), static_cast<int>(classifyFrame(request)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(FrameKind::SessionAck), static_cast<int>(classifyFrame(acknowledgement)));
+}
+
+void test_parses_dashboard_rpm() {
+    const DecodedFrame dashboard{0x41, 0x44, 20, {0, 0, 0x0b, 0xb8}};
+    uint16_t rpm = 0;
+    TEST_ASSERT_TRUE(parseDashboardRpm(dashboard, rpm));
+    TEST_ASSERT_EQUAL_UINT16(3000, rpm);
+}
+
+void test_rejects_non_dashboard_lengths() {
+    const DecodedFrame shortDashboard{0x41, 0x44, 19, {0, 0, 0x0b, 0xb8}};
+    uint16_t rpm = 0;
+    TEST_ASSERT_FALSE(parseDashboardRpm(shortDashboard, rpm));
+}
+
 void test_decoder_skips_leading_garbage() {
     FrameDecoder decoder;
     DecodedFrame frame{};
@@ -63,6 +90,10 @@ void test_decoder_reassembles_dashboard_from_three_chunks() {
 int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_builders_append_expected_crc);
+    RUN_TEST(test_known_crc_values);
+    RUN_TEST(test_classifies_password_request_and_session_ack);
+    RUN_TEST(test_parses_dashboard_rpm);
+    RUN_TEST(test_rejects_non_dashboard_lengths);
     RUN_TEST(test_decoder_skips_leading_garbage);
     RUN_TEST(test_decoder_drops_bad_crc_then_recovers);
     RUN_TEST(test_decoder_password_request_split);
