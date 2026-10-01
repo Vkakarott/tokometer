@@ -1,35 +1,6 @@
 #include <Arduino.h>
 #include "app/app_controller.h"
-#include "config/hardware_config.h"
 #include "display/display_manager.h"
-#include "input/button.h"
-#include "network/host_resolver.h"
-#include "network/wifi_manager.h"
-#include "state/app_state.h"
-#include "timekeeping/ntp_clock.h"
-
-namespace {
-
-constexpr uint32_t LOOP_INTERVAL_MS = 20;
-
-AppState appState;
-
-}  // namespace
-
-void setup() {
-    Serial.begin(115200);
-
-    initializeDisplay();
-    initializeButton();
-    initializeWifi();
-    initializeHostResolver();
-    initializeClock();
-    initializeApp(appState);
-}
-
-void loop() {
-    const uint32_t nowMs = millis();
-    updateApp(appState, nowMs);
-    drawFrame(appState, nowMs);
-    delay(LOOP_INTERVAL_MS);
-}
+namespace { constexpr uint32_t LoopIntervalMs=20; }
+void setup() { Serial.begin(115200); initializeDisplay(); initializeApp(); }
+void loop() { const uint32_t nowMs=millis(); updateApp(nowMs); drawApp(nowMs); delay(LoopIntervalMs); }
