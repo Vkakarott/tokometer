@@ -26,7 +26,7 @@ void SpeedBikeSession::tick(uint32_t nowMs) {
         output_.startScan = true;
         return;
     }
-    if (state_ == SessionState::Streaming && hasReceivedData_ &&
+    if (state_ == SessionState::Streaming &&
         nowMs - lastDataAtMs_ >= SpeedBikeConfig::NoDataTimeoutMs) {
         output_.noData = true;
     }
@@ -84,21 +84,18 @@ SessionState SpeedBikeSession::state() const {
 SessionOutput SpeedBikeSession::takeOutput() {
     SessionOutput result = output_;
     output_ = {};
-    if (state_ == SessionState::Streaming && hasReceivedData_) {
-        result.noData = result.noData || false;
-    }
     return result;
 }
 
 void SpeedBikeSession::enterReconnectWait(uint32_t nowMs) {
     state_ = SessionState::ReconnectWait;
     stateSinceMs_ = nowMs;
-    hasReceivedData_ = false;
 }
 
 void SpeedBikeSession::startStreaming(uint32_t nowMs) {
     state_ = SessionState::Streaming;
     stateSinceMs_ = nowMs;
+    lastDataAtMs_ = nowMs;
 }
 
 void SpeedBikeSession::publishDashboard(const DecodedFrame &frame, uint32_t nowMs) {
@@ -107,7 +104,6 @@ void SpeedBikeSession::publishDashboard(const DecodedFrame &frame, uint32_t nowM
         return;
     }
     lastDataAtMs_ = nowMs;
-    hasReceivedData_ = true;
     output_.hasRpm = true;
     output_.rpm = rpm;
     output_.noData = false;

@@ -43,6 +43,5 @@ private:
     SessionState state_ = SessionState::Boot;
     uint32_t stateSinceMs_ = 0;
     uint32_t lastDataAtMs_ = 0;
-    bool hasReceivedData_ = false;
     SessionOutput output_{};
 };
