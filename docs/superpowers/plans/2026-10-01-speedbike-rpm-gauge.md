@@ -115,8 +115,6 @@ lib_deps =
     bitbank2/AnimatedGIF@^2.2.0
     adafruit/Adafruit GFX Library@^1.12.4
 build_flags = -DCORE_DEBUG_LEVEL=3 -DTOKESP_BOARD_ESP32_JD9853
-board_build.embed_files =
-    firmware/assets/speedbike_logo.gif
 monitor_speed = 115200
 test_ignore = *
 
@@ -127,7 +125,7 @@ test_build_src = yes
 build_flags = -std=c++17
 ```
 
-- [ ] Implement the minimal bootable files below and delete the listed obsolete files/directories and all `TOKESP_BOARD_*` branches except `TOKESP_BOARD_ESP32_JD9853`:
+- [ ] Keep the existing JD9853 `display_manager` initialization, SPI write path, `IndexedCanvas`, and `drawCenteredText`; remove only usage, pairing, Wi-Fi, and clock screen dependencies. Do not replace the display manager with an empty stub. Delete the listed obsolete files/directories and all `TOKESP_BOARD_*` branches except `TOKESP_BOARD_ESP32_JD9853`.
 
 ```cpp
 // firmware/src/config/hardware_config.h
@@ -156,9 +154,9 @@ void initializeDisplay();
 void drawApp(uint32_t nowMs);
 
 // firmware/src/display/display_manager.cpp
-#include "display/display_manager.h"
-void initializeDisplay() {}
-void drawApp(uint32_t) {}
+// Preserve the existing JD9853 initialization, SPI write helpers, IndexedCanvas
+// expansion, and drawCenteredText implementation. Remove only the old screen
+// renderer, usage-layout, pairing, Wi-Fi, and clock calls.
 
 // firmware/src/app/app_controller.h
 #pragma once
@@ -192,7 +190,7 @@ Files
 Interfaces
 
 - Consumes: byte spans supplied by callers.
-- Produces: `uint8_t speedbikeCrc(const uint8_t *bytes, size_t length);`, `size_t buildSessionNotice(uint8_t *out, size_t capacity);`, `size_t buildPasswordFrame(uint8_t *out, size_t capacity);`.
+- Produces: `uint8_t speedbikeCrc(const uint8_t *bytes, size_t length);`, `size_t buildFrame(uint8_t op, uint8_t command, const uint8_t *payload, uint8_t length, uint8_t *out, size_t capacity);`, `size_t buildSessionNotice(uint8_t *out, size_t capacity);`, `size_t buildPasswordFrame(uint8_t *out, size_t capacity);`.
 
 - [ ] Write this failing Unity test, run `pio test -e native -f test_speedbike_protocol`, and expect **FAIL** because the header does not yet exist:
 
@@ -207,8 +205,8 @@ void test_known_crc_frames() {
 }
 void test_builders_match_captured_bytes() {
   uint8_t out[16]{};
-  const uint8_t notice[] = {0x54,0x46,0x57,0x58,0x01,0x0a};
-  const uint8_t password[] = {0x54,0x46,0x57,0x58,0x07,0x0b,0x01,0x01,0x01,0x01,0x01,0x01};
+  const uint8_t notice[] = {0x54,0x46,0x57,0x58,0x01,0x0a,0xac};
+  const uint8_t password[] = {0x54,0x46,0x57,0x58,0x07,0x0b,0x01,0x01,0x01,0x01,0x01,0x01,0x9f};
   TEST_ASSERT_EQUAL_UINT(sizeof notice, buildSessionNotice(out, sizeof out));
   TEST_ASSERT_EQUAL_UINT8_ARRAY(notice, out, sizeof notice);
   TEST_ASSERT_EQUAL_UINT(sizeof password, buildPasswordFrame(out, sizeof out));
@@ -225,6 +223,7 @@ int main(int, char**) { UNITY_BEGIN(); RUN_TEST(test_known_crc_frames); RUN_TEST
 #include <cstddef>
 #include <cstdint>
 uint8_t speedbikeCrc(const uint8_t *bytes, size_t length);
+size_t buildFrame(uint8_t op, uint8_t command, const uint8_t *payload, uint8_t length, uint8_t *out, size_t capacity);
 size_t buildSessionNotice(uint8_t *out, size_t capacity);
 size_t buildPasswordFrame(uint8_t *out, size_t capacity);
 
@@ -232,9 +231,9 @@ size_t buildPasswordFrame(uint8_t *out, size_t capacity);
 #include "speedbike_protocol.h"
 #include "config/speedbike_config.h"
 uint8_t speedbikeCrc(const uint8_t *bytes, size_t length) { uint16_t sum=0; for(size_t i=0;i<length;++i) sum+=bytes[i]; return static_cast<uint8_t>(0x100-(sum&0xff)); }
-static size_t copyFrame(const uint8_t *frame, size_t size, uint8_t *out, size_t capacity) { if(capacity<size) return 0; for(size_t i=0;i<size;++i) out[i]=frame[i]; return size; }
-size_t buildSessionNotice(uint8_t *out, size_t capacity) { static constexpr uint8_t frame[]={0x54,0x46,0x57,0x58,0x01,0x0a}; return copyFrame(frame,sizeof frame,out,capacity); }
-size_t buildPasswordFrame(uint8_t *out, size_t capacity) { uint8_t frame[]={0x54,0x46,0x57,0x58,0x07,0x0b,1,1,1,1,1,1}; return copyFrame(frame,sizeof frame,out,capacity); }
+size_t buildFrame(uint8_t op,uint8_t command,const uint8_t *payload,uint8_t length,uint8_t *out,size_t capacity) { const size_t total=6u+length; if(capacity<total) return 0; out[0]=0x54; out[1]=0x46; out[2]=op; out[3]=command; out[4]=length; for(uint8_t i=0;i<length;++i) out[5+i]=payload[i]; out[5+length]=speedbikeCrc(out,5+length); return total; }
+size_t buildSessionNotice(uint8_t *out, size_t capacity) { const uint8_t payload[]={0x0a}; return buildFrame(0x57,0x58,payload,sizeof payload,out,capacity); }
+size_t buildPasswordFrame(uint8_t *out, size_t capacity) { const uint8_t payload[]={0x0b,1,1,1,1,1,1}; return buildFrame(0x57,0x58,payload,sizeof payload,out,capacity); }
 ```
 
 - [ ] Run `pio test -e native -f test_speedbike_protocol` and expect **PASS**.
@@ -370,7 +369,7 @@ Files
 
 Interfaces
 
-- Consumes: `void SpeedBikeSession::linkConnected(uint32_t nowMs);`, `void linkDisconnected(uint32_t nowMs);`, `void frame(const DecodedFrame &, uint32_t nowMs);`, `void tick(uint32_t nowMs);`.
+- Consumes: `void SpeedBikeSession::linkConnecting(uint32_t nowMs);`, `void linkConnected(uint32_t nowMs);`, `void linkDisconnected(uint32_t nowMs);`, `void frame(const DecodedFrame &, uint32_t nowMs);`, `void tick(uint32_t nowMs);`.
 - Produces: `SessionState state() const;`, `SessionOutput takeOutput();`, where `struct SessionOutput { bool startScan; bool sendNotice; bool sendPassword; bool hasRpm; uint16_t rpm; bool noData; };`.
 
 - [ ] Write this full failing test and run `pio test -e native -f test_speedbike_session`, expecting **FAIL**:
@@ -381,7 +380,7 @@ Interfaces
 static DecodedFrame dashboard() { return {0x41,0x44,20,{0,0,0x0b,0xb8}}; }
 void test_dashboard_authenticates_without_request() { SpeedBikeSession s; s.linkConnected(10); s.frame(dashboard(),11); TEST_ASSERT_EQUAL_INT(static_cast<int>(SessionState::Streaming),static_cast<int>(s.state())); TEST_ASSERT_TRUE(s.takeOutput().hasRpm); }
 void test_disconnect_authenticating_waits_then_scans() { SpeedBikeSession s; s.linkConnected(0); DecodedFrame request{0x52,0x58,1,{1}}; s.frame(request,1); s.linkDisconnected(2); s.tick(2001); TEST_ASSERT_FALSE(s.takeOutput().startScan); s.tick(2002); TEST_ASSERT_TRUE(s.takeOutput().startScan); }
-void test_wrap_safe_and_no_data() { SpeedBikeSession s; s.linkConnected(0xfffffff0u); s.tick(0x00000000u); TEST_ASSERT_EQUAL_INT(static_cast<int>(SessionState::AwaitingPasswordRequest),static_cast<int>(s.state())); s.tick(0x00003a90u); TEST_ASSERT_EQUAL_INT(static_cast<int>(SessionState::Scanning),static_cast<int>(s.state())); s.linkConnected(100); s.frame(dashboard(),101); s.tick(3102); TEST_ASSERT_TRUE(s.takeOutput().noData); }
+void test_wrap_safe_and_no_data() { SpeedBikeSession s; s.linkConnected(0xfffffff0u); s.tick(0x00000000u); TEST_ASSERT_EQUAL_INT(static_cast<int>(SessionState::AwaitingPasswordRequest),static_cast<int>(s.state())); s.tick(0x00003a90u); TEST_ASSERT_EQUAL_INT(static_cast<int>(SessionState::ReconnectWait),static_cast<int>(s.state())); s.tick(0x00004260u); TEST_ASSERT_EQUAL_INT(static_cast<int>(SessionState::Scanning),static_cast<int>(s.state())); s.linkConnected(100); s.frame(dashboard(),101); s.tick(3102); TEST_ASSERT_TRUE(s.takeOutput().noData); }
 int main(int,char**) { UNITY_BEGIN(); RUN_TEST(test_dashboard_authenticates_without_request); RUN_TEST(test_disconnect_authenticating_waits_then_scans); RUN_TEST(test_wrap_safe_and_no_data); return UNITY_END(); }
 ```
 
@@ -394,11 +393,12 @@ int main(int,char**) { UNITY_BEGIN(); RUN_TEST(test_dashboard_authenticates_with
 #include "speedbike_protocol.h"
 enum class SessionState { Boot, Scanning, Connecting, AwaitingPasswordRequest, Authenticating, Streaming, ReconnectWait };
 struct SessionOutput { bool startScan=false,sendNotice=false,sendPassword=false,hasRpm=false,noData=false; uint16_t rpm=0; };
-class SpeedBikeSession { public: void linkConnected(uint32_t nowMs); void linkDisconnected(uint32_t nowMs); void frame(const DecodedFrame &frame,uint32_t nowMs); void tick(uint32_t nowMs); SessionState state() const; SessionOutput takeOutput(); private: void reconnect(uint32_t nowMs); SessionState state_=SessionState::Boot; uint32_t enteredAt_=0,lastDataAt_=0; SessionOutput output_{}; };
+class SpeedBikeSession { public: void linkConnecting(uint32_t nowMs); void linkConnected(uint32_t nowMs); void linkDisconnected(uint32_t nowMs); void frame(const DecodedFrame &frame,uint32_t nowMs); void tick(uint32_t nowMs); SessionState state() const; SessionOutput takeOutput(); private: void reconnect(uint32_t nowMs); SessionState state_=SessionState::Boot; uint32_t enteredAt_=0,lastDataAt_=0; SessionOutput output_{}; };
 
 // speedbike_session.cpp
 #include "speedbike_session.h"
 #include "config/speedbike_config.h"
+void SpeedBikeSession::linkConnecting(uint32_t nowMs){state_=SessionState::Connecting;enteredAt_=nowMs;}
 void SpeedBikeSession::linkConnected(uint32_t nowMs){state_=SessionState::AwaitingPasswordRequest;enteredAt_=nowMs;output_.sendNotice=true;}
 void SpeedBikeSession::reconnect(uint32_t nowMs){state_=SessionState::ReconnectWait;enteredAt_=nowMs;}
 void SpeedBikeSession::linkDisconnected(uint32_t nowMs){reconnect(nowMs);}
@@ -410,16 +410,16 @@ SessionState SpeedBikeSession::state()const{return state_;} SessionOutput SpeedB
 - [ ] Run `pio test -e native -f test_speedbike_session` and expect **PASS**.
 - [ ] Run `pio test -e native` and expect **PASS**, then commit with `git add firmware/src/core/speedbike_session.h firmware/src/core/speedbike_session.cpp firmware/test/test_speedbike_session/test_speedbike_session.cpp && git commit -m "feat: add speedbike session state machine"`.
 
-## Task 7 — Build the NimBLE transport boundary
+## Task 7 — Build the NimBLE transport boundary and core byte ring
 
 Files
 
-- Create: `firmware/src/ble/speedbike_link.h/.cpp`.
+- Create: `firmware/src/core/byte_ring.h`, `firmware/test/test_byte_ring/test_byte_ring.cpp`, `firmware/src/ble/speedbike_link.h/.cpp`.
 - Modify: `firmware/src/app/app_controller.h/.cpp`.
 
 Interfaces
 
-- Consumes: `void SpeedBikeLink::startScan();`, `void SpeedBikeLink::poll();`, `bool SpeedBikeLink::popByte(uint8_t &byte);`, `bool SpeedBikeLink::takeConnected();`, `bool SpeedBikeLink::takeDisconnected();`, `bool SpeedBikeLink::write(const uint8_t *bytes, size_t length);`.
+- Consumes: `void SpeedBikeLink::startScan();`, `void SpeedBikeLink::poll();`, `bool SpeedBikeLink::popByte(uint8_t &byte);`, `bool SpeedBikeLink::takeConnecting();`, `bool SpeedBikeLink::takeConnected();`, `bool SpeedBikeLink::takeDisconnected();`, `bool SpeedBikeLink::write(const uint8_t *bytes, size_t length);`.
 - Produces: exact service `fff0`, notify `fff1`, and write `fff2` transport behavior.
 
 - [ ] Write the failing compile integration in `app_controller.cpp`, run `pio run -e esp32_jd9853`, and expect **FAIL** because `SpeedBikeLink` is unavailable:
@@ -439,26 +439,27 @@ namespace { SpeedBikeLink link; }
 class SpeedBikeLink { public: void begin(); void startScan(); void poll(); bool popByte(uint8_t &byte); bool takeConnected(); bool takeDisconnected(); bool write(const uint8_t *bytes,size_t length); private: static constexpr size_t RingCapacity=256; uint8_t ring_[RingCapacity]{}; volatile size_t head_=0,tail_=0; volatile bool connected_=false,disconnected_=false; void pushBytes(const uint8_t *bytes,size_t length); };
 ```
 
-`pushBytes` must enter a critical section, discard the oldest byte when the ring is full, append every incoming notification byte, and leave a trailing complete valid frame recoverable by the Task 3 decoder. The scan callback must accept only the exact configured name; connection setup must discover service `fff0`, subscribe to notifications on `fff1`, and cache `fff2` for writes. A disconnect callback sets only `disconnected_`; the notification callback calls only `pushBytes`.
+Move storage into the following hardware-free `ByteRing`, injected into the link under its ESP32 critical section. The scan callback must accept only the exact configured name; emit a Connecting event before connecting; connection setup discovers service `fff0`, subscribes to `fff1`, and caches `fff2` for writes. A disconnect callback sets only `disconnected_`; the notification callback calls only the guarded ring push.
 
-- [ ] Add this concrete Arduino-only regression harness under `firmware/src/ble/speedbike_link.cpp` behind `#if defined(TOKESP_LINK_TEST_HOOKS)` and invoke it from a temporary PlatformIO `build_flags` entry; run `pio run -e esp32_jd9853` and expect **PASS** after asserting the trailing `TF R X 01 01 BA` remains decodable after 300 injected bytes:
+- [ ] Write `test_byte_ring` first; it must push 300 garbage bytes followed by the complete `TF R X 01 01 BA`, drain the ring into `FrameDecoder`, and assert that the decoder emits the trailing frame. Run `pio test -e native -f test_byte_ring` and expect **FAIL** until `ByteRing` exists. Implement this complete core header:
 
 ```cpp
-#if defined(TOKESP_LINK_TEST_HOOKS)
-#include "core/speedbike_protocol.h"
-static void verifyOverflowResync(SpeedBikeLink &link) { uint8_t burst[300]{}; for (uint16_t i=0;i<294;++i) burst[i]=static_cast<uint8_t>(i); const uint8_t frame[]={0x54,0x46,0x52,0x58,0x01,0x01,0xba}; for(uint8_t i=0;i<7;++i) burst[293+i]=frame[i]; link.pushBytes(burst,sizeof burst); FrameDecoder d; uint8_t b; while(link.popByte(b)) d.push(&b,1); DecodedFrame out{}; assert(d.next(out)); assert(out.op==0x52&&out.command==0x58); }
-#endif
+// firmware/src/core/byte_ring.h
+#pragma once
+#include <cstddef>
+#include <cstdint>
+template <size_t Capacity> class ByteRing { public: void push(uint8_t byte) { const size_t next=(head_+1)%Capacity; if(next==tail_) tail_=(tail_+1)%Capacity; bytes_[head_]=byte; head_=next; } bool pop(uint8_t &byte) { if(tail_==head_) return false; byte=bytes_[tail_]; tail_=(tail_+1)%Capacity; return true; } private: uint8_t bytes_[Capacity]{}; size_t head_=0,tail_=0; };
 ```
 
-- [ ] Remove the temporary test hook/build flag, run `pio run -e esp32_jd9853` and expect **PASS**.
-- [ ] Run `pio test -e native` and expect **PASS**, then commit with `git add firmware/src/ble/speedbike_link.h firmware/src/ble/speedbike_link.cpp firmware/src/app/app_controller.h firmware/src/app/app_controller.cpp && git commit -m "feat: add speedbike nimble link"`.
+- [ ] Run `pio run -e esp32_jd9853` and expect **PASS**.
+- [ ] Run `pio test -e native` and expect **PASS**, then commit with `git add firmware/src/core/byte_ring.h firmware/test/test_byte_ring/test_byte_ring.cpp firmware/src/ble/speedbike_link.h firmware/src/ble/speedbike_link.cpp firmware/src/app/app_controller.h firmware/src/app/app_controller.cpp && git commit -m "feat: add speedbike nimble link"`.
 
 ## Task 8 — Own boot/status rendering in the display manager
 
 Files
 
 - Modify: `firmware/src/display/indexed_canvas.h`, `firmware/src/display/display_manager.h/.cpp`.
-- Create: `firmware/assets/speedbike_logo.gif` supplied by the user before embedding.
+- Create later, when supplied by the user: `firmware/assets/speedbike_logo.gif`.
 
 Interfaces
 
@@ -491,10 +492,10 @@ IndexedCanvas &gaugeCanvas();
 void pushGaugeRegion();
 ```
 
-`display_manager.cpp` must initialize the TFT and AnimatedGIF, decode embedded `firmware/assets/speedbike_logo.gif` for roughly two seconds, and use its existing `drawCenteredText` implementation to render only these status texts: `PROCURANDO`, `SPEEDBIKE_050102`, `CONECTANDO...`, `AUTENTICANDO...`, and `SEM DADOS`. `pushGaugeRegion()` must transfer only the 296x240 gauge rectangle, not the entire screen.
+`display_manager.cpp` must initialize the TFT and draw `SPEEDBIKE` centered for roughly two seconds. `drawBootLogo` may use AnimatedGIF only behind `TOKESP_HAS_LOGO`; that build flag remains off and `platformio.ini` must not reference `embed_files` until `firmware/assets/speedbike_logo.gif` exists. Use the existing `drawCenteredText` implementation for `PROCURANDO`, `SPEEDBIKE_050102`, `CONECTANDO...`, and `AUTENTICANDO...`. `pushGaugeRegion()` must transfer only the 296x240 gauge rectangle, not the entire screen.
 
 - [ ] Run `pio run -e esp32_jd9853` and expect **PASS**.
-- [ ] Run `pio test -e native` and expect **PASS**, then commit with `git add firmware/src/display/indexed_canvas.h firmware/src/display/display_manager.h firmware/src/display/display_manager.cpp firmware/assets/speedbike_logo.gif && git commit -m "feat: add speedbike boot and status display"`.
+- [ ] Run `pio test -e native` and expect **PASS**, then commit with `git add firmware/src/display/indexed_canvas.h firmware/src/display/display_manager.h firmware/src/display/display_manager.cpp && git commit -m "feat: add speedbike boot and status display"`.
 
 ## Task 9 — Render and test the RPM gauge
 
@@ -504,7 +505,7 @@ Files
 
 Interfaces
 
-- Consumes: `float rpmToAngle(uint16_t rpm);`, `void drawGauge(IndexedCanvas &canvas, uint16_t needleRpm, uint16_t targetRpm);`.
+- Consumes: `float rpmToAngle(uint16_t rpm);`, `void drawGauge(IndexedCanvas &canvas, uint16_t needleRpm, uint16_t targetRpm, bool noData);`.
 - Produces: a 240-degree 0--12000 RPM gauge with 1000-RPM major marks, 500-RPM minor marks, and a red zone from 10000.
 
 - [ ] Write the failing native geometry test and run `pio test -e native -f test_gauge_geometry`, expecting **FAIL**:
@@ -533,7 +534,7 @@ float rpmToAngle(uint16_t rpm) { const uint16_t capped=rpm>SpeedBikeConfig::MaxR
 #pragma once
 #include <cstdint>
 #include "display/indexed_canvas.h"
-void drawGauge(IndexedCanvas &canvas,uint16_t needleRpm,uint16_t targetRpm);
+void drawGauge(IndexedCanvas &canvas,uint16_t needleRpm,uint16_t targetRpm,bool noData);
 ```
 
 `gauge_renderer.cpp` must draw the 296x240 canvas from scratch: a 240-degree arc; major ticks/labels 0--12 at 1000 RPM; minor ticks at 500 RPM; Cyan/CyanDim normal arc/ticks/labels/needle; Red/RedDim 10000+ zone and needle; and a large target RPM readout with `RPM`. It must call `rpmToAngle`, use thick needle strokes, and have no boot-logo or status responsibility.
@@ -568,11 +569,13 @@ void updateApp(uint32_t nowMs) {
   uint8_t byte=0; while (link.popByte(byte)) { decoder.push(&byte,1); DecodedFrame frame{}; while (decoder.next(frame)) session.frame(frame,nowMs); }
   session.tick(nowMs); const SessionOutput out=session.takeOutput();
   if (out.startScan) link.startScan();
-  if (out.sendNotice) { uint8_t frame[6]; link.write(frame,buildSessionNotice(frame,sizeof frame)); }
-  if (out.sendPassword) { uint8_t frame[12]; link.write(frame,buildPasswordFrame(frame,sizeof frame)); }
+  if (out.sendNotice) { uint8_t frame[16]; link.write(frame,buildSessionNotice(frame,sizeof frame)); }
+  if (out.sendPassword) { uint8_t frame[16]; link.write(frame,buildPasswordFrame(frame,sizeof frame)); }
   if (out.hasRpm) smoother.setTarget(out.rpm);
-  switch(session.state()) { case SessionState::Scanning: setDisplayStatus("PROCURANDO"); break; case SessionState::AwaitingPasswordRequest: setDisplayStatus("SPEEDBIKE_050102"); break; case SessionState::Authenticating: setDisplayStatus("AUTENTICANDO..."); break; default: if(out.noData) setDisplayStatus("SEM DADOS"); break; }
-  if(nowMs-lastGaugeAtMs>=GaugeIntervalMs) { lastGaugeAtMs=nowMs; drawGauge(gaugeCanvas(),smoother.step(),smoother.target()); pushGaugeRegion(); }
+  if (session.state()==SessionState::Scanning) setDisplayStatus("PROCURANDO\nSPEEDBIKE_050102");
+  else if (session.state()==SessionState::Connecting) setDisplayStatus("CONECTANDO...");
+  else if (session.state()==SessionState::AwaitingPasswordRequest || session.state()==SessionState::Authenticating) setDisplayStatus("AUTENTICANDO...");
+  else if (session.state()==SessionState::Streaming && nowMs-lastGaugeAtMs>=GaugeIntervalMs) { lastGaugeAtMs=nowMs; if(out.noData) smoother.setTarget(0); drawGauge(gaugeCanvas(),smoother.step(),smoother.target(),out.noData); pushGaugeRegion(); }
 }
 ```
 
