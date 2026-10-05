@@ -1,7 +1,7 @@
 #include "display/display_manager.h"
 
 #include <U8g2lib.h>
-#if defined(TOKESP_BOARD_ESP32_JD9853)
+#if defined(TOKESP_BOARD_ESP32_JD9853) || defined(TOKESP_BOARD_ESP32_C3_JD9853)
 #include <Adafruit_GFX.h>
 #include <AnimatedGIF.h>
 #include <SPI.h>
@@ -19,7 +19,7 @@
 
 namespace {
 
-#if defined(TOKESP_BOARD_ESP32_JD9853)
+#if defined(TOKESP_BOARD_ESP32_JD9853) || defined(TOKESP_BOARD_ESP32_C3_JD9853)
 
 constexpr uint16_t PANEL_WIDTH = IndexedCanvas::Width;
 constexpr uint16_t PANEL_HEIGHT = IndexedCanvas::Height;
@@ -257,7 +257,7 @@ void logI2CDevices() {
 }  // namespace
 
 void initializeDisplay() {
-#if defined(TOKESP_BOARD_ESP32_JD9853)
+#if defined(TOKESP_BOARD_ESP32_JD9853) || defined(TOKESP_BOARD_ESP32_C3_JD9853)
     pinMode(HardwareConfig::TFT_CS_PIN, OUTPUT);
     pinMode(HardwareConfig::TFT_DC_PIN, OUTPUT);
     pinMode(HardwareConfig::TFT_RESET_PIN, OUTPUT);
@@ -291,7 +291,7 @@ void initializeDisplay() {
 }
 
 void drawFrame(const AppState &state, uint32_t nowMs) {
-#if defined(TOKESP_BOARD_ESP32_JD9853)
+#if defined(TOKESP_BOARD_ESP32_JD9853) || defined(TOKESP_BOARD_ESP32_C3_JD9853)
     static AppScreen lastScreen = AppScreen::Error;
     static UsageLayout lastLayout = UsageLayout::Comparison;
     static bool lastPeriod = false;
@@ -306,7 +306,7 @@ void drawFrame(const AppState &state, uint32_t nowMs) {
     context.nowSeconds = currentEpochSeconds();
     formatClockTime(context.clockText, sizeof context.clockText);
 
-#if defined(TOKESP_BOARD_ESP32_JD9853)
+#if defined(TOKESP_BOARD_ESP32_JD9853) || defined(TOKESP_BOARD_ESP32_C3_JD9853)
     if (state.screen == AppScreen::ShowingUsage) {
         drawNativeUsageScreen(state, context);
     } else {

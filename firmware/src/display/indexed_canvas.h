@@ -1,6 +1,7 @@
 #pragma once
 
-#if defined(TOKESP_BOARD_ESP32_JD9853) || defined(TOKESP_DISPLAY_PREVIEW)
+#if defined(TOKESP_BOARD_ESP32_JD9853) || defined(TOKESP_BOARD_ESP32_C3_JD9853) || \
+    defined(TOKESP_DISPLAY_PREVIEW)
 #include <Adafruit_GFX.h>
 #include <cstring>
 

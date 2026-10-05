@@ -29,7 +29,7 @@ void showError(AppState &state, const char *message, uint32_t nowMs) {
 }
 
 void handleButton(AppState &state, uint32_t nowMs) {
-#if defined(TOKESP_BOARD_ESP32_JD9853)
+#if defined(TOKESP_BOARD_ESP32_JD9853) || defined(TOKESP_BOARD_ESP32_C3_JD9853)
     const ButtonAction action = pollButtonAction(nowMs);
     if (state.screen != AppScreen::ShowingUsage) return;
     if (action == ButtonAction::LongPress) {
