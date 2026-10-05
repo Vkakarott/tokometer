@@ -91,13 +91,31 @@ bool SpeedBikeLink::takeDeviceFound() {
 
 bool SpeedBikeLink::connect() {
     if (!client || !hasTargetAddress || !client->connect(targetAddress)) {
+        log_w("connect failed err=%d", client ? client->getLastError() : -1);
         return false;
     }
+
     NimBLERemoteService *service = client->getService("fff0");
-    if (!service) { client->disconnect(); return false; }
+    if (!service) {
+        log_w("service fff0 not found");
+        client->disconnect();
+        return false;
+    }
+
     NimBLERemoteCharacteristic *notifyCharacteristic = service->getCharacteristic("fff1");
     writeCharacteristic = service->getCharacteristic("fff2");
-    if (!notifyCharacteristic || !writeCharacteristic || !notifyCharacteristic->subscribe(true, notifyCallback)) { client->disconnect(); return false; }
+    if (!notifyCharacteristic || !writeCharacteristic) {
+        log_w("fff1/fff2 missing (notify=%p write=%p)", notifyCharacteristic, writeCharacteristic);
+        client->disconnect();
+        return false;
+    }
+
+    if (!notifyCharacteristic->subscribe(true, notifyCallback)) {
+        log_w("subscribe failed");
+        client->disconnect();
+        return false;
+    }
+
     log_i("fff2 write=%d no-response=%d; fff1 notify=%d indicate=%d",
           writeCharacteristic->canWrite(), writeCharacteristic->canWriteNoResponse(),
           notifyCharacteristic->canNotify(), notifyCharacteristic->canIndicate());
