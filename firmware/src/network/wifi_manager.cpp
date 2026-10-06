@@ -13,6 +13,8 @@ constexpr char LEGACY_WIFI_SSID_KEY[] = "wifiSsid";
 constexpr char LEGACY_WIFI_PASSWORD_KEY[] = "wifiPass";
 constexpr uint32_t CONNECT_TIMEOUT_MS = 15000;
 constexpr uint8_t MAX_KNOWN_NETWORKS = 3;
+// At full power the C3 Mini's antenna fails authentication (AUTH_EXPIRE).
+constexpr wifi_power_t TX_POWER = WIFI_POWER_8_5dBm;
 
 DNSServer dnsServer;
 WebServer portal(80);
@@ -34,6 +36,10 @@ void networkKey(char *out, size_t size, const char *prefix, uint8_t index) {
     snprintf(out, size, "%s%u", prefix, index);
 }
 
+void removeIfPresent(Preferences &preferences, const char *key) {
+    if (preferences.isKey(key)) preferences.remove(key);
+}
+
 void saveKnownNetworks() {
     Preferences preferences;
     preferences.begin(NAMESPACE, false);
@@ -47,12 +53,12 @@ void saveKnownNetworks() {
             preferences.putString(ssidKey, knownNetworks[index].ssid);
             preferences.putString(passwordKey, knownNetworks[index].password);
         } else {
-            preferences.remove(ssidKey);
-            preferences.remove(passwordKey);
+            removeIfPresent(preferences, ssidKey);
+            removeIfPresent(preferences, passwordKey);
         }
     }
-    preferences.remove(LEGACY_WIFI_SSID_KEY);
-    preferences.remove(LEGACY_WIFI_PASSWORD_KEY);
+    removeIfPresent(preferences, LEGACY_WIFI_SSID_KEY);
+    removeIfPresent(preferences, LEGACY_WIFI_PASSWORD_KEY);
     preferences.end();
 }
 
@@ -74,6 +80,7 @@ void connectToKnownNetwork(uint8_t index) {
     portal.stop();
     WiFi.mode(WIFI_STA);
     WiFi.begin(knownNetworks[index].ssid, knownNetworks[index].password);
+    WiFi.setTxPower(TX_POWER);
     activeNetworkIndex = index;
     attemptedNetworks |= 1 << index;
     connectionStartedAtMs = millis();
@@ -103,7 +110,13 @@ void saveWifiCredentials(const String &ssid, const String &password) {
     saveKnownNetworks();
 }
 
+// Picks the strongest known network in range. With a single profile there is
+// nothing to choose, so the scan is skipped.
 void connectToAvailableKnownNetwork() {
+    if (knownNetworkCount == 1) {
+        connectToKnownNetwork(0);
+        return;
+    }
     WiFi.mode(WIFI_STA);
     const int count = WiFi.scanNetworks();
     int selected = -1;
@@ -150,12 +163,14 @@ void loadKnownNetworks() {
         }
         preferences.getString(passwordKey, knownNetworks[index].password, sizeof knownNetworks[index].password);
     }
-    if (knownNetworkCount == 0 && preferences.getString(LEGACY_WIFI_SSID_KEY, knownNetworks[0].ssid, sizeof knownNetworks[0].ssid) > 0) {
+    const bool migrateLegacy = knownNetworkCount == 0 && preferences.isKey(LEGACY_WIFI_SSID_KEY) &&
+        preferences.getString(LEGACY_WIFI_SSID_KEY, knownNetworks[0].ssid, sizeof knownNetworks[0].ssid) > 0;
+    if (migrateLegacy) {
         preferences.getString(LEGACY_WIFI_PASSWORD_KEY, knownNetworks[0].password, sizeof knownNetworks[0].password);
         knownNetworkCount = 1;
     }
     preferences.end();
-    if (knownNetworkCount > 0) saveKnownNetworks();
+    if (migrateLegacy) saveKnownNetworks();
 }
 
 String escapedHtml(const String &value) {
@@ -200,6 +215,19 @@ void sendPortalPage() {
     portal.send(200, "text/html; charset=utf-8", page);
 }
 
+void handleConnectRequest() {
+    String ssid = portal.arg("network") == "__other__" ? portal.arg("manual_ssid") : portal.arg("network");
+    ssid.trim();
+    const String password = portal.arg("password");
+    if (ssid.isEmpty() || ssid.length() >= sizeof knownNetworks[0].ssid || password.length() >= sizeof knownNetworks[0].password) {
+        portal.send(400, "text/plain; charset=utf-8", "Dados inválidos. Volte e tente novamente.");
+        return;
+    }
+    saveWifiCredentials(ssid, password);
+    portal.send(200, "text/html; charset=utf-8", "<meta name=viewport content='width=device-width,initial-scale=1'><body style='background:#090909;color:white;font:16px -apple-system;padding:32px'>Conectando o display. Você já pode voltar ao tokometer.</body>");
+    connectToKnownNetwork(0);
+}
+
 void startProvisioning() {
     if (provisioning) return;
 
@@ -209,23 +237,14 @@ void startProvisioning() {
 
     WiFi.disconnect();
     WiFi.mode(WIFI_AP);
-    WiFi.softAP(portalSsid);
+    if (!WiFi.softAP(portalSsid)) log_e("could not start the setup access point");
+    WiFi.setTxPower(TX_POWER);
+    log_i("setup portal on %s at %s", portalSsid, WiFi.softAPIP().toString().c_str());
     dnsServer.start(53, "*", WiFi.softAPIP());
     portal.on("/", HTTP_GET, sendPortalPage);
     portal.on("/generate_204", HTTP_ANY, sendPortalPage);
     portal.on("/hotspot-detect.html", HTTP_ANY, sendPortalPage);
-    portal.on("/connect", HTTP_POST, [] {
-        String ssid = portal.arg("network") == "__other__" ? portal.arg("manual_ssid") : portal.arg("network");
-        ssid.trim();
-        const String password = portal.arg("password");
-        if (ssid.isEmpty() || ssid.length() >= sizeof knownNetworks[0].ssid || password.length() >= sizeof knownNetworks[0].password) {
-            portal.send(400, "text/plain; charset=utf-8", "Dados inválidos. Volte e tente novamente.");
-            return;
-        }
-        saveWifiCredentials(ssid, password);
-        portal.send(200, "text/html; charset=utf-8", "<meta name=viewport content='width=device-width,initial-scale=1'><body style='background:#090909;color:white;font:16px -apple-system;padding:32px'>Conectando o display. Você já pode voltar ao tokometer.</body>");
-        connectToKnownNetwork(0);
-    });
+    portal.on("/connect", HTTP_POST, handleConnectRequest);
     portal.onNotFound(sendPortalPage);
     portal.begin();
     provisioning = true;

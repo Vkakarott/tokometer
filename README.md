@@ -1,7 +1,7 @@
 # tokEsp
 
 Mostra quanto das suas assinaturas **Claude** (Pro/Max), **Codex** (ChatGPT) e
-**Cursor** foi consumido — num tokonotch nativo do macOS e num display OLED
+**Cursor** foi consumido — num tokonotch nativo do macOS e num display TFT
 opcional.
 
 **Não existe endpoint público de consumo de assinatura.** No Claude, a fonte é
@@ -25,7 +25,7 @@ collector ───────► backend API ──► ESP32 (durante a migra�
 | `backend/` | Node + TypeScript. Ponte de snapshots e API do device. |
 | `collector/` | Statusline do Claude e poller do Codex. Alimenta o app e o backend. |
 | `macos/` | Aplicativo nativo: tokonotch, coleta local e aprovação de pareamento. |
-| `firmware/` | ESP32 DevKit + OLED I2C externo (ou Heltec WiFi LoRa 32 V2). Consome `docs/device-api.md`. |
+| `firmware/` | ESP32-C3 Mini + TFT SPI JD9853 240×296. Consome `docs/device-api.md`. |
 
 ## Rodar
 
@@ -78,8 +78,7 @@ cd macos && swift test
 
 # firmware (na raiz, com PlatformIO)
 pio test -e native
-pio run   # alvo padrão: esp32_i2c
-pio run -e heltec_wifi_lora_32_V2
+pio run   # alvo único: esp32_c3_jd9853
 ```
 
 Antes de gravar o ESP32, `API_HOST` em `firmware/src/config/api_config.h` e
@@ -104,50 +103,29 @@ modo de configuração após 15 segundos.
 
 ## Hardware do display
 
-O alvo padrão é uma **ESP32 DevKit (ESP-WROOM-32)** com um TFT IPS SPI
-**JD9853 240×296**:
+O alvo é uma **ESP32-C3 Mini** com um TFT IPS SPI **JD9853 240×296**:
 
-| Display | ESP32 |
+| Display | ESP32-C3 |
 |---|---|
 | GND | GND |
 | VCC | 3V3 |
-| SCK / CLK | D18 |
-| MOSI / DIN / SDA | D23 |
-| CS | D5 |
-| DC / A0 | D2 |
-| RST | D4 |
+| SCK / CLK | GPIO6 |
+| MOSI / DIN / SDA | GPIO7 |
+| CS | GPIO10 |
+| DC / A0 | GPIO3 |
+| RST | GPIO1 |
 | BL / LED | 3V3 |
 
 ```bash
-pio run -e esp32_jd9853 -t upload
+pio run -t upload
 ```
 
-O firmware mantém os layouts existentes e os amplia no painel enquanto o novo
-layout colorido é desenvolvido. O ambiente `esp32_i2c` preserva o suporte ao
-OLED antigo.
+O botão **BOOT** da placa (GPIO9) troca de tela com um toque curto e alterna a
+janela de consumo com um toque longo. Ele só responde na tela de consumo. Os
+pinos ficam em `firmware/src/config/hardware_config.h`.
 
-### OLED I2C anterior
-
-Uma **ESP32 DevKit (ESP-WROOM-32)** também pode usar um módulo **OLED I2C de
-4 pinos** (SSD1306 0.96", endereço 0x3C):
-
-| Display | ESP32 |
-|---|---|
-| GND | GND |
-| VCC | 3V3 |
-| SCL | D22 |
-| SDA | D21 |
-
-```bash
-pio run -e esp32_i2c -t upload    # OLED externo
-pio run -e heltec_wifi_lora_32_V2 -t upload    # placa com OLED embutido
-```
-
-O firmware varre o barramento I2C no boot e registra os endereços que
-respondem: se nada aparecer, o problema é ligação ou alimentação. Se a imagem
-sair deslocada, o painel é SH1106 — some `-DTOKESP_DISPLAY_SH1106` ao
-`build_flags` do env. Os pinos de cada placa ficam em
-`firmware/src/config/board_*.h`.
+A potência de transmissão do Wi-Fi é limitada a 8,5 dBm: em potência máxima a
+antena da C3 Mini falha na autenticação com o roteador.
 
 ## Limitações conhecidas
 
