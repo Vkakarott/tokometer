@@ -4,17 +4,17 @@ set -eu
 preview_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(CDPATH= cd -- "$preview_dir/../../.." && pwd)
 output_dir=${1:-"$repo_dir/.pio/display-preview"}
-gfx_dir="$repo_dir/.pio/libdeps/esp32_jd9853/Adafruit GFX Library"
+gfx_dir="$repo_dir/.pio/libdeps/esp32_c3_jd9853/Adafruit GFX Library"
 
 if [ ! -f "$gfx_dir/Adafruit_GFX.cpp" ]; then
-    printf '%s\n' 'Missing Adafruit GFX dependency. Build esp32_jd9853 with PlatformIO first.' >&2
+    printf '%s\n' 'Missing Adafruit GFX dependency. Build esp32_c3_jd9853 with PlatformIO first.' >&2
     exit 1
 fi
 
 mkdir -p "$output_dir"
 "${CXX:-c++}" -std=c++17 -O2 -Wall -Wextra \
     -Wno-unused-parameter -Wno-sign-compare \
-    -DARDUINO=10819 -DTOKESP_DISPLAY_PREVIEW \
+    -DARDUINO=10819 \
     -I "$preview_dir/stubs" -I "$repo_dir/firmware/src" -I "$gfx_dir" \
     "$gfx_dir/Adafruit_GFX.cpp" \
     "$repo_dir/firmware/src/core/text_format.cpp" \

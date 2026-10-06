@@ -1,7 +1,5 @@
 #include "display/tft_renderer.h"
 
-#if defined(TOKESP_BOARD_ESP32_JD9853) || defined(TOKESP_BOARD_ESP32_C3_JD9853) || \
-    defined(TOKESP_DISPLAY_PREVIEW)
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Fonts/FreeSansBold12pt7b.h>
 #include <Fonts/FreeSansBold18pt7b.h>
@@ -285,4 +283,3 @@ void renderTftUsage(Adafruit_GFX &canvas, const ProvidersUsage &usage, uint8_t s
     canvas.setFont();
     canvas.setTextSize(1);
 }
-#endif

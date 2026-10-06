@@ -15,12 +15,12 @@ enum class AppScreen {
     Error
 };
 
-// Order is the PRG cycle and the index saved in NVS: keep it stable.
+// Order is the BOOT button cycle and the index saved in NVS: keep it stable.
 enum class UsageLayout : uint8_t {
-    CodexDiagonal,
-    ClaudeCards,
-    Comparison,
-    CursorCards
+    CodexDashboard,
+    ClaudeDashboard,
+    Overview,
+    CursorDashboard
 };
 
 constexpr uint8_t USAGE_LAYOUT_COUNT = 4;
@@ -28,7 +28,7 @@ constexpr uint8_t USAGE_LAYOUT_COUNT = 4;
 struct AppState {
     WifiStatus wifiStatus = WifiStatus::Disconnected;
     AppScreen screen = AppScreen::ConnectingWifi;
-    UsageLayout layout = UsageLayout::CodexDiagonal;
+    UsageLayout layout = UsageLayout::CodexDashboard;
     bool sevenDay = false;
 
     bool hasToken = false;

@@ -15,7 +15,7 @@ bool pressActive = false;
 bool longPressEmitted = false;
 
 bool updateDebouncedLevel(uint32_t nowMs) {
-    const int reading = digitalRead(HardwareConfig::PRG_BUTTON_PIN);
+    const int reading = digitalRead(HardwareConfig::BOOT_BUTTON_PIN);
     if (reading != lastReading) {
         lastReading = reading;
         lastChangeAtMs = nowMs;
@@ -31,11 +31,7 @@ bool updateDebouncedLevel(uint32_t nowMs) {
 }  // namespace
 
 void initializeButton() {
-    pinMode(HardwareConfig::PRG_BUTTON_PIN, INPUT_PULLUP);
-}
-
-bool pollButtonPress(uint32_t nowMs) {
-    return updateDebouncedLevel(nowMs) && stableLevel == LOW;
+    pinMode(HardwareConfig::BOOT_BUTTON_PIN, INPUT_PULLUP);
 }
 
 ButtonAction pollButtonAction(uint32_t nowMs) {

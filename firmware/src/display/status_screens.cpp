@@ -1,87 +1,87 @@
 #include "display/status_screens.h"
 
-#include <cstdio>
-
-#include "assets/wifi_icon.h"
 #include "core/text_format.h"
-#include "display/widgets.h"
+#include "display/indexed_canvas.h"
 
 namespace {
 
-constexpr int SCREEN_WIDTH = 128;
-constexpr int CENTER_X = SCREEN_WIDTH / 2;
+using namespace TftColor;
 
-const char *wifiStatusText(WifiStatus status) {
-    switch (status) {
-        case WifiStatus::Connected:
-            return "WiFi conectado";
-        case WifiStatus::Connecting:
-            return "Conectando WiFi...";
-        case WifiStatus::Disconnected:
-            return "WiFi desconectado";
-        case WifiStatus::Failed:
-            return "Falha no WiFi";
-        case WifiStatus::Provisioning:
-            return "Configurar WiFi";
-    }
-    return "WiFi desconhecido";
+constexpr int16_t TEXT_MARGIN = 16;
+
+// Shrinks the built-in font until the line fits between the margins.
+void drawCenteredText(Adafruit_GFX &canvas, const char *text, int16_t y, uint8_t size, uint16_t color) {
+    int16_t x1, y1;
+    uint16_t width, height;
+    canvas.setFont();
+    do {
+        canvas.setTextSize(size);
+        canvas.getTextBounds(text, 0, y, &x1, &y1, &width, &height);
+        if (width <= canvas.width() - 2 * TEXT_MARGIN || size <= 1) break;
+        --size;
+    } while (true);
+    canvas.setTextColor(color);
+    canvas.setCursor((canvas.width() - width) / 2 - x1, y);
+    canvas.print(text);
 }
 
-// Long LAN URLs fall back to the narrow font instead of clipping.
-void drawFittedText(U8G2 &display, int baselineY, const char *text) {
-    display.setFont(u8g2_font_5x7_tf);
-    if (display.getUTF8Width(text) > SCREEN_WIDTH - 2) display.setFont(u8g2_font_4x6_tf);
-    drawCenteredText(display, CENTER_X, baselineY, text);
+uint32_t pairingSecondsLeft(const AppState &state, uint32_t nowMs) {
+    const uint32_t elapsed = (nowMs - state.pairingStartedAtMs) / 1000;
+    return elapsed >= state.pairCode.expiresInSeconds ? 0 : state.pairCode.expiresInSeconds - elapsed;
+}
+
+void drawWifiScreen(Adafruit_GFX &canvas, WifiStatus status) {
+    if (status != WifiStatus::Provisioning) {
+        drawCenteredText(canvas, "CONECTANDO", 88, 3, Text);
+        drawCenteredText(canvas, "AO WI-FI", 128, 3, Cyan);
+        return;
+    }
+    drawCenteredText(canvas, "CONECTE-SE A", 48, 2, Text);
+    drawCenteredText(canvas, provisioningNetworkName(), 84, 3, Cyan);
+    drawCenteredText(canvas, "ABRA 192.168.4.1", 142, 2, Text);
+    drawCenteredText(canvas, "PARA CONFIGURAR", 174, 2, Muted);
+}
+
+void drawPairingScreen(Adafruit_GFX &canvas, const AppState &state, uint32_t nowMs) {
+    char code[12];
+    char countdown[8];
+    formatUserCode(state.pairCode.userCode, code, sizeof code);
+    formatCountdown(pairingSecondsLeft(state, nowMs), countdown, sizeof countdown);
+    drawCenteredText(canvas, "PAREAMENTO", 42, 2, Text);
+    drawCenteredText(canvas, stripUrlScheme(state.pairCode.verificationUri), 76, 2, Text);
+    drawCenteredText(canvas, code, 122, 4, Cyan);
+    drawCenteredText(canvas, countdown, 190, 2, Muted);
+}
+
+void drawErrorScreen(Adafruit_GFX &canvas, const char *message) {
+    drawCenteredText(canvas, "ERRO", 80, 3, Orange);
+    drawCenteredText(canvas, message, 132, 2, Text);
+    drawCenteredText(canvas, "TENTANDO NOVAMENTE...", 176, 1, Muted);
 }
 
 }  // namespace
 
-void drawWifiScreen(U8G2 &display, WifiStatus status) {
-    if (status == WifiStatus::Provisioning) {
-        display.setFont(u8g2_font_6x10_tf);
-        drawCenteredText(display, CENTER_X, 16, "Conecte-se a");
-        drawCenteredText(display, CENTER_X, 30, provisioningNetworkName());
-        display.setFont(u8g2_font_5x7_tf);
-        drawCenteredText(display, CENTER_X, 45, "e abra 192.168.4.1");
-        drawCenteredText(display, CENTER_X, 60, "para configurar");
-        return;
+void renderStatusScreen(Adafruit_GFX &canvas, const AppState &state, const FrameContext &context) {
+    canvas.fillScreen(Background);
+    switch (state.screen) {
+        case AppScreen::ConnectingWifi:
+            drawWifiScreen(canvas, state.wifiStatus);
+            break;
+        case AppScreen::RequestingPairCode:
+            drawCenteredText(canvas, "PAREAMENTO", 80, 3, Cyan);
+            drawCenteredText(canvas, "GERANDO CODIGO...", 132, 2, Text);
+            break;
+        case AppScreen::WaitingPairApproval:
+            drawPairingScreen(canvas, state, context.nowMs);
+            break;
+        case AppScreen::LoadingUsage:
+            drawCenteredText(canvas, "ATUALIZANDO", 94, 3, Cyan);
+            drawCenteredText(canvas, "CONSUMO...", 138, 2, Text);
+            break;
+        case AppScreen::Error:
+            drawErrorScreen(canvas, state.errorMessage);
+            break;
+        case AppScreen::ShowingUsage:
+            break;
     }
-
-    display.drawXBMP(CENTER_X - 16, 6, 32, 32, epd_bitmap_72264);
-    display.setFont(u8g2_font_6x10_tf);
-    drawCenteredText(display, CENTER_X, 52, wifiStatusText(status));
-}
-
-void drawMessageScreen(U8G2 &display, const char *title, const char *message) {
-    display.setFont(u8g2_font_6x10_tf);
-    drawCenteredText(display, CENTER_X, 24, title);
-    display.drawHLine(CENTER_X - 30, 29, 60);
-    display.setFont(u8g2_font_6x10_tf);
-    drawCenteredText(display, CENTER_X, 44, message);
-}
-
-void drawErrorScreen(U8G2 &display, const char *message) {
-    drawMessageScreen(display, "Erro", message);
-    display.setFont(u8g2_font_5x7_tf);
-    drawCenteredText(display, CENTER_X, 60, "Tentando novamente...");
-}
-
-void drawPairingScreen(U8G2 &display, const PairCode &code, uint32_t secondsLeft) {
-    char userCode[16];
-    char countdown[8];
-    char expires[24];
-    formatUserCode(code.userCode, userCode, sizeof userCode);
-    formatCountdown(secondsLeft, countdown, sizeof countdown);
-    snprintf(expires, sizeof expires, "expira em %s", countdown);
-
-    display.setFont(u8g2_font_5x7_tf);
-    drawCenteredText(display, CENTER_X, 7, "Acesse e digite o código");
-    drawFittedText(display, 16, stripUrlScheme(code.verificationUri));
-
-    display.drawRFrame(1, 20, SCREEN_WIDTH - 2, 28, 3);
-    setFittingFont(display, userCode, SCREEN_WIDTH - 12, {u8g2_font_fub14_tf, u8g2_font_fub11_tf});
-    drawCenteredText(display, CENTER_X, 41, userCode);
-
-    display.setFont(u8g2_font_5x7_tf);
-    drawCenteredText(display, CENTER_X, 60, expires);
 }

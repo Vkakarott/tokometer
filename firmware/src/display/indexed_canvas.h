@@ -1,7 +1,5 @@
 #pragma once
 
-#if defined(TOKESP_BOARD_ESP32_JD9853) || defined(TOKESP_BOARD_ESP32_C3_JD9853) || \
-    defined(TOKESP_DISPLAY_PREVIEW)
 #include <Adafruit_GFX.h>
 #include <cstring>
 
@@ -21,11 +19,13 @@ constexpr uint16_t Palette[] = {
 };
 }
 
-// Drawing uses palette indices. RGB565 is expanded one scanline at a time for SPI.
+// Drawing uses palette indices, two pixels per byte. RGB565 is expanded one
+// scanline at a time for SPI.
 class IndexedCanvas : public Adafruit_GFX {
 public:
     static constexpr uint16_t Width = 296;
     static constexpr uint16_t Height = 240;
+    static constexpr uint16_t RowBytes = Width / 2;
 
     IndexedCanvas() : Adafruit_GFX(Width, Height) { setTextWrap(false); }
 
@@ -41,6 +41,8 @@ public:
         memset(buffer_, index | (index << 4), sizeof buffer_);
     }
 
+    const uint8_t *row(uint16_t y) const { return buffer_ + static_cast<uint32_t>(y) * RowBytes; }
+
     uint16_t pixelColor(uint16_t x, uint16_t y) const {
         if (x >= Width || y >= Height) return 0;
         const uint32_t pixel = static_cast<uint32_t>(y) * Width + x;
@@ -49,6 +51,5 @@ public:
     }
 
 private:
-    uint8_t buffer_[Width * Height / 2]{};
+    uint8_t buffer_[RowBytes * Height]{};
 };
-#endif

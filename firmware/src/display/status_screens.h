@@ -1,12 +1,9 @@
 #pragma once
 
-#include <U8g2lib.h>
-#include <cstdint>
+#include <Adafruit_GFX.h>
 
-#include "core/api_codec.h"
-#include "network/wifi_manager.h"
+#include "display/frame_context.h"
+#include "state/app_state.h"
 
-void drawWifiScreen(U8G2 &display, WifiStatus status);
-void drawMessageScreen(U8G2 &display, const char *title, const char *message);
-void drawErrorScreen(U8G2 &display, const char *message);
-void drawPairingScreen(U8G2 &display, const PairCode &code, uint32_t secondsLeft);
+// Draws every screen other than the usage dashboard.
+void renderStatusScreen(Adafruit_GFX &canvas, const AppState &state, const FrameContext &context);
