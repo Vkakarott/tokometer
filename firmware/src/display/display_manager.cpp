@@ -1,6 +1,5 @@
 #include "display/display_manager.h"
 
-#include <AnimatedGIF.h>
 #include <Arduino.h>
 #include <cstring>
 
@@ -13,11 +12,10 @@
 
 namespace {
 
-constexpr uint16_t PANEL_WIDTH = IndexedCanvas::Width;
 constexpr uint16_t PANEL_HEIGHT = IndexedCanvas::Height;
 constexpr uint16_t BACKGROUND_RGB565 = TftColor::Palette[TftColor::Background];
 
-// The pairing countdown ticks every second; usage text only moves by the minute.
+// The busy bar and the pairing countdown move; usage text only changes by the minute.
 constexpr uint32_t STATUS_REFRESH_MS = 500;
 constexpr uint32_t USAGE_REFRESH_MS = 5000;
 
@@ -38,50 +36,11 @@ struct FrameKey {
     }
 };
 
-AnimatedGIF bootAnimation;
 IndexedCanvas canvas;
 uint8_t shownRows[PANEL_HEIGHT][IndexedCanvas::RowBytes];
 bool panelMatchesShownRows = false;
 FrameKey lastKey;
 uint32_t lastFrameAtMs = 0;
-
-extern const uint8_t bootAnimationStart[] asm("_binary_firmware_assets_agents_pixel_boot_296x240_gif_start");
-extern const uint8_t bootAnimationEnd[] asm("_binary_firmware_assets_agents_pixel_boot_296x240_gif_end");
-
-void clearPanel() {
-    fillPanel(BACKGROUND_RGB565);
-    panelMatchesShownRows = false;
-}
-
-// Under disposal method 2 a transparent pixel means "restore the background".
-void restoreBackground(GIFDRAW *draw, int first, int last) {
-    for (int index = first; index < last; ++index) {
-        if (draw->pPixels[index] == draw->ucTransparent) draw->pPixels[index] = draw->ucBackground;
-    }
-    draw->ucHasTransparency = 0;
-}
-
-// Transparent pixels keep what the previous frame drew, so only opaque runs are sent.
-void drawBootAnimationLine(GIFDRAW *draw) {
-    const int y = draw->iY + draw->y;
-    if (y < 0 || y >= PANEL_HEIGHT) return;
-
-    const int first = max(0, -draw->iX);
-    const int last = min(draw->iWidth, PANEL_WIDTH - draw->iX);
-    if (draw->ucDisposalMethod == 2) restoreBackground(draw, first, last);
-
-    const bool transparency = draw->ucHasTransparency;
-    int start = first;
-    while (start < last) {
-        while (start < last && transparency && draw->pPixels[start] == draw->ucTransparent) ++start;
-        int end = start;
-        while (end < last && !(transparency && draw->pPixels[end] == draw->ucTransparent)) ++end;
-        if (start < end) {
-            writePanelPixels(draw->iX + start, y, draw->pPixels + start, draw->pPalette, end - start);
-        }
-        start = end;
-    }
-}
 
 FrameKey frameKeyFor(const AppState &state, int64_t nowSeconds) {
     return {state.screen, state.wifiStatus, state.layout, state.sevenDay,
@@ -135,19 +94,7 @@ void sendChangedRows() {
 
 void initializeDisplay() {
     initializePanel();
-    clearPanel();
-}
-
-void playBootAnimation() {
-    bootAnimation.begin(GIF_PALETTE_RGB565_LE);
-    const size_t size = bootAnimationEnd - bootAnimationStart;
-    if (!bootAnimation.openFLASH(const_cast<uint8_t *>(bootAnimationStart), size, drawBootAnimationLine)) {
-        log_e("Could not open the boot animation");
-        return;
-    }
-    while (bootAnimation.playFrame(true, nullptr)) delay(1);
-    bootAnimation.close();
-    clearPanel();
+    fillPanel(BACKGROUND_RGB565);
 }
 
 void drawFrame(const AppState &state, uint32_t nowMs) {

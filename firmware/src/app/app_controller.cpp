@@ -10,7 +10,8 @@
 
 namespace {
 
-constexpr char BACKEND_UNREACHABLE[] = "Backend inacessível";
+// The display fonts are ASCII only: keep on-screen messages free of accents.
+constexpr char BACKEND_UNREACHABLE[] = "Sem resposta do tokometer";
 
 bool isActionDue(const AppState &state, uint32_t nowMs) {
     return nowMs - state.lastActionAtMs >= state.actionDelayMs;

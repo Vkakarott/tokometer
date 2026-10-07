@@ -99,20 +99,6 @@ void fillPanel(uint16_t color) {
     endTransfer();
 }
 
-void writePanelPixels(uint16_t x, uint16_t y, const uint8_t *pixels, const uint16_t *palette,
-                      uint16_t length) {
-    if (x >= PANEL_WIDTH || y >= PANEL_HEIGHT || length == 0) return;
-    if (length > PANEL_WIDTH - x) length = PANEL_WIDTH - x;
-
-    uint8_t *out = lineBuffer;
-    for (uint16_t index = 0; index < length; ++index) out = appendColor(out, palette[pixels[index]]);
-
-    setAddressWindow(x, y, length, 1);
-    beginTransfer(HIGH);
-    SPI.writeBytes(lineBuffer, length * 2);
-    endTransfer();
-}
-
 void sendCanvasRows(const IndexedCanvas &canvas, uint16_t firstRow, uint16_t rowCount) {
     if (rowCount == 0 || firstRow + rowCount > PANEL_HEIGHT) return;
 

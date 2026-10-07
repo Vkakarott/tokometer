@@ -20,10 +20,10 @@ void setup() {
     Serial.begin(115200);
 
     initializeDisplay();
+    // The welcome screen goes up before anything that can take a while.
+    drawFrame(appState, millis());
     initializeButton();
     initializeWifi();
-    // The radio associates in the background while the animation plays.
-    playBootAnimation();
     initializeHostResolver();
     initializeClock();
     initializeApp(appState);

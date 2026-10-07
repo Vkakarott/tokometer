@@ -187,7 +187,7 @@ void header(Adafruit_GFX &c, const FrameContext &context) {
     c.fillRect(24, 23, 3, 6, Cyan);
     c.fillRect(29, 19, 3, 10, Cyan);
     c.fillRect(34, 15, 3, 14, Cyan);
-    text(c, "TOKENS", 44, 15, Text, &FreeSansBold9pt7b);
+    text(c, "TOKOMETER", 44, 15, Text, &FreeSansBold9pt7b);
     for (int r = 5; r <= 10; r += 4) ringBand(c, 223, 26, r, r, 222, 318, Cyan);
     c.fillCircle(223, 26, 1, Cyan);
     text(c, context.clockText, 236, 17, Muted, nullptr);

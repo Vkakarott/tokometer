@@ -6,7 +6,8 @@ namespace {
 
 constexpr char NAMESPACE[] = "tokesp";
 constexpr char TOKEN_KEY[] = "token";
-constexpr char LAYOUT_KEY[] = "layout";
+// Renamed when the cycle order changed, so an index saved under the old order is ignored.
+constexpr char LAYOUT_KEY[] = "screen";
 
 }  // namespace
 

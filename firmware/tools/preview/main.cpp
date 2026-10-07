@@ -6,7 +6,11 @@
 #include <string>
 
 #include "display/indexed_canvas.h"
+#include "display/status_screens.h"
 #include "display/tft_renderer.h"
+
+// The firmware asks the Wi-Fi manager for this name; the preview has no radio.
+const char *provisioningNetworkName() { return "tokEsp-9F10"; }
 
 namespace {
 
@@ -78,6 +82,23 @@ void render(const std::string &outputDir, const char *name, const ProvidersUsage
     std::printf("%s\n", name);
 }
 
+void renderStatus(const std::string &outputDir, const char *name, AppScreen screen,
+                  WifiStatus wifiStatus, const FrameContext &context) {
+    AppState state;
+    state.screen = screen;
+    state.wifiStatus = wifiStatus;
+    state.errorMessage = "Sem resposta do tokometer";
+    state.pairCode.expiresInSeconds = 300;
+    std::snprintf(state.pairCode.userCode, sizeof(state.pairCode.userCode), "K7QM3F9A");
+    std::snprintf(state.pairCode.verificationUri, sizeof(state.pairCode.verificationUri),
+                  "http://tok.local/pair");
+
+    IndexedCanvas canvas;
+    renderStatusScreen(canvas, state, context);
+    savePpm(canvas, outputDir + '/' + name + ".ppm");
+    std::printf("%s\n", name);
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
@@ -135,6 +156,13 @@ int main(int argc, char **argv) {
 
         FrameContext unsynced;
         render(outputDir, "clock-unsynced", usage, 0, false, false, unsynced);
+
+        renderStatus(outputDir, "status-welcome", AppScreen::ConnectingWifi, WifiStatus::Connecting, unsynced);
+        renderStatus(outputDir, "status-setup", AppScreen::ConnectingWifi, WifiStatus::Provisioning, unsynced);
+        renderStatus(outputDir, "status-pairing-request", AppScreen::RequestingPairCode, WifiStatus::Connected, context);
+        renderStatus(outputDir, "status-pairing-code", AppScreen::WaitingPairApproval, WifiStatus::Connected, context);
+        renderStatus(outputDir, "status-loading", AppScreen::LoadingUsage, WifiStatus::Connected, context);
+        renderStatus(outputDir, "status-error", AppScreen::Error, WifiStatus::Connected, context);
     } catch (const std::exception &error) {
         std::fprintf(stderr, "%s\n", error.what());
         return 1;
