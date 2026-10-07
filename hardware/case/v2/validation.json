@@ -1,0 +1,56 @@
+{
+  "design": "tokometer_stand_v2",
+  "timeline_features": 119,
+  "timeline_issues": [],
+  "parts": [
+    {
+      "name": "stand_v2_body",
+      "volume_mm3": 29369.201,
+      "size_mm": [
+        52.0,
+        57.7,
+        57.25
+      ]
+    },
+    {
+      "name": "stand_v2_base",
+      "volume_mm3": 23714.928,
+      "size_mm": [
+        52.8,
+        10.3,
+        57.7
+      ]
+    },
+    {
+      "name": "mock_display",
+      "volume_mm3": 1832.676,
+      "size_mm": [
+        27.3,
+        27.821,
+        5.141
+      ]
+    },
+    {
+      "name": "mock_esp",
+      "volume_mm3": 4045.64,
+      "size_mm": [
+        28.5,
+        7.3,
+        51.5
+      ]
+    }
+  ],
+  "mechanical_interfaces": "Inherited from stand.py; unchanged",
+  "grilles": "Decorative recesses, 0.55 mm deep; not through vents",
+  "expected_contacts": [
+    {
+      "parts": [
+        "mock_display",
+        "stand_v2_body"
+      ],
+      "kind": "Original OLED press-fit nubs",
+      "volume_mm3": 2.2765
+    }
+  ],
+  "unexpected_interferences": []
+}
