@@ -18,11 +18,19 @@ The board is larger than the window by 8.9 mm in width and 1.2 mm in height in
 total. How that excess is split between the sides is not recorded yet, so the
 window cannot be assumed to be centred on the board.
 
+## ESP32-C3 Mini board
+
+| Item | Long side | Short side | Notes |
+|---|---|---|---|
+| Board (PCB) | 20.7 | 16.0 | USB Type-C connector for power and flashing. |
+
 ## Still to measure
 
 - Position of the visible area on the display board (left, right, top and
   bottom margins).
 - Display module thickness: PCB, glass stack and any components on the back.
 - Position and size of the display header or flex connector.
-- ESP32-C3 Mini board: length, width, thickness, USB connector position and
-  BOOT / RESET button positions.
+- ESP32-C3 Mini board: thickness with components, which edge the USB Type-C
+  connector sits on and how far it protrudes, and BOOT / RESET button
+  positions.
+- USB Type-C opening the case needs for the plug.
