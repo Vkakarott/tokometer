@@ -80,3 +80,40 @@ test('issues a distinct token per device', () => {
     b.status === 'approved' ? b.accessToken : '',
   );
 });
+
+test('a preapproved board gets a code that is already approved', () => {
+  const store = new PairingStore(TTL);
+  store.preapprove('esp32-abc', NOW);
+  const record = store.create('esp32-abc', NOW + 10);
+  assert.equal(store.redeem(record.deviceCode, NOW + 10).status, 'approved');
+});
+
+test('preapproval also covers the code the board already holds', () => {
+  const store = new PairingStore(TTL);
+  const record = store.create('esp32-abc', NOW);
+  store.preapprove('esp32-abc', NOW);
+  assert.equal(store.redeem(record.deviceCode, NOW).status, 'approved');
+});
+
+test('preapproval is single-use, expires, and never leaks to another board', () => {
+  const store = new PairingStore(TTL);
+  store.preapprove('esp32-abc', NOW);
+  assert.equal(store.redeem(store.create('esp32-other', NOW).deviceCode, NOW).status, 'pending');
+  assert.equal(store.redeem(store.create('esp32-abc', NOW).deviceCode, NOW).status, 'approved');
+  assert.equal(store.redeem(store.create('esp32-abc', NOW).deviceCode, NOW).status, 'pending');
+
+  store.preapprove('esp32-late', NOW);
+  const late = store.create('esp32-late', NOW + TTL + 1);
+  assert.equal(store.redeem(late.deviceCode, NOW + TTL + 1).status, 'pending');
+});
+
+test('a board counts as paired only after it redeems its code', () => {
+  const store = new PairingStore(TTL);
+  store.preapprove('esp32-abc', NOW);
+  assert.equal(store.isPaired('esp32-abc'), false);
+  store.redeem(store.create('esp32-abc', NOW).deviceCode, NOW);
+  assert.equal(store.isPaired('esp32-abc'), true);
+
+  store.preapprove('esp32-abc', NOW);
+  assert.equal(store.isPaired('esp32-abc'), false, 'a new setup starts from unpaired');
+});

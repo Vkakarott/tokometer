@@ -24,7 +24,7 @@ Resposta `200`:
   "user_code": "K7QM3F9A",
   "verification_uri": "http://tok.local/pair",
   "expires_in": 300,
-  "interval": 5
+  "interval": 2
 }
 ```
 
@@ -47,6 +47,21 @@ Repita a cada `interval` segundos:
 | `400` | `{ "error": "access_denied" }` | Código desconhecido. Recomece do `/device/code`. |
 
 O código é **de uso único** e vale 5 minutos.
+
+### Aprovação sem digitar código
+
+Quem configura a placa pelo app não lê código nenhum. O app obtém o
+`hardware_id` direto da placa (seção 4) e chama, **na própria máquina do
+backend**:
+
+`POST /pair/approve` com `{ "hardware_id": "esp32-a1b2c3d4" }` → `204`.
+
+Isso aprova os códigos que essa placa já tem e o próximo que ela pedir, por 5
+minutos. Para o firmware nada muda: o primeiro `POST /device/token` já responde
+`200`. `GET /pair/status?hardware_id=...` devolve `{ "paired": true }` depois
+que a placa troca a aprovação pelo token. As duas chamadas respondem `403` a
+qualquer endereço que não seja loopback; de outra máquina só vale a aprovação
+por `user_code`.
 
 ## 2. Ler o consumo
 
@@ -147,3 +162,21 @@ significa "na última interação", nunca "agora".
   localizado num arquivo.
 - **`localhost` não funciona no ESP32.** Use o nome `.local` da máquina (ou o
   IP da LAN, se a sua rede bloquear mDNS).
+
+## 4. Modo de configuração (API da própria placa)
+
+Sem rede salva, ou quando nenhuma rede salva responde, a placa abre o ponto de
+acesso `tokEsp-xxxx` (sem senha) e atende em `http://192.168.4.1`:
+
+| Rota | Corpo | Resposta |
+|---|---|---|
+| `GET /api/status` | — | `200` `{ "hardware_id": "esp32-a1b2c3d4" }` |
+| `POST /api/wifi` | formulário `ssid`, `password` | `200` `{ "hardware_id": "..." }`, ou `400` `{ "error": "invalid_credentials" }` |
+
+`ssid` aceita até 32 caracteres e `password` até 64 (vazio para rede aberta).
+Depois de responder ao `POST`, a placa fecha o ponto de acesso e tenta a rede;
+se não conseguir em 15 segundos, volta ao modo de configuração. Qualquer outra
+rota devolve a página HTML de configuração manual.
+
+Com redes salvas, a placa sai sozinha do modo de configuração a cada minuto
+para tentá-las de novo, desde que ninguém esteja conectado ao ponto de acesso.

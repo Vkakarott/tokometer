@@ -228,7 +228,7 @@ test('walks the full pairing flow and then serves usage to the device', async ()
   const { device_code, user_code, verification_uri, interval } = codeResponse.json();
   assert.equal(user_code.length, 8);
   assert.equal(verification_uri, 'http://tok.local/pair');
-  assert.equal(interval, 5);
+  assert.equal(interval, 2);
 
   const pending = await server.inject({
     method: 'POST',
@@ -303,4 +303,46 @@ test('serves the local diagnostic view without a token', async () => {
   assert.equal(response.json().providers.claude.hasData, false);
   assert.equal(response.json().providers.codex.hasData, false);
   assert.equal(response.json().providers.cursor.hasData, false);
+});
+
+test('this machine pairs a board by hardware id without anyone typing a code', async () => {
+  const server = build();
+  const approved = await server.inject({
+    method: 'POST',
+    url: '/pair/approve',
+    payload: { hardware_id: 'esp32-abc' },
+  });
+  assert.equal(approved.statusCode, 204);
+  const status = () => server.inject({ method: 'GET', url: '/pair/status?hardware_id=esp32-abc' });
+  assert.equal((await status()).json().paired, false);
+
+  const { device_code } = (
+    await server.inject({ method: 'POST', url: '/device/code', payload: { hardware_id: 'esp32-abc' } })
+  ).json();
+  const token = await server.inject({ method: 'POST', url: '/device/token', payload: { device_code } });
+  assert.equal(token.statusCode, 200);
+  assert.equal((await status()).json().paired, true);
+});
+
+test('refuses hardware id approval and pairing status from another machine', async () => {
+  const server = build();
+  const approved = await server.inject({
+    method: 'POST',
+    url: '/pair/approve',
+    payload: { hardware_id: 'esp32-abc' },
+    remoteAddress: '192.168.1.50',
+  });
+  assert.equal(approved.statusCode, 403);
+  const status = await server.inject({
+    method: 'GET',
+    url: '/pair/status?hardware_id=esp32-abc',
+    remoteAddress: '192.168.1.50',
+  });
+  assert.equal(status.statusCode, 403);
+});
+
+test('rejects an approval that names neither a code nor a board', async () => {
+  const server = build();
+  const response = await server.inject({ method: 'POST', url: '/pair/approve', payload: {} });
+  assert.equal(response.statusCode, 400);
 });
