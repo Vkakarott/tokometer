@@ -1,9 +1,10 @@
-#include <DNSServer.h>
+#include "network/wifi_manager.h"
+
 #include <Preferences.h>
 #include <WiFi.h>
-#include <WebServer.h>
 
-#include "network/wifi_manager.h"
+#include "config/wifi_config.h"
+#include "network/setup_portal.h"
 
 namespace {
 
@@ -13,14 +14,12 @@ constexpr char LEGACY_WIFI_SSID_KEY[] = "wifiSsid";
 constexpr char LEGACY_WIFI_PASSWORD_KEY[] = "wifiPass";
 constexpr uint32_t CONNECT_TIMEOUT_MS = 15000;
 constexpr uint8_t MAX_KNOWN_NETWORKS = 3;
-// At full power the C3 Mini's antenna fails authentication (AUTH_EXPIRE).
-constexpr wifi_power_t TX_POWER = WIFI_POWER_8_5dBm;
+// A router reboot or a weak moment must not leave the board waiting for setup.
+constexpr uint32_t PORTAL_RETRY_INTERVAL_MS = 60000;
 
-DNSServer dnsServer;
-WebServer portal(80);
 struct WifiProfile {
-    char ssid[33] = "";
-    char password[65] = "";
+    char ssid[WifiConfig::MAX_SSID_LENGTH + 1] = "";
+    char password[WifiConfig::MAX_PASSWORD_LENGTH + 1] = "";
 };
 WifiProfile knownNetworks[MAX_KNOWN_NETWORKS];
 uint8_t knownNetworkCount = 0;
@@ -29,6 +28,7 @@ uint8_t attemptedNetworks = 0;
 char portalSsid[20] = "tokEsp";
 bool provisioning = false;
 uint32_t connectionStartedAtMs = 0;
+uint32_t provisioningStartedAtMs = 0;
 
 void startProvisioning();
 
@@ -76,11 +76,10 @@ void promoteActiveNetwork() {
 
 void connectToKnownNetwork(uint8_t index) {
     provisioning = false;
-    dnsServer.stop();
-    portal.stop();
+    stopSetupPortal();
     WiFi.mode(WIFI_STA);
     WiFi.begin(knownNetworks[index].ssid, knownNetworks[index].password);
-    WiFi.setTxPower(TX_POWER);
+    WiFi.setTxPower(WifiConfig::TX_POWER);
     activeNetworkIndex = index;
     attemptedNetworks |= 1 << index;
     connectionStartedAtMs = millis();
@@ -173,61 +172,6 @@ void loadKnownNetworks() {
     if (migrateLegacy) saveKnownNetworks();
 }
 
-String escapedHtml(const String &value) {
-    String escaped;
-    escaped.reserve(value.length());
-    for (const char character : value) {
-        switch (character) {
-            case '&': escaped += "&amp;"; break;
-            case '<': escaped += "&lt;"; break;
-            case '>': escaped += "&gt;"; break;
-            case '"': escaped += "&quot;"; break;
-            case '\'': escaped += "&#39;"; break;
-            default: escaped += character; break;
-        }
-    }
-    return escaped;
-}
-
-String nearbyNetworkOptions() {
-    String options;
-    const int count = WiFi.scanNetworks();
-    for (int index = 0; index < count; ++index) {
-        const String ssid = WiFi.SSID(index);
-        if (ssid.isEmpty()) continue;
-
-        options += "<option value=\"";
-        options += escapedHtml(ssid);
-        options += "\">";
-        options += escapedHtml(ssid);
-        options += " (";
-        options += WiFi.RSSI(index);
-        options += " dBm)</option>";
-    }
-    WiFi.scanDelete();
-    return options;
-}
-
-void sendPortalPage() {
-    String page = R"HTML(<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Configurar tokEsp</title><style>body{margin:0;background:#090909;color:#f5f5f5;font:16px -apple-system,BlinkMacSystemFont,sans-serif}.card{max-width:360px;margin:12vh auto;padding:28px;border:1px solid #272727;border-radius:18px;background:#111}h1{margin:0 0 8px;font-size:24px}p{color:#aaa;line-height:1.45}label{display:block;margin:18px 0 6px}input,select,button{box-sizing:border-box;width:100%;border-radius:10px;font:inherit;padding:12px}input,select{background:#191919;border:1px solid #333;color:#fff}button{margin-top:22px;border:0;background:#fff;color:#000;font-weight:650}.hidden{display:none}</style></head><body><main class="card"><h1>Conectar display</h1><p>Escolha uma rede próxima. Para rede aberta, deixe a senha em branco. O display guarda até três redes conhecidas.</p><form method="post" action="/connect"><label>Rede Wi-Fi</label><select name="network" id="network" onchange="document.getElementById('other').classList.toggle('hidden',this.value!=='__other__')"><option value="" disabled selected>Selecione uma rede</option>)HTML";
-    page += nearbyNetworkOptions();
-    page += R"HTML(<option value="__other__">Outra rede...</option></select><div id="other" class="hidden"><label>Nome da rede</label><input name="manual_ssid" autocomplete="username" maxlength="32"></div><label>Senha</label><input name="password" type="password" autocomplete="current-password" maxlength="63"><button>Conectar</button></form></main></body></html>)HTML";
-    portal.send(200, "text/html; charset=utf-8", page);
-}
-
-void handleConnectRequest() {
-    String ssid = portal.arg("network") == "__other__" ? portal.arg("manual_ssid") : portal.arg("network");
-    ssid.trim();
-    const String password = portal.arg("password");
-    if (ssid.isEmpty() || ssid.length() >= sizeof knownNetworks[0].ssid || password.length() >= sizeof knownNetworks[0].password) {
-        portal.send(400, "text/plain; charset=utf-8", "Dados inválidos. Volte e tente novamente.");
-        return;
-    }
-    saveWifiCredentials(ssid, password);
-    portal.send(200, "text/html; charset=utf-8", "<meta name=viewport content='width=device-width,initial-scale=1'><body style='background:#090909;color:white;font:16px -apple-system;padding:32px'>Conectando o display. Você já pode voltar ao tokometer.</body>");
-    connectToKnownNetwork(0);
-}
-
 void startProvisioning() {
     if (provisioning) return;
 
@@ -236,18 +180,31 @@ void startProvisioning() {
     snprintf(portalSsid, sizeof portalSsid, "tokEsp-%02X%02X", mac[4], mac[5]);
 
     WiFi.disconnect();
-    WiFi.mode(WIFI_AP);
-    if (!WiFi.softAP(portalSsid)) log_e("could not start the setup access point");
-    WiFi.setTxPower(TX_POWER);
-    log_i("setup portal on %s at %s", portalSsid, WiFi.softAPIP().toString().c_str());
-    dnsServer.start(53, "*", WiFi.softAPIP());
-    portal.on("/", HTTP_GET, sendPortalPage);
-    portal.on("/generate_204", HTTP_ANY, sendPortalPage);
-    portal.on("/hotspot-detect.html", HTTP_ANY, sendPortalPage);
-    portal.on("/connect", HTTP_POST, handleConnectRequest);
-    portal.onNotFound(sendPortalPage);
-    portal.begin();
+    startSetupPortal(portalSsid);
     provisioning = true;
+    provisioningStartedAtMs = millis();
+}
+
+// Never while someone is connected to the portal: retrying tears it down.
+bool shouldRetryKnownNetworks() {
+    return knownNetworkCount > 0 && !isSetupPortalInUse() &&
+           millis() - provisioningStartedAtMs >= PORTAL_RETRY_INTERVAL_MS;
+}
+
+WifiStatus updateProvisioning() {
+    WifiCredentials submitted;
+    if (pollSetupPortal(submitted)) {
+        saveWifiCredentials(submitted.ssid, submitted.password);
+        connectToKnownNetwork(0);
+        return WifiStatus::Connecting;
+    }
+    if (shouldRetryKnownNetworks()) {
+        log_i("retrying the saved networks");
+        attemptedNetworks = 0;
+        tryNextKnownNetwork();
+        return WifiStatus::Connecting;
+    }
+    return WifiStatus::Provisioning;
 }
 
 }  // namespace
@@ -262,11 +219,7 @@ void initializeWifi() {
 }
 
 WifiStatus updateWifi() {
-    if (provisioning) {
-        dnsServer.processNextRequest();
-        portal.handleClient();
-        return WifiStatus::Provisioning;
-    }
+    if (provisioning) return updateProvisioning();
 
     const wl_status_t status = WiFi.status();
     switch (status) {

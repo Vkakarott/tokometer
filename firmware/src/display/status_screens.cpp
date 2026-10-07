@@ -36,10 +36,12 @@ void drawWifiScreen(Adafruit_GFX &canvas, WifiStatus status) {
         drawCenteredText(canvas, "AO WI-FI", 128, 3, Cyan);
         return;
     }
-    drawCenteredText(canvas, "CONECTE-SE A", 48, 2, Text);
-    drawCenteredText(canvas, provisioningNetworkName(), 84, 3, Cyan);
-    drawCenteredText(canvas, "ABRA 192.168.4.1", 142, 2, Text);
-    drawCenteredText(canvas, "PARA CONFIGURAR", 174, 2, Muted);
+    drawCenteredText(canvas, "CONFIGURAR WI-FI", 28, 2, Muted);
+    drawCenteredText(canvas, "ABRA O TOKOMETER", 66, 2, Text);
+    drawCenteredText(canvas, "CONECTAR DISPLAY", 94, 2, Cyan);
+    drawCenteredText(canvas, "OU ENTRE NA REDE WI-FI", 146, 1, Muted);
+    drawCenteredText(canvas, provisioningNetworkName(), 164, 2, Text);
+    drawCenteredText(canvas, "E ABRA 192.168.4.1", 192, 1, Muted);
 }
 
 void drawPairingScreen(Adafruit_GFX &canvas, const AppState &state, uint32_t nowMs) {
