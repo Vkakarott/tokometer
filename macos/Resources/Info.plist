@@ -22,5 +22,9 @@
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSLocationUsageDescription</key>
+    <string>O tokEsp usa a Localização apenas para ler nomes de redes Wi-Fi e encontrar o display.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>O tokEsp usa a Localização apenas para ler nomes de redes Wi-Fi e encontrar o display.</string>
 </dict>
 </plist>

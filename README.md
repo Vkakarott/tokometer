@@ -89,17 +89,23 @@ regravar a placa.
 
 ### Primeira conexão do display
 
-Depois de gravar, o display cria uma rede temporária `tokEsp-xxxx`. Conecte o
-celular ou Mac a ela, abra `192.168.4.1` e informe a rede Wi-Fi que o display
-deve usar. A senha é salva na memória da placa; ela não entra no firmware nem
-precisa ser gravada outra vez. O display mantém até três redes conhecidas e
-escolhe automaticamente uma que esteja disponível; adicionar uma rede nova não
-remove as anteriores até a lista ficar cheia.
+Depois de gravar, o display mostra a tela de configuração. No tokometer, abra
+**Conectar display**, informe a rede Wi-Fi (2,4 GHz) e a senha, e confirme. O
+app entra sozinho na rede temporária `tokEsp-xxxx`, entrega a rede ao display,
+volta para a sua rede e aprova o pareamento: não há código para digitar. O Mac
+fica alguns segundos fora da rede durante o envio, e o macOS pede acesso à
+Localização na primeira vez, porque sem ele não mostra nomes de redes Wi-Fi aos
+aplicativos.
 
-Assim que o display entrar na rede, ele exibirá o código de oito caracteres.
-No tokometer, abra **Configurações → Display**, informe o código e confirme o
-pareamento. Se a rede salva deixar de estar disponível, o display volta para o
-modo de configuração após 15 segundos.
+A senha é salva na memória da placa; ela não entra no firmware nem precisa ser
+gravada outra vez. O display mantém até três redes conhecidas; adicionar uma
+rede nova não remove as anteriores até a lista ficar cheia. Se nenhuma rede
+salva responder em 15 segundos, ele volta para a tela de configuração e tenta
+as redes salvas de novo a cada minuto.
+
+**Manualmente:** em *Configurar manualmente*, ou sem o app, conecte-se à rede
+`tokEsp-xxxx`, abra `192.168.4.1`, escolha a rede e depois digite no tokometer
+o código de oito caracteres que o display mostrar.
 
 ## Hardware do display
 
