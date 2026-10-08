@@ -69,14 +69,14 @@ def build_base(g, builder):
     return base
 
 
-def front_details(g, comp, body, dark, accent):
+def front_details(g, comp, body, dark, accent, eject_drop=1.25):
     nz, _ = g.front_normal()
     drive_y = g.panel_center_y() - nz * (g.FUNNEL_OUTER[1] / 2 + 5.0)
     recess(g, comp, body, 2.0, drive_y, 18.0, 3.4, 0.45, 0.65, "Drive bezel")
     slot = recess(g, comp, body, 1.5, drive_y + 0.35, 15.5, 1.0, 1.0, 0.25, "Drive slot")
     for face in slot.faces:
         face.appearance = dark
-    eject = recess(g, comp, body, 6.0, drive_y - 1.25, 4.5, 1.0, 0.6, 0.25, "Eject accent")
+    eject = recess(g, comp, body, 6.0, drive_y - eject_drop, 4.5, 1.0, 0.6, 0.25, "Eject accent")
     for face in eject.faces:
         face.appearance = accent
 
@@ -130,7 +130,7 @@ def validate(design, parts):
             for body in parts]
 
 
-def check_assembly(g, design, parts):
+def check_assembly(g, design, parts, body_name="stand_v2_body"):
     entities = adsk.core.ObjectCollection.create()
     for body in parts:
         entities.add(body)
@@ -148,7 +148,7 @@ def check_assembly(g, design, parts):
     contacts = []
     for result in results:
         names = {result.entityOne.name, result.entityTwo.name}
-        if names != {"stand_v2_body", "mock_display"}:
+        if names != {body_name, "mock_display"}:
             raise RuntimeError("Unexpected interference: " + str(names))
         for vertex in result.interferenceBody.vertices:
             point = vertex.geometry

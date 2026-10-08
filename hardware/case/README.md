@@ -7,7 +7,7 @@ The actual Fusion document before the aesthetic changes is archived in
 `backups/tokometer_stand_2026-10-07.f3d`. The cloud copy is named
 `tokometer_stand_backup_2026-10-07` in Default Project.
 
-## Refined revision
+## Refined revision (v2)
 
 `stand_v2.py` generates `tokometer_stand_v2` using the original generator's
 mechanical geometry. Its outputs are isolated in `v2/`:
@@ -64,3 +64,43 @@ Both 3MF meshes were checked for valid triangle indices and closed edges
 (each undirected edge belongs to exactly two triangles). Both the baseline
 and v2 native archives were reopened in Fusion with healthy timelines. Printed tolerances,
 snap fit, surface finish, and OLED retention still require a physical test.
+
+## Two-slope rear and molded edges (v3)
+
+`stand_v3.py` generates the separate `tokometer_stand_v3` design. The original
+and v2 documents, scripts' default behavior, and generated models are preserved.
+The outputs live in `v3/`, including the native `.f3d`, body/base `.3mf` files,
+three actual Fusion views (`preview.png`, `side.png`, `rear.png`), and validation.
+The cloud document is saved separately as `tokometer_stand_v3` in Default Project.
+
+The lower rear retains its approximately 1.99° inward lean, less than the
+5.74° front lean. A second rear slope starts 10 mm below the top and leans
+26° from vertical. These are design choices guided by the reference image,
+not measurements of the photographed object. The upper cavity follows this
+slope with a 2 mm normal offset; the lower cavity remains unchanged.
+
+Exterior corners and the rear shoulder use continuous 2 mm fillets instead
+of the previous intersecting front chamfers. The lower shell edge has a
+0.35 mm edge break. The screen entry and throat use 0.7 and 0.5 mm fillets.
+Drive/fascia borders have 0.15 mm fillets; the eject accent moves up 0.25 mm
+to clear the rounded drive border. The base uses a simpler sloping profile
+with a continuous 1.2 mm perimeter radius instead of the thin stepped lip.
+
+The OLED opening/rails, ESP32 location, pin slots, USB opening, and snap
+interface retain their original geometry. The display aspect ratio, recessed
+decorative grilles, and color/printing caveats described for v2 still apply.
+
+### Regenerate and validate v3
+
+Run `stand_v3.py` through Fusion's Python API in a new empty design, as for v2.
+Keep `stand.py` and `stand_v2.py` beside it: v3 imports their shared geometry
+and detailing helpers. It refuses to modify an existing/saved document and
+overwrites only its own exports under `v3/`.
+
+The generated design has 117 healthy timeline entries and four solid bodies.
+Assembly analysis found only the inherited OLED retention-nub contact
+(2.2765 mm³); no unexpected interference was found. The exported body and
+base meshes have 31,752 and 3,576 triangles respectively. The script checks
+valid indices, two triangles per undirected edge, and consistent winding.
+The native archive was reopened in Fusion with all four solids and a healthy
+timeline. Physical fit, print finish, and snap durability remain untested.
