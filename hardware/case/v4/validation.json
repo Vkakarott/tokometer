@@ -1,0 +1,65 @@
+{
+  "design": "tokometer_stand_v4_design",
+  "purpose": "Exterior design study only; not ready for hardware assembly or printing",
+  "timeline_features": 65,
+  "timeline_issues": [],
+  "parts": [
+    {
+      "name": "concept_rear_shell",
+      "volume_mm3": 20564.45,
+      "size_mm": [
+        52.0,
+        57.7,
+        53.438
+      ]
+    },
+    {
+      "name": "concept_front_bezel",
+      "volume_mm3": 6810.768,
+      "size_mm": [
+        51.6,
+        56.934,
+        9.501
+      ]
+    },
+    {
+      "name": "concept_recessed_foot",
+      "volume_mm3": 21315.059,
+      "size_mm": [
+        50.0,
+        8.0,
+        53.816
+      ]
+    },
+    {
+      "name": "concept_screen_placeholder",
+      "volume_mm3": 747.097,
+      "size_mm": [
+        37.0,
+        29.721,
+        3.677
+      ]
+    }
+  ],
+  "unexpected_interferences": [],
+  "screen_opening_at_study_scale_mm": [
+    35.5,
+    28.3
+  ],
+  "screen_surround_at_study_scale_mm": [
+    42.0,
+    35.0
+  ],
+  "rear_main_angle_degrees": 1.985194103802764,
+  "rear_shoulder_angle_degrees": 26.0,
+  "deferred": [
+    "Enclosure enlargement for JD9853",
+    "Display PCB offset and thickness",
+    "Display and ESP32-C3 mounting",
+    "Functional USB port",
+    "Assembly and print tolerances"
+  ],
+  "grilles": "Decorative recesses, not through vents",
+  "keyboard_port": "Nonfunctional visual recess",
+  "screen": "Visual placeholder, not the JD9853 module"
+}

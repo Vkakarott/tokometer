@@ -1,5 +1,9 @@
 # Tokometer enclosure revisions
 
+The latest revision is **v4, an exterior design study**. It is not a JD9853
+hardware-fit model or a print-ready enclosure. The user requested aesthetic
+approval before enlarging the case and adapting the electronics.
+
 ## Preserved baseline
 
 `stand.py`, `stand_body.3mf`, and `stand_base.3mf` are the original revision.
@@ -104,3 +108,48 @@ base meshes have 31,752 and 3,576 triangles respectively. The script checks
 valid indices, two triangles per undirected edge, and consistent winding.
 The native archive was reopened in Fusion with all four solids and a healthy
 timeline. Physical fit, print finish, and snap durability remain untested.
+
+## Macintosh-inspired exterior study (v4)
+
+`stand_v4.py` generates the separate `tokometer_stand_v4_design` document.
+The cloud copy is saved under that name in Default Project.
+It keeps v3's overall design scale and two-slope rear profile while changing
+the visual identity of the front:
+
+- Separate front bezel with a broad, flat perimeter bevel and small edge breaks.
+- Larger, near-square screen surround with a deeper recess and dark inner border.
+- Thin floppy slot shifted right, with a stepped right-hand pocket and small accent.
+- A small six-color badge at the lower left, replacing the wide inset label panel.
+- Narrower, recessed grey foot and a nonfunctional keyboard-port detail.
+- Five long horizontal side recesses instead of the small grille grid.
+
+The screen opening is 35.5 × 28.3 mm **at the study scale**. The dark screen
+body is only an appearance placeholder. Neither its opening nor its body
+represents the final JD9853 module. The existing 40.0 × 31.8 mm window and
+48.9 × 33.0 mm PCB measurements in `../dimensions.md` remain unchanged.
+
+The four concept solids are the rear shell, front bezel, recessed foot and
+screen placeholder. Old OLED rails, ESP32 DevKit mounts, snap features and
+the old USB opening are deliberately not carried into this concept. Those
+mechanical details must be redesigned after the appearance is approved and
+the enclosure is enlarged for the JD9853 and ESP32-C3 Mini. The final display
+offset, module thickness, fasteners, wall thicknesses and tolerances still
+need engineering verification. The grille recesses are decorative, not vents.
+
+### Outputs and validation
+
+The `v4/` directory contains `tokometer_stand_v4_design.f3d`, actual Fusion
+viewport images (`preview.png`, `front.png`, `side.png`, `rear.png`), and
+`validation.json`. No printable 3MF files are exported for this design study.
+Appearances are illustrative; they do not define a multicolor printing setup.
+
+Run `stand_v4.py` through Fusion's Python API in a new empty document. Keep
+`stand.py`, `stand_v2.py` and `stand_v3.py` beside it for shared helpers.
+The generator refuses to modify an existing/saved document and overwrites
+only its own outputs under `v4/`. Prior revision outputs are preserved.
+
+The concept has 65 healthy timeline entries and four valid solids. Native
+interference analysis found no volumetric overlaps. The exported native
+archive was reopened successfully with all four solids and a healthy timeline.
+These checks validate
+the CAD study, not fit, assembly, ventilation, printability or manufacturability.
