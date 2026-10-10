@@ -122,6 +122,8 @@ the visual identity of the front:
 - A small six-color badge at the lower left, replacing the wide inset label panel.
 - Narrower, recessed grey foot and a nonfunctional keyboard-port detail.
 - Five long horizontal side recesses instead of the small grille grid.
+- Rear USB cable opening restored from v3: 13 × 7 mm, 1.5 mm corner radius,
+  centered horizontally at 13.7 mm above the bottom of the enclosure.
 
 The screen opening is 35.5 × 28.3 mm **at the study scale**. The dark screen
 body is only an appearance placeholder. Neither its opening nor its body
@@ -129,12 +131,14 @@ represents the final JD9853 module. The existing 40.0 × 31.8 mm window and
 48.9 × 33.0 mm PCB measurements in `../dimensions.md` remain unchanged.
 
 The four concept solids are the rear shell, front bezel, recessed foot and
-screen placeholder. Old OLED rails, ESP32 DevKit mounts, snap features and
-the old USB opening are deliberately not carried into this concept. Those
-mechanical details must be redesigned after the appearance is approved and
+screen placeholder. Old OLED rails, ESP32 DevKit mounts and snap features
+are deliberately not carried into this concept. Those mechanical details
+must be redesigned after the appearance is approved and
 the enclosure is enlarged for the JD9853 and ESP32-C3 Mini. The final display
 offset, module thickness, fasteners, wall thicknesses and tolerances still
 need engineering verification. The grille recesses are decorative, not vents.
+The rear USB opening is a through-cut at the inherited v3 position; alignment
+and plug clearance for the ESP32-C3 Mini still require verification.
 
 ### Outputs and validation
 
@@ -148,7 +152,7 @@ Run `stand_v4.py` through Fusion's Python API in a new empty document. Keep
 The generator refuses to modify an existing/saved document and overwrites
 only its own outputs under `v4/`. Prior revision outputs are preserved.
 
-The concept has 65 healthy timeline entries and four valid solids. Native
+The concept has 68 healthy timeline entries and four valid solids. Native
 interference analysis found no volumetric overlaps. The exported native
 archive was reopened successfully with all four solids and a healthy timeline.
 These checks validate

@@ -1,7 +1,7 @@
 """Generate a Macintosh-inspired exterior study, not a hardware-fit revision.
 
 The v3 envelope is retained as a design scale. The larger screen is a visual
-placeholder; JD9853 sizing, mounts, ports and assembly tolerances are deferred.
+placeholder; JD9853 sizing, mounts and final port alignment are deferred.
 Run in a new empty Fusion design. Previous revisions remain untouched.
 """
 
@@ -232,6 +232,18 @@ def check_contacts(design, parts):
             (contact.entityOne.name, contact.entityTwo.name) for contact in contacts]))
 
 
+def cut_rear_usb(g, builder, shell):
+    g.cut_usb_port(builder, shell)
+    features = builder.comp.features.extrudeFeatures
+    features.item(features.count - 1).name = "Rear USB cable opening - inherited v3 geometry"
+
+
+def rear_usb_spec(g):
+    return {"size_mm": list(g.USB_OVERMOULD), "corner_radius_mm": g.USB_OVERMOULD_R,
+            "center_height_mm": g.usb_center_y(), "center_x_mm": 0,
+            "source": "v3 rear USB cable opening", "esp32_c3_fit_verified": False}
+
+
 def run(context):
     app = adsk.core.Application.get()
     design = adsk.fusion.Design.cast(app.activeProduct)
@@ -268,6 +280,7 @@ def run(context):
     base = build_base(g, v3, builder, palette["Graphite details"])
     base.appearance = palette["Recessed foot warm grey"]
     screen = build_screen(g, comp, front, palette["Graphite details"], palette["Screen muted glass"])
+    cut_rear_usb(g, builder, shell)
     comp.isSketchFolderLightBulbOn = False
     comp.isConstructionFolderLightBulbOn = False
     parts = (shell, front, base, screen)
@@ -285,7 +298,8 @@ def run(context):
               "rear_main_angle_degrees": math.degrees(math.atan(g.BACK_LEAN / g.BODY_H)),
               "rear_shoulder_angle_degrees": v3.REAR_SHOULDER_ANGLE,
               "deferred": ["Enclosure enlargement for JD9853", "Display PCB offset and thickness",
-                           "Display and ESP32-C3 mounting", "Functional USB port", "Assembly and print tolerances"],
+                           "Display and ESP32-C3 mounting", "Final USB alignment with ESP32-C3", "Assembly and print tolerances"],
+              "rear_usb": rear_usb_spec(g),
               "grilles": "Decorative recesses, not through vents",
               "keyboard_port": "Nonfunctional visual recess",
               "screen": "Visual placeholder, not the JD9853 module"}

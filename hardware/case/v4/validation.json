@@ -1,12 +1,12 @@
 {
   "design": "tokometer_stand_v4_design",
   "purpose": "Exterior design study only; not ready for hardware assembly or printing",
-  "timeline_features": 65,
+  "timeline_features": 68,
   "timeline_issues": [],
   "parts": [
     {
       "name": "concept_rear_shell",
-      "volume_mm3": 20564.45,
+      "volume_mm3": 20386.313,
       "size_mm": [
         52.0,
         57.7,
@@ -56,10 +56,21 @@
     "Enclosure enlargement for JD9853",
     "Display PCB offset and thickness",
     "Display and ESP32-C3 mounting",
-    "Functional USB port",
+    "Final USB alignment with ESP32-C3",
     "Assembly and print tolerances"
   ],
   "grilles": "Decorative recesses, not through vents",
   "keyboard_port": "Nonfunctional visual recess",
-  "screen": "Visual placeholder, not the JD9853 module"
+  "screen": "Visual placeholder, not the JD9853 module",
+  "rear_usb": {
+    "size_mm": [
+      13.0,
+      7.0
+    ],
+    "corner_radius_mm": 1.5,
+    "center_height_mm": 13.7,
+    "center_x_mm": 0,
+    "source": "v3 rear USB cable opening",
+    "esp32_c3_fit_verified": false
+  }
 }
