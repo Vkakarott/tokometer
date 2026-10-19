@@ -1,4 +1,5 @@
 import { PairingStore } from './core/pairing.ts';
+import { ProviderSelection } from './core/providerSelection.ts';
 import { SnapshotStore } from './core/snapshots.ts';
 import { TokenRegistry } from './core/identity.ts';
 import { buildServer } from './http/server.ts';
@@ -9,6 +10,8 @@ type PersistedState = {
   // Unknown on purpose: SnapshotStore.fromJSON also migrates the pre-provider format.
   snapshots: Record<string, unknown>;
   deviceTokens: Record<string, string>;
+  // Absent in state saved before the app could choose providers.
+  enabledProviders?: Record<string, unknown>;
 };
 
 const PAIRING_TTL_SECONDS = 300;
@@ -28,11 +31,13 @@ const start = async (): Promise<void> => {
   const state = await loadJson<PersistedState>(stateFile, { snapshots: {}, deviceTokens: {} });
 
   const snapshots = SnapshotStore.fromJSON(state.snapshots);
+  const providerSelection = ProviderSelection.fromJSON(state.enabledProviders ?? {});
   const tokens = TokenRegistry.fromJSON(required('TOKESP_COLLECTOR_TOKEN'), state.deviceTokens);
   const pairing = new PairingStore(PAIRING_TTL_SECONDS);
 
   const server = buildServer({
     snapshots,
+    providerSelection,
     tokens,
     pairing,
     now: () => Math.floor(Date.now() / 1000),
@@ -41,7 +46,11 @@ const start = async (): Promise<void> => {
   });
 
   const persist = (): Promise<void> =>
-    saveJson(stateFile, { snapshots: snapshots.toJSON(), deviceTokens: tokens.toJSON() });
+    saveJson(stateFile, {
+      snapshots: snapshots.toJSON(),
+      deviceTokens: tokens.toJSON(),
+      enabledProviders: providerSelection.toJSON(),
+    });
 
   setInterval(() => void persist(), SAVE_INTERVAL_MS).unref();
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {

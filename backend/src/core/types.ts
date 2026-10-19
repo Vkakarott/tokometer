@@ -49,6 +49,7 @@ export type UsageView = {
   hasData: boolean;
 };
 
+/** Only the providers the user enabled, in PROVIDER_IDS order. */
 export type ProvidersView = {
-  providers: Record<ProviderId, UsageView>;
+  providers: Partial<Record<ProviderId, UsageView>>;
 };

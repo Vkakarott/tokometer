@@ -1,13 +1,16 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { PairingStore } from '../core/pairing.ts';
+import type { ProviderSelection } from '../core/providerSelection.ts';
 import type { SnapshotStore } from '../core/snapshots.ts';
 import type { TokenRegistry } from '../core/identity.ts';
 import { registerDevice } from './routes/device.ts';
 import { registerIngest } from './routes/ingest.ts';
+import { registerProviders } from './routes/providers.ts';
 import { registerUsage } from './routes/usage.ts';
 
 export type ServerDeps = {
   snapshots: SnapshotStore;
+  providerSelection: ProviderSelection;
   tokens: TokenRegistry;
   pairing: PairingStore;
   now: () => number;
@@ -20,6 +23,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   // clients show a confident 0% for a window that is actually unknown.
   const server = Fastify({ logger: false, ajv: { customOptions: { coerceTypes: false } } });
   registerIngest(server, deps);
+  registerProviders(server, deps);
   registerUsage(server, deps);
   registerDevice(server, deps);
   return server;

@@ -7,6 +7,7 @@ import type { ServerDeps } from '../server.ts';
 
 const viewFor = (deps: ServerDeps, identity: string): ProvidersView =>
   buildProvidersView(
+    deps.providerSelection.enabledFor(identity),
     (provider) => deps.snapshots.get(identity, provider),
     deps.now(),
     deps.staleAfterSeconds,

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildServer } from '../src/http/server.ts';
 import { SnapshotStore } from '../src/core/snapshots.ts';
+import { ProviderSelection } from '../src/core/providerSelection.ts';
 import { TokenRegistry } from '../src/core/identity.ts';
 import { PairingStore } from '../src/core/pairing.ts';
 
@@ -10,6 +11,7 @@ const NOW = 1_800_000_000;
 const build = (nowRef = { value: NOW }) =>
   buildServer({
     snapshots: new SnapshotStore(),
+    providerSelection: new ProviderSelection(),
     tokens: new TokenRegistry('collector-secret'),
     pairing: new PairingStore(300),
     now: () => nowRef.value,
@@ -199,6 +201,38 @@ test('rejects ingest with a numeric string percentage', async () => {
     payload: { ...payload, windows: [{ id: 'five_hour', usedPercentage: '42', resetsAt: NOW + 3600 }] },
   });
   assert.equal(response.statusCode, 400);
+});
+
+const putProviders = (server: ReturnType<typeof build>, body: unknown, token = 'collector-secret') =>
+  server.inject({
+    method: 'PUT',
+    url: '/providers',
+    headers: { authorization: `Bearer ${token}` },
+    payload: body as Record<string, unknown>,
+  });
+
+test('serves only the providers the app enabled', async () => {
+  const server = build();
+  assert.equal((await putProviders(server, { enabled: ['claude', 'codex'] })).statusCode, 204);
+  const { providers } = (await server.inject({ method: 'GET', url: '/usage/local' })).json();
+  assert.deepEqual(Object.keys(providers), ['claude', 'codex']);
+});
+
+test('serves no provider when the app disabled them all', async () => {
+  const server = build();
+  await putProviders(server, { enabled: [] });
+  const { providers } = (await server.inject({ method: 'GET', url: '/usage/local' })).json();
+  assert.deepEqual(providers, {});
+});
+
+test('rejects a provider selection without the collector token', async () => {
+  const server = build();
+  assert.equal((await putProviders(server, { enabled: ['claude'] }, 'wrong')).statusCode, 401);
+});
+
+test('rejects a provider selection naming an unknown provider', async () => {
+  const server = build();
+  assert.equal((await putProviders(server, { enabled: ['gemini'] })).statusCode, 400);
 });
 
 test('rejects usage without a device token', async () => {

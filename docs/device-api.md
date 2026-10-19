@@ -69,8 +69,12 @@ por `user_code`.
 
 Header: `Authorization: Bearer <access_token>`
 
-Resposta `200`, com um bloco por provedor. **Claude, Codex e Cursor sempre vêm**:
-um provedor que nunca enviou nada chega com `hasData: false`.
+Resposta `200`, com um bloco por provedor **ativo**, sempre na ordem Claude,
+Codex, Cursor. Os ativos são os que estão visíveis nos Ajustes do app do Mac
+(veja `PUT /providers` abaixo); enquanto o app nunca enviou essa escolha, os três
+vêm. Um provedor ativo que nunca enviou nada chega com `hasData: false`. Um
+provedor desativado não aparece no objeto, e o display não deve reservar espaço
+para ele. `providers` pode vir vazio quando o usuário oculta todos.
 
 ```json
 {
@@ -130,6 +134,18 @@ an absolute token limit.
 
 Cursor remains `hasData: false` until a collector submits a real snapshot. The
 macOS app forwards its Cursor readings (see `macos/README.md`).
+
+### `PUT /providers` (app do Mac)
+
+Header: `Authorization: Bearer <collector token>`
+
+```json
+{ "enabled": ["claude", "codex"] }
+```
+
+Responde `204`. Substitui a lista de provedores ativos da identidade. Nomes
+desconhecidos ou repetidos dão `400`. O app envia a lista ao abrir e sempre que
+um provedor é mostrado ou ocultado nos Ajustes.
 
 ## 3. As três regras que o display precisa respeitar
 

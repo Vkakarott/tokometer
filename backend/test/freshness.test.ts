@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildProvidersView, buildUsageView } from '../src/core/freshness.ts';
-import type { Snapshot } from '../src/core/types.ts';
+import { PROVIDER_IDS, type Snapshot } from '../src/core/types.ts';
 
 const NOW = 1_800_000_000;
 
@@ -68,26 +68,33 @@ test('never reports a negative age when clocks disagree', () => {
   assert.equal(view.ageSeconds, 0);
 });
 
-test('lists every provider, reporting no data for one that never reported', () => {
+test('lists the given providers, reporting no data for one that never reported', () => {
   const view = buildProvidersView(
+    PROVIDER_IDS,
     (provider) => (provider === 'claude' ? snapshot() : null),
     NOW,
     900,
   );
-  assert.equal(view.providers.claude.hasData, true);
-  assert.equal(view.providers.codex.hasData, false, 'a silent provider is "no data", not 0%');
-  assert.equal(view.providers.cursor.hasData, false, 'a silent Cursor is "no data", not 0%');
+  assert.equal(view.providers.claude?.hasData, true);
+  assert.equal(view.providers.codex?.hasData, false, 'a silent provider is "no data", not 0%');
+  assert.equal(view.providers.cursor?.hasData, false, 'a silent Cursor is "no data", not 0%');
+});
+
+test('leaves out a provider that is not in the list, keeping the given order', () => {
+  const view = buildProvidersView(['claude', 'codex'], () => snapshot(), NOW, 900);
+  assert.deepEqual(Object.keys(view.providers), ['claude', 'codex']);
 });
 
 test('computes freshness per provider', () => {
   const view = buildProvidersView(
+    PROVIDER_IDS,
     (provider) => snapshot({ observedAt: provider === 'claude' ? NOW : NOW - 1000 }),
     NOW,
     900,
   );
-  assert.equal(view.providers.claude.stale, false);
-  assert.equal(view.providers.codex.stale, true);
-  assert.equal(view.providers.cursor.stale, true);
+  assert.equal(view.providers.claude?.stale, false);
+  assert.equal(view.providers.codex?.stale, true);
+  assert.equal(view.providers.cursor?.stale, true);
 });
 
 test('at exactly resetsAt the window is not yet rolled over', () => {

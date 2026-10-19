@@ -1,5 +1,4 @@
 import {
-  PROVIDER_IDS,
   type ProviderId,
   type ProvidersView,
   type Snapshot,
@@ -52,14 +51,18 @@ export function buildUsageView(
   };
 }
 
-/** Every known provider appears, so a missing one reads as "no data", never as absent. */
+/**
+ * Lists exactly the providers given, in that order. Within the list a provider
+ * that never reported reads as "no data", never as 0%; one outside it is absent.
+ */
 export function buildProvidersView(
+  providers: readonly ProviderId[],
   snapshotFor: (provider: ProviderId) => Snapshot | null,
   nowSeconds: number,
   staleAfterSeconds: number,
 ): ProvidersView {
-  const entries = PROVIDER_IDS.map(
+  const entries = providers.map(
     (provider) => [provider, buildUsageView(snapshotFor(provider), nowSeconds, staleAfterSeconds)] as const,
   );
-  return { providers: Object.fromEntries(entries) as Record<ProviderId, UsageView> };
+  return { providers: Object.fromEntries(entries) };
 }
