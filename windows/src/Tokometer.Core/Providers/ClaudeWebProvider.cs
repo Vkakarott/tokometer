@@ -22,7 +22,8 @@ public sealed class ClaudeWebProvider(HttpClient http, Func<ClaudeWebLogin?> rea
     public async Task<ProviderSnapshot> FetchAsync(DateTimeOffset now, CancellationToken cancellation)
     {
         var login = readLogin() ?? throw ProviderFetchException.SignedOut("Entre no app Claude");
-        var organization = login.OrganizationId ?? _organization ?? await FirstOrganizationAsync(login, cancellation);
+        // Not the app's last active organization: an API-only one answers the usage route with 403.
+        var organization = _organization ?? await FirstOrganizationAsync(login, cancellation);
         _organization = organization;
         var body = await GetAsync($"organizations/{organization}/usage", login, cancellation);
         var windows = ClaudeProvider.ParseWindows(body);

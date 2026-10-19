@@ -3,8 +3,8 @@ using System.Text.Json;
 
 namespace Tokometer.Core.Providers;
 
-/// <summary>A claude.ai web session: the session cookie and, when known, the active organization.</summary>
-public sealed record ClaudeWebLogin(string SessionKey, string? OrganizationId);
+/// <summary>A claude.ai web session cookie.</summary>
+public sealed record ClaudeWebLogin(string SessionKey);
 
 /// <summary>
 /// The login of the Claude desktop app, taken from its cookies. The last one
@@ -17,17 +17,21 @@ public sealed class ClaudeAppLogin(
     string cacheFile)
 {
     private const string Domain = "claude.ai";
-    private static readonly string[] CookieNames = ["sessionKey", "lastActiveOrg"];
+    private static readonly string[] CookieNames = ["sessionKey"];
 
     /// <summary>The current login, or null when the Claude app is not signed in on this PC.</summary>
     public ClaudeWebLogin? Read()
     {
-        var cookies = profiles().Select(profile => new ChromiumCookies(profile, unprotect)).FirstOrDefault(c => c.CookiesFile is not null);
+        // A Store install can leave an older installer profile behind; the newest cookies are the live ones.
+        var cookies = profiles()
+            .Select(profile => new ChromiumCookies(profile, unprotect))
+            .Where(c => c.CookiesFile is not null)
+            .MaxBy(c => File.GetLastWriteTimeUtc(c.CookiesFile!));
         if (cookies is null) return null;
         try
         {
             var found = cookies.Read(Domain, CookieNames);
-            var login = found.TryGetValue("sessionKey", out var session) ? new ClaudeWebLogin(session, Organization(found)) : null;
+            var login = found.TryGetValue("sessionKey", out var session) ? new ClaudeWebLogin(session) : null;
             Save(login);
             return login;
         }
@@ -39,9 +43,6 @@ public sealed class ClaudeAppLogin(
 
     /// <summary>Drops the kept login after claude.ai rejected it.</summary>
     public void Forget() => Save(null);
-
-    private static string? Organization(IReadOnlyDictionary<string, string> cookies) =>
-        cookies.TryGetValue("lastActiveOrg", out var id) && Guid.TryParse(id, out _) ? id : null;
 
     private ClaudeWebLogin? Cached()
     {

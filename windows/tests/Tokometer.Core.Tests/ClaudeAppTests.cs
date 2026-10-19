@@ -45,7 +45,7 @@ public class ClaudeAppTests
         CreateProfile(temp.Path, version: 24, (".claude.ai", "sessionKey", "sk-ant-sid01-abc"));
         var login = new ClaudeAppLogin(() => [temp.Path], Identity, Identity, cache);
 
-        Assert.Equal(new ClaudeWebLogin("sk-ant-sid01-abc", null), login.Read());
+        Assert.Equal(new ClaudeWebLogin("sk-ant-sid01-abc"), login.Read());
         Assert.True(File.Exists(cache));
 
         CreateProfile(temp.Path, version: 24);
@@ -62,38 +62,42 @@ public class ClaudeAppTests
     }
 
     [Fact]
-    public async Task Usage_uses_the_active_organization_and_the_session_cookie()
+    public async Task Usage_uses_the_organization_that_can_chat_and_the_session_cookie()
     {
-        var handler = new FakeHandler().Respond(HttpStatusCode.OK, Usage);
-        var provider = new ClaudeWebProvider(new HttpClient(handler), () => new ClaudeWebLogin("sk-1", Organization), () => { });
+        var organizations = $$"""[{"uuid":"api-only","capabilities":["api"]},{"uuid":"{{Organization}}","capabilities":["chat","claude_max"]}]""";
+        var handler = new FakeHandler().Respond(HttpStatusCode.OK, organizations).Respond(HttpStatusCode.OK, Usage).Respond(HttpStatusCode.OK, Usage);
+        var provider = new ClaudeWebProvider(new HttpClient(handler), () => new ClaudeWebLogin("sk-1"), () => { });
 
         var snapshot = await provider.FetchAsync(Times.Now, default);
+        await provider.FetchAsync(Times.Now, default);
 
-        var request = handler.Requests.Single();
-        Assert.Equal($"https://claude.ai/api/organizations/{Organization}/usage", request.RequestUri!.ToString());
-        Assert.Equal("sessionKey=sk-1", request.Headers.GetValues("Cookie").Single());
+        Assert.Equal($"https://claude.ai/api/organizations/{Organization}/usage", handler.Requests[1].RequestUri!.ToString());
+        Assert.Equal("sessionKey=sk-1", handler.Requests[1].Headers.GetValues("Cookie").Single());
+        Assert.Equal(3, handler.Requests.Count);
         Assert.Equal(["five_hour", "seven_day"], snapshot.Windows.Select(w => w.Id));
         Assert.Equal(0.25, snapshot.Windows[0].UsedFraction);
     }
 
     [Fact]
-    public async Task Without_an_active_organization_picks_the_one_that_can_chat()
+    public void The_newest_app_profile_wins()
     {
-        var organizations = $$"""[{"uuid":"api-only","capabilities":["api"]},{"uuid":"{{Organization}}","capabilities":["chat","claude_max"]}]""";
-        var handler = new FakeHandler().Respond(HttpStatusCode.OK, organizations).Respond(HttpStatusCode.OK, Usage);
-        var provider = new ClaudeWebProvider(new HttpClient(handler), () => new ClaudeWebLogin("sk-1", null), () => { });
+        using var stale = new TempDirectory();
+        using var live = new TempDirectory();
+        CreateProfile(stale.Path, version: 24, (".claude.ai", "sessionKey", "old"));
+        CreateProfile(live.Path, version: 24, (".claude.ai", "sessionKey", "new"));
+        File.SetLastWriteTimeUtc(Path.Combine(stale.Path, "Network", "Cookies"), DateTime.UtcNow.AddDays(-30));
 
-        await provider.FetchAsync(Times.Now, default);
+        var login = new ClaudeAppLogin(() => [stale.Path, live.Path], Identity, Identity, live.File("login.bin")).Read();
 
-        Assert.EndsWith($"/organizations/{Organization}/usage", handler.Requests[1].RequestUri!.ToString());
+        Assert.Equal("new", login?.SessionKey);
     }
 
     [Fact]
     public async Task Rejected_session_is_forgotten()
     {
         var forgotten = false;
-        var handler = new FakeHandler().Respond(HttpStatusCode.Unauthorized);
-        var provider = new ClaudeWebProvider(new HttpClient(handler), () => new ClaudeWebLogin("sk-1", Organization), () => forgotten = true);
+        var handler = new FakeHandler().Respond(HttpStatusCode.OK, OneOrganization).Respond(HttpStatusCode.Unauthorized);
+        var provider = new ClaudeWebProvider(new HttpClient(handler), () => new ClaudeWebLogin("sk-1"), () => forgotten = true);
 
         var error = await Assert.ThrowsAsync<ProviderFetchException>(() => provider.FetchAsync(Times.Now, default));
 
@@ -104,9 +108,9 @@ public class ClaudeAppTests
     [Fact]
     public async Task A_challenge_page_is_not_a_rejected_login()
     {
-        var handler = new FakeHandler().Respond(HttpStatusCode.Forbidden, "<html></html>",
+        var handler = new FakeHandler().Respond(HttpStatusCode.OK, OneOrganization).Respond(HttpStatusCode.Forbidden, "<html></html>",
             response => response.Content = new StringContent("<html></html>", Encoding.UTF8, "text/html"));
-        var provider = new ClaudeWebProvider(new HttpClient(handler), () => new ClaudeWebLogin("sk-1", Organization), () => { });
+        var provider = new ClaudeWebProvider(new HttpClient(handler), () => new ClaudeWebLogin("sk-1"), () => { });
 
         var error = await Assert.ThrowsAsync<ProviderFetchException>(() => provider.FetchAsync(Times.Now, default));
 
@@ -122,6 +126,8 @@ public class ClaudeAppTests
 
         Assert.Equal(FetchFailure.SignedOut, error.Failure);
     }
+
+    private const string OneOrganization = $$"""[{"uuid":"{{Organization}}","capabilities":["chat"]}]""";
 
     private const string Usage = """
         {"five_hour":{"utilization":25.0,"resets_at":"2026-10-19T20:00:00.123456+00:00"},
