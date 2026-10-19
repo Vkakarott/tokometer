@@ -11,6 +11,6 @@
         <TextBlock Text="Sistema" FontWeight="SemiBold" Foreground="Black" Margin="0,0,0,6" />
         <CheckBox x:Name="StartWithWindows" Content="Iniciar com o Windows" />
         <TextBlock Foreground="#FF555555" TextWrapping="Wrap" Margin="0,16,0,0" FontSize="11"
-                   Text="O Tokometer lê o login do Claude Code, do Codex CLI e do Cursor deste computador. Nada sai do PC além das consultas a cada serviço." />
+                   Text="O Tokometer lê o login do app Claude (ou do Claude Code), do Codex CLI e do Cursor deste computador. Nada sai do PC além das consultas a cada serviço." />
     </StackPanel>
 </Window>

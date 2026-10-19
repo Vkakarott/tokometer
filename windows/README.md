@@ -1,8 +1,8 @@
 # Tokometer para Windows
 
 Ícone na bandeja do sistema que mostra o consumo das assinaturas de Claude,
-Codex e Cursor deste PC. É a versão Windows do app do Mac (`macos/`): lê o
-login que cada ferramenta já guarda no computador e consulta o serviço dela.
+Codex e Cursor deste PC. Só aparecem os provedores com login neste
+computador. É a versão Windows do app do Mac (`macos/`): lê o login que cada ferramenta já guarda no computador e consulta o serviço dela.
 Não precisa de backend nem do display ESP32.
 
 ## Instalar
@@ -30,12 +30,21 @@ vermelho a partir de 90%.
 
 | Provedor | Login lido | Frequência |
 |---|---|---|
-| Claude | `%USERPROFILE%\.claude\.credentials.json` (Claude Code) | A cada 15 min; 1 min perto do limite de 5 h |
+| Claude | Sessão do app Claude (`%APPDATA%\Claude`); se não houver, `%USERPROFILE%\.claude\.credentials.json` (Claude Code) | App: a cada 5 min. Claude Code: a cada 15 min; 1 min perto do limite de 5 h |
 | Codex | `%USERPROFILE%\.codex\auth.json` (Codex CLI) | A cada 1 min |
 | Cursor | `%APPDATA%\Cursor\User\globalStorage\state.vscdb` | A cada 5 min |
 
-Um provedor sem login aparece com o aviso para entrar na ferramenta. Uma
-falha temporária mantém o último valor, marcado com a idade do dado. Um valor
+Um provedor sem login neste computador não aparece no painel; ele surge sozinho
+quando você entra na ferramenta. Um login recusado pelo serviço aparece com o
+aviso para entrar de novo.
+
+Para o app Claude, o Tokometer lê o cookie de sessão que o app guarda (protegido
+pelo Windows para o seu usuário) e consulta o consumo no claude.ai, como a
+página de uso do próprio app. Essa consulta não é documentada pela Anthropic e
+pode mudar. Se o app estiver com os cookies bloqueados, o Tokometer usa o último
+login lido; na primeira vez, pode pedir para fechar o app Claude uma vez.
+
+Uma falha temporária mantém o último valor, marcado com a idade do dado. Um valor
 de janela que já reiniciou aparece como `--%`, nunca como 0%.
 
 Variáveis opcionais: `CODEX_HOME` e `CLAUDE_CONFIG_DIR` mudam onde o login é

@@ -71,12 +71,22 @@ public partial class App : Application
 
     private static IReadOnlyList<IUsageProvider> CreateProviders(HttpClient http, AppPaths paths) =>
     [
-        new ClaudeProvider(
-            http,
-            () => ClaudeProvider.ReadCredentialsToken(paths.ClaudeCredentials),
-            new ClaudeReadingFile(Path.Combine(paths.StateDirectory, "claude-poll.json"), Fidelity.Derived),
-            new ClaudePollGate(Path.Combine(paths.StateDirectory, "claude-gate.json"))),
+        new FallbackProvider(ClaudeApp(http, paths), ClaudeCode(http, paths)),
         new CodexProvider(http, paths.CodexAuth),
         new CursorProvider(http, paths.CursorState),
     ];
+
+    // Most people use the Claude app; Claude Code is the fallback.
+    private static ClaudeWebProvider ClaudeApp(HttpClient http, AppPaths paths)
+    {
+        var login = new ClaudeAppLogin(paths.ClaudeAppProfiles, Dpapi.Unprotect, Dpapi.Protect,
+            Path.Combine(paths.StateDirectory, "claude-app-login.bin"));
+        return new ClaudeWebProvider(http, login.Read, login.Forget);
+    }
+
+    private static ClaudeProvider ClaudeCode(HttpClient http, AppPaths paths) => new(
+        http,
+        () => ClaudeProvider.ReadCredentialsToken(paths.ClaudeCredentials),
+        new ClaudeReadingFile(Path.Combine(paths.StateDirectory, "claude-poll.json"), Fidelity.Derived),
+        new ClaudePollGate(Path.Combine(paths.StateDirectory, "claude-gate.json")));
 }
