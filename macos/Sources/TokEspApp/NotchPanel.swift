@@ -5,19 +5,34 @@ import SwiftUI
 @MainActor
 final class NotchPanelController: NSObject {
     private enum PanelSize {
-        static let compact = NSSize(width: 328, height: 62)
-        static let expanded = NSSize(width: 328, height: 136)
+        static let compactHeight: CGFloat = 62
+        static let expandedHeight: CGFloat = 136
+        // One compact provider: the 30 pt ring, its gap and the percentage.
+        static let item: CGFloat = 64
+        static let itemSpacing: CGFloat = 14
+        // Content padding plus the notch's sloped sides.
+        static let chrome: CGFloat = 108
+        // The expanded drop needs room for its bars and reset dates.
+        static let expandedMinimumWidth: CGFloat = 280
+
+        /// 328 pt for three providers, narrower for fewer.
+        static func compactWidth(providers: Int) -> CGFloat {
+            let count = CGFloat(max(providers, 1))
+            return chrome + count * item + (count - 1) * itemSpacing
+        }
     }
 
     private let panel: NSPanel
+    private let store: UsageStore
     private let preferences: AppPreferences
     private var subscriptions = Set<AnyCancellable>()
     private var isExpanded = false
 
     init(store: UsageStore, preferences: AppPreferences) {
+        self.store = store
         self.preferences = preferences
         panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: PanelSize.compact),
+            contentRect: NSRect(origin: .zero, size: NSSize(width: PanelSize.compactWidth(providers: 3), height: PanelSize.compactHeight)),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -37,6 +52,10 @@ final class NotchPanelController: NSObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.position() }
             .store(in: &subscriptions)
+        preferences.$visibleProviders
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.resize() }
+            .store(in: &subscriptions)
         preferences.$tokonotchPosition
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.position() }
@@ -52,7 +71,7 @@ final class NotchPanelController: NSObject {
     }
 
     func show() {
-        position()
+        panel.setFrame(targetFrame(size: targetSize()) ?? panel.frame, display: false)
         panel.orderFrontRegardless()
     }
 
@@ -63,16 +82,11 @@ final class NotchPanelController: NSObject {
     private func setExpanded(_ expanded: Bool) {
         guard isExpanded != expanded else { return }
         isExpanded = expanded
-        let size = expanded ? PanelSize.expanded : PanelSize.compact
-        guard let screen = targetScreen() else { return }
-        let screenFrame = positioningFrame(for: screen)
-        let y = preferences.tokonotchPosition.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
-        let frame = NSRect(
-            x: horizontalOrigin(in: screenFrame, width: size.width),
-            y: y,
-            width: size.width,
-            height: size.height
-        )
+        resize()
+    }
+
+    private func resize() {
+        guard let frame = targetFrame(size: targetSize()), frame != panel.frame else { return }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.22
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
@@ -81,11 +95,22 @@ final class NotchPanelController: NSObject {
     }
 
     private func position() {
-        guard let screen = targetScreen() else { return }
+        guard let frame = targetFrame(size: panel.frame.size) else { return }
+        panel.setFrameOrigin(frame.origin)
+    }
+
+    private func targetSize() -> NSSize {
+        let visible = store.snapshots.filter { preferences.isVisible($0.id) }.count
+        let compactWidth = PanelSize.compactWidth(providers: visible)
+        guard isExpanded else { return NSSize(width: compactWidth, height: PanelSize.compactHeight) }
+        return NSSize(width: max(compactWidth, PanelSize.expandedMinimumWidth), height: PanelSize.expandedHeight)
+    }
+
+    private func targetFrame(size: NSSize) -> NSRect? {
+        guard let screen = targetScreen() else { return nil }
         let screenFrame = positioningFrame(for: screen)
-        let size = panel.frame.size
         let y = preferences.tokonotchPosition.edge == .top ? screenFrame.maxY - size.height : screenFrame.minY
-        panel.setFrameOrigin(NSPoint(x: horizontalOrigin(in: screenFrame, width: size.width), y: y))
+        return NSRect(x: horizontalOrigin(in: screenFrame, width: size.width), y: y, width: size.width, height: size.height)
     }
 
     private func targetScreen() -> NSScreen? {
