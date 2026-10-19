@@ -54,6 +54,20 @@ internal sealed class TrayIcon : IDisposable
         TrayArt.Apply(_icon, cards);
     }
 
+    /// <summary>
+    /// Windows 11 hides new tray icons behind the ^ arrow, so a launch with no
+    /// window looks like nothing happened. Show the panel and say where the icon is.
+    /// </summary>
+    public void Announce()
+    {
+        _panel.Open();
+        _icon.ShowBalloonTip(
+            8000,
+            "Tokometer está rodando",
+            "Clique no ícone perto do relógio para ver o consumo. Se não aparecer, procure na seta ^.",
+            Forms.ToolTipIcon.Info);
+    }
+
     private void TogglePanel()
     {
         if (_panel.IsVisible) _panel.Hide();

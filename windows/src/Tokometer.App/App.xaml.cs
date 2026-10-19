@@ -15,12 +15,33 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        DispatcherUnhandledException += (_, args) =>
+        {
+            args.Handled = true;
+            Fail(args.Exception);
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => CrashReport.Show(args.ExceptionObject as Exception);
         _instance = new Mutex(initiallyOwned: true, @"Local\Tokometer", out var isFirst);
         if (!isFirst)
         {
+            MessageBox.Show(
+                "O Tokometer já está aberto.\n\nO ícone fica na bandeja, perto do relógio. Se não aparecer, clique na seta ^ ao lado dele.",
+                "Tokometer", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;
         }
+        try
+        {
+            Start();
+        }
+        catch (Exception error)
+        {
+            Fail(error);
+        }
+    }
+
+    private void Start()
+    {
         var paths = AppPaths.FromEnvironment();
         var settingsFile = Path.Combine(paths.StateDirectory, "settings.json");
         var preferences = Preferences.Load(settingsFile);
@@ -31,6 +52,14 @@ public partial class App : Application
         _tray = new TrayIcon(monitor, publisher, preferences, settingsFile, () => _shutdown.Cancel());
         _ = monitor.RunAsync(_shutdown.Token).ContinueWith(_ => Dispatcher.Invoke(Shutdown));
         _ = publisher.PublishProviderSelectionAsync(preferences.VisibleProviders, _shutdown.Token);
+        _tray.Announce();
+    }
+
+    private void Fail(Exception error)
+    {
+        CrashReport.Show(error);
+        _shutdown.Cancel();
+        Shutdown(1);
     }
 
     protected override void OnExit(ExitEventArgs e)

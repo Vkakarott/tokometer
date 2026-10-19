@@ -13,8 +13,11 @@ Não precisa de backend nem do display ESP32.
 3. O Windows pode mostrar "O Windows protegeu o computador", porque o
    executável não é assinado. Clique em **Mais informações → Executar assim mesmo**.
 
-O ícone aparece perto do relógio (às vezes dentro da seta **^**; arraste-o
-para fora para deixá-lo sempre visível). O arco do ícone mostra o maior
+Ao abrir, o painel de consumo aparece e um aviso diz que o app está rodando.
+O ícone fica perto do relógio (no Windows 11, normalmente dentro da seta
+**^**; arraste-o para fora para deixá-lo sempre visível). Abrir de novo com o
+app já rodando só avisa que ele está aberto. Se algo der errado, uma mensagem
+aparece e o erro fica em `%LOCALAPPDATA%\Tokometer\erro.log`. O arco do ícone mostra o maior
 consumo entre os provedores visíveis: verde, laranja a partir de 70% e
 vermelho a partir de 90%.
 
