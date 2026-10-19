@@ -11,12 +11,15 @@
 namespace {
 
 constexpr uint32_t LOOP_INTERVAL_MS = 20;
+// The lowest frequency the Wi-Fi driver supports; rendering stays well under a frame.
+constexpr uint32_t CPU_FREQUENCY_MHZ = 80;
 
 AppState appState;
 
 }  // namespace
 
 void setup() {
+    setCpuFrequencyMhz(CPU_FREQUENCY_MHZ);
     Serial.begin(115200);
 
     initializeDisplay();

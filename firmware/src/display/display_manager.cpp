@@ -17,7 +17,7 @@ constexpr uint16_t BACKGROUND_RGB565 = TftColor::Palette[TftColor::Background];
 
 // The busy bar and the pairing countdown move; usage text only changes by the minute.
 constexpr uint32_t STATUS_REFRESH_MS = 500;
-constexpr uint32_t USAGE_REFRESH_MS = 5000;
+constexpr uint32_t USAGE_REFRESH_MS = 60000;
 
 // Everything that must reach the screen at once instead of on the next refresh.
 struct FrameKey {

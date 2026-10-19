@@ -2,6 +2,7 @@
 
 #include <Preferences.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 
 #include "config/wifi_config.h"
 #include "network/setup_portal.h"
@@ -74,11 +75,23 @@ void promoteActiveNetwork() {
     saveKnownNetworks();
 }
 
+// Arduino's begin() always resets the listen interval, so the station config
+// is staged without connecting, patched, and only then connected.
+void beginStation(const WifiProfile &profile) {
+    WiFi.begin(profile.ssid, profile.password, 0, nullptr, false);
+    wifi_config_t config;
+    if (esp_wifi_get_config(WIFI_IF_STA, &config) == ESP_OK) {
+        config.sta.listen_interval = WifiConfig::LISTEN_INTERVAL_BEACONS;
+        esp_wifi_set_config(WIFI_IF_STA, &config);
+    }
+    esp_wifi_connect();
+}
+
 void connectToKnownNetwork(uint8_t index) {
     provisioning = false;
     stopSetupPortal();
     WiFi.mode(WIFI_STA);
-    WiFi.begin(knownNetworks[index].ssid, knownNetworks[index].password);
+    beginStation(knownNetworks[index]);
     WiFi.setTxPower(WifiConfig::TX_POWER);
     activeNetworkIndex = index;
     attemptedNetworks |= 1 << index;
@@ -210,6 +223,8 @@ WifiStatus updateProvisioning() {
 }  // namespace
 
 void initializeWifi() {
+    // Applied by the core whenever station mode starts.
+    WiFi.setSleep(WifiConfig::POWER_SAVE);
     loadKnownNetworks();
     if (knownNetworkCount > 0) {
         connectToAvailableKnownNetwork();
