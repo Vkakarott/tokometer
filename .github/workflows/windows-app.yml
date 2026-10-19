@@ -1,0 +1,66 @@
+# Builds the Windows app, runs its tests and, for a windows-v* tag, attaches
+# the executable to a GitHub Release so it can be downloaded.
+name: Windows app
+
+on:
+  push:
+    tags: ["windows-v*"]
+  pull_request:
+    paths: ["windows/**", ".github/workflows/windows-app.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Test
+        run: dotnet test Tokometer.sln --configuration Release
+
+      - name: Version
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/windows-v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/windows-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=0.0.0-dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish
+        run: >
+          dotnet publish src/Tokometer.App -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true -p:DebugType=none
+          -p:Version=${{ steps.version.outputs.value }}
+          -o artifacts/win-x64
+
+      - name: Package
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/win-x64/Tokometer.exe -DestinationPath artifacts/Tokometer-windows-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tokometer-windows-x64
+          path: windows/artifacts/Tokometer-windows-x64.zip
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/windows-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Tokometer para Windows ${{ steps.version.outputs.value }}
+          files: windows/artifacts/Tokometer-windows-x64.zip
+          body: |
+            Baixe `Tokometer-windows-x64.zip`, extraia e abra `Tokometer.exe`.
+            O ícone aparece na bandeja do sistema, perto do relógio. Veja o README em `windows/`.
