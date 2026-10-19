@@ -5,8 +5,10 @@
 #include <Fonts/FreeSansBold18pt7b.h>
 #include <Fonts/FreeSansBold24pt7b.h>
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include "assets/provider_icons.h"
 #include "core/text_format.h"
 #include "display/indexed_canvas.h"
@@ -21,26 +23,31 @@ struct Provider {
     uint16_t dim;
     const uint8_t *icon;
 };
-constexpr Provider Providers[] = {
+// Indexed by ProviderId.
+constexpr Provider Providers[PROVIDER_COUNT] = {
     {"Codex", Mint, MintDim, ProviderIcons::Codex},
     {"Claude", Orange, OrangeDim, ProviderIcons::Claude},
     {"Cursor", Purple, PurpleDim, ProviderIcons::Cursor},
 };
 
-const UsageView &viewFor(const ProvidersUsage &usage, uint8_t id) {
-    if (id == 1) return usage.claude;
-    if (id == 2) return usage.cursor;
-    return usage.codex;
+const Provider &style(ProviderId id) {
+    return Providers[static_cast<uint8_t>(id)];
 }
 
-UsageWindow windowFor(const UsageView &view, uint8_t id, bool secondary) {
+// Cursor bills by plan cycle instead of five-hour and seven-day windows.
+bool billsByCycle(ProviderId id) {
+    return id == ProviderId::Cursor;
+}
+
+UsageWindow windowFor(const ProviderUsage &entry, bool secondary) {
+    const UsageView &view = entry.view;
     if (!view.hasData) return {};
-    if (id == 2) return secondary ? view.api : view.included;
+    if (billsByCycle(entry.id)) return secondary ? view.api : view.included;
     return secondary ? view.sevenDay : view.fiveHour;
 }
 
-const char *periodFor(uint8_t id, bool secondary) {
-    if (id == 2) return secondary ? "API" : "PLANO";
+const char *periodFor(ProviderId id, bool secondary) {
+    if (billsByCycle(id)) return secondary ? "API" : "PLANO";
     return secondary ? "7D" : "5H";
 }
 
@@ -194,40 +201,62 @@ void header(Adafruit_GFX &c, const FrameContext &context) {
     c.drawFastHLine(17, 35, 261, Border);
 }
 
-void smallCard(Adafruit_GFX &c, int y, const ProvidersUsage &usage, uint8_t id, bool secondary,
-               const FrameContext &context) {
-    const auto &p = Providers[id];
-    const auto &view = viewFor(usage, id);
-    const auto window = windowFor(view, id, secondary);
-    panel(c, 198, y, 84, 76, p);
+// A side card of the dashboard: one window of one provider. A tall card fills
+// the whole column when there is no second card to share it with.
+void windowCard(Adafruit_GFX &c, int y, int h, const ProviderUsage &entry, bool secondary,
+                const FrameContext &context) {
+    const auto &p = style(entry.id);
+    const auto window = windowFor(entry, secondary);
+    const bool tall = h > 76;
+    panel(c, 198, y, 84, h, p);
     icon(c, 205, y + 8, p);
     text(c, p.name, 231, y + 11, Text);
-    text(c, periodFor(id, secondary), 231, y + 22, Muted);
-    percentage(c, window, 240, y + 32, p, false);
+    text(c, periodFor(entry.id, secondary), 231, y + 22, Muted);
+    percentage(c, window, 240, y + (tall ? 62 : 32), p, false);
     char status[24];
-    statusText(view, window, context.nowSeconds, status, sizeof status);
-    text(c, status, 240, y + 59, view.stale ? Orange : Muted, nullptr, true);
-    bar(c, 207, y + 68, 66, window, p);
+    statusText(entry.view, window, context.nowSeconds, status, sizeof status);
+    text(c, status, 240, y + h - (tall ? 40 : 17), entry.view.stale ? Orange : Muted, nullptr, true);
+    bar(c, 207, y + h - 8, 66, window, p);
 }
 
-void periodTabs(Adafruit_GFX &c, const UsageView &view, uint8_t id, bool secondary) {
+// Other providers first; a lone provider shows its other window instead.
+void sideColumn(Adafruit_GFX &c, const ProvidersUsage &usage, const ProviderUsage &shown, bool secondary,
+                const FrameContext &context) {
+    const ProviderUsage *others[PROVIDER_COUNT];
+    uint8_t count = 0;
+    for (uint8_t index = 0; index < usage.count; ++index) {
+        if (usage.items[index].id != shown.id) others[count++] = &usage.items[index];
+    }
+    if (count == 0) {
+        windowCard(c, 43, 158, shown, !secondary, context);
+        return;
+    }
+    if (count == 1) {
+        windowCard(c, 43, 158, *others[0], secondary, context);
+        return;
+    }
+    for (uint8_t index = 0; index < 2; ++index) {
+        windowCard(c, 43 + index * 82, 76, *others[index], secondary, context);
+    }
+}
+
+void periodTabs(Adafruit_GFX &c, const ProviderUsage &entry, bool secondary) {
     for (uint8_t i = 0; i < 2; ++i) {
         const bool active = secondary == (i != 0);
         const int x = 23 + i * 128;
         chamfer(c, x, 209, 122, 22, 6, active ? Cyan : Border);
         if (active) chamfer(c, x + 1, 210, 120, 20, 5, CyanDim);
         char value[12], label[24];
-        formatPrimaryValue(windowFor(view, id, i != 0), value, sizeof value);
-        snprintf(label, sizeof label, "%s  %s", periodFor(id, i != 0), value);
+        formatPrimaryValue(windowFor(entry, i != 0), value, sizeof value);
+        snprintf(label, sizeof label, "%s  %s", periodFor(entry.id, i != 0), value);
         text(c, label, x + 61, 217, active ? Text : Muted, nullptr, true);
     }
 }
 
-void dashboard(Adafruit_GFX &c, const ProvidersUsage &usage, uint8_t id, bool secondary,
+void dashboard(Adafruit_GFX &c, const ProvidersUsage &usage, const ProviderUsage &entry, bool secondary,
                const FrameContext &context) {
-    const auto &p = Providers[id];
-    const auto &view = viewFor(usage, id);
-    const auto window = windowFor(view, id, secondary);
+    const auto &p = style(entry.id);
+    const auto window = windowFor(entry, secondary);
     panel(c, 14, 43, 174, 158, p);
     chamfer(c, 15, 44, 172, 156, 6, p.bright);
     const int labelWidth = 28 + textWidth(c, p.name, &FreeSansBold9pt7b);
@@ -238,48 +267,76 @@ void dashboard(Adafruit_GFX &c, const ProvidersUsage &usage, uint8_t id, bool se
     percentage(c, window, 100, 111, p, true);
     text(c, window.present ? "UTILIZADO" : "SEM DADOS", 100, 151, Muted, nullptr, true);
     c.drawFastHLine(65, 163, 71, Border);
-    text(c, id == 2 ? "CICLO DO PLANO" : (secondary ? "ULTIMOS 7 DIAS" : "ULTIMAS 5 HORAS"),
+    text(c, billsByCycle(entry.id) ? "CICLO DO PLANO" : (secondary ? "ULTIMOS 7 DIAS" : "ULTIMAS 5 HORAS"),
          100, 171, Muted, nullptr, true);
     char status[24];
-    statusText(view, window, context.nowSeconds, status, sizeof status);
-    text(c, status, 100, 189, view.stale ? Orange : p.bright, nullptr, true);
-    int side = 0;
-    for (uint8_t other = 0; other < 3; ++other) {
-        if (other != id) smallCard(c, 43 + side++ * 82, usage, other, secondary, context);
+    statusText(entry.view, window, context.nowSeconds, status, sizeof status);
+    text(c, status, 100, 189, entry.view.stale ? Orange : p.bright, nullptr, true);
+    sideColumn(c, usage, entry, secondary, context);
+    periodTabs(c, entry, secondary);
+}
+
+// Rows share the space the three-provider layout uses, so fewer providers get
+// taller rows with larger numbers.
+constexpr int OVERVIEW_TOP = 44;
+constexpr int OVERVIEW_HEIGHT = 153;
+constexpr int OVERVIEW_GAP = 6;
+constexpr int COMPACT_ROW_HEIGHT = 47;
+
+void overviewRow(Adafruit_GFX &c, int y, int h, const ProviderUsage &entry, const FrameContext &context) {
+    const auto &p = style(entry.id);
+    const int top = y + (h - COMPACT_ROW_HEIGHT) / 2;
+    const bool tall = h > COMPACT_ROW_HEIGHT + 10;
+    panel(c, 16, y, 264, h, p);
+    icon(c, 26, top + 10, p);
+    text(c, p.name, 54, top + 8, Text, tall ? &FreeSansBold9pt7b : nullptr);
+    char status[24];
+    statusText(entry.view, windowFor(entry, false), context.nowSeconds, status, sizeof status);
+    text(c, status, 54, top + (tall ? 28 : 24), entry.view.stale ? Orange : Muted);
+    for (uint8_t period = 0; period < 2; ++period) {
+        const auto w = windowFor(entry, period != 0);
+        const int x = 153 + period * 77;
+        text(c, periodFor(entry.id, period != 0), x, top + (tall ? 1 : 5), Muted, nullptr, true);
+        char value[12];
+        formatPrimaryValue(w, value, sizeof value);
+        text(c, value, x, top + (tall ? 13 : 16), w.known ? p.bright : Muted,
+             tall ? &FreeSansBold12pt7b : &FreeSansBold9pt7b, true);
+        bar(c, x - 28, top + (tall ? 39 : 36), 56, w, p);
     }
-    periodTabs(c, view, id, secondary);
+}
+
+void noProviders(Adafruit_GFX &c) {
+    text(c, "Nenhum provedor ativo", 148, 100, Text, &FreeSansBold9pt7b, true);
+    text(c, "Ative um nos Ajustes do app", 148, 126, Muted, nullptr, true);
 }
 
 void overview(Adafruit_GFX &c, const ProvidersUsage &usage, const FrameContext &context) {
-    for (uint8_t id = 0; id < 3; ++id) {
-        const auto &p = Providers[id];
-        const auto &view = viewFor(usage, id);
-        const int y = 44 + id * 53;
-        panel(c, 16, y, 264, 47, p);
-        icon(c, 26, y + 10, p);
-        text(c, p.name, 54, y + 8, Text);
-        char status[24];
-        statusText(view, windowFor(view, id, false), context.nowSeconds, status, sizeof status);
-        text(c, status, 54, y + 24, view.stale ? Orange : Muted);
-        for (uint8_t period = 0; period < 2; ++period) {
-            const auto w = windowFor(view, id, period != 0);
-            const int x = 153 + period * 77;
-            text(c, periodFor(id, period != 0), x, y + 5, Muted, nullptr, true);
-            char value[12];
-            formatPrimaryValue(w, value, sizeof value);
-            text(c, value, x, y + 16, w.known ? p.bright : Muted, &FreeSansBold9pt7b, true);
-            bar(c, x - 28, y + 36, 56, w, p);
-        }
+    if (usage.count == 0) {
+        noProviders(c);
+        return;
     }
-    text(c, "CODEX / CLAUDE / CURSOR", 148, 216, Muted, nullptr, true);
+    const int rowHeight = (OVERVIEW_HEIGHT - OVERVIEW_GAP * (usage.count - 1)) / usage.count;
+    char names[40] = "";
+    for (uint8_t index = 0; index < usage.count; ++index) {
+        const ProviderUsage &entry = usage.items[index];
+        overviewRow(c, OVERVIEW_TOP + index * (rowHeight + OVERVIEW_GAP), rowHeight, entry, context);
+        if (index > 0) strncat(names, " / ", sizeof names - strlen(names) - 1);
+        strncat(names, style(entry.id).name, sizeof names - strlen(names) - 1);
+    }
+    for (char *letter = names; *letter != '\0'; ++letter) *letter = toupper(*letter);
+    text(c, names, 148, 216, Muted, nullptr, true);
 }
 }
 
-void renderTftUsage(Adafruit_GFX &canvas, const ProvidersUsage &usage, uint8_t selectedProvider,
-                    bool showOverview, bool sevenDay, const FrameContext &context) {
+void renderTftUsage(Adafruit_GFX &canvas, const ProvidersUsage &usage, UsageLayout layout,
+                    bool sevenDay, const FrameContext &context) {
     header(canvas, context);
-    if (showOverview) overview(canvas, usage, context);
-    else dashboard(canvas, usage, selectedProvider < 3 ? selectedProvider : 0, sevenDay, context);
+    const ProviderUsage *shown = nullptr;
+    for (uint8_t index = 0; index < usage.count; ++index) {
+        if (layout != UsageLayout::Overview && usage.items[index].id == providerOf(layout)) shown = &usage.items[index];
+    }
+    if (shown != nullptr) dashboard(canvas, usage, *shown, sevenDay, context);
+    else overview(canvas, usage, context);
     canvas.setFont();
     canvas.setTextSize(1);
 }

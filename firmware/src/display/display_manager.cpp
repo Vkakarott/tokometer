@@ -60,15 +60,11 @@ UsageView liveUsageView(UsageView view, const AppState &state, uint32_t nowMs) {
 }
 
 void renderUsageScreen(const AppState &state, const FrameContext &context) {
-    const ProvidersUsage usage{
-        liveUsageView(state.usage.claude, state, context.nowMs),
-        liveUsageView(state.usage.codex, state, context.nowMs),
-        liveUsageView(state.usage.cursor, state, context.nowMs),
-    };
-    const uint8_t provider = state.layout == UsageLayout::ClaudeDashboard ? 1 :
-                             state.layout == UsageLayout::CursorDashboard ? 2 : 0;
-    renderTftUsage(canvas, usage, provider, state.layout == UsageLayout::Overview,
-                   state.sevenDay, context);
+    ProvidersUsage usage = state.usage;
+    for (uint8_t index = 0; index < usage.count; ++index) {
+        usage.items[index].view = liveUsageView(usage.items[index].view, state, context.nowMs);
+    }
+    renderTftUsage(canvas, usage, resolveLayout(state.layout, usage), state.sevenDay, context);
 }
 
 bool rowChanged(uint16_t y) {

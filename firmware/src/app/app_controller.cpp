@@ -38,9 +38,8 @@ void handleButton(AppState &state, uint32_t nowMs) {
     }
     if (action != ButtonAction::ShortPress) return;
 
-    const uint8_t next = (static_cast<uint8_t>(state.layout) + 1) % USAGE_LAYOUT_COUNT;
-    state.layout = static_cast<UsageLayout>(next);
-    saveLayoutIndex(next);
+    state.layout = nextLayout(resolveLayout(state.layout, state.usage), state.usage);
+    saveLayoutIndex(static_cast<uint8_t>(state.layout));
 }
 
 // Screens that already hold data come straight back; the others are re-entered
@@ -157,8 +156,8 @@ void updateUsage(AppState &state, uint32_t nowMs) {
 
 void initializeApp(AppState &state) {
     state.hasToken = loadAccessToken(state.accessToken, sizeof state.accessToken);
-    const uint8_t layout = loadLayoutIndex();
-    state.layout = static_cast<UsageLayout>(layout < USAGE_LAYOUT_COUNT ? layout : 0);
+    // Kept as saved even when out of range: resolveLayout() falls back safely.
+    state.layout = static_cast<UsageLayout>(loadLayoutIndex());
     log_i("boot: %s", state.hasToken ? "token loaded" : "no token, pairing required");
 }
 

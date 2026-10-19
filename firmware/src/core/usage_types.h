@@ -23,10 +23,28 @@ struct UsageView {
     UsageWindow onDemand;
 };
 
-// Usage of every provider the backend reports. A provider the backend never
-// heard from arrives with hasData == false, never as 0%.
+// Providers the firmware can draw. The order is the order on screen and in the
+// BOOT button cycle. Supporting a new provider means a new id here, its JSON
+// key in api_codec and its name, colours and icon in the renderer.
+enum class ProviderId : uint8_t { Codex, Claude, Cursor };
+
+constexpr uint8_t PROVIDER_COUNT = 3;
+
+struct ProviderUsage {
+    ProviderId id = ProviderId::Codex;
+    UsageView view;
+};
+
+// Only the providers the user enabled, in ProviderId order. A provider the
+// backend lists but never heard from has hasData == false, never 0%.
 struct ProvidersUsage {
-    UsageView claude;
-    UsageView codex;
-    UsageView cursor;
+    ProviderUsage items[PROVIDER_COUNT];
+    uint8_t count = 0;
+
+    const UsageView *find(ProviderId id) const {
+        for (uint8_t index = 0; index < count; ++index) {
+            if (items[index].id == id) return &items[index].view;
+        }
+        return nullptr;
+    }
 };

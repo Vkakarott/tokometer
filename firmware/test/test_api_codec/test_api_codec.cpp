@@ -5,6 +5,12 @@
 
 #include "core/api_codec.h"
 
+static const UsageView &view(const ProvidersUsage &usage, ProviderId id) {
+    const UsageView *found = usage.find(id);
+    TEST_ASSERT_NOT_NULL(found);
+    return *found;
+}
+
 void setUp() {}
 void tearDown() {}
 
@@ -26,27 +32,27 @@ static void test_parse_usage_reads_both_providers() {
     ProvidersUsage usage;
 
     TEST_ASSERT_TRUE(parseUsage(json, usage));
-    TEST_ASSERT_TRUE(usage.claude.hasData);
-    TEST_ASSERT_FALSE(usage.claude.stale);
-    TEST_ASSERT_EQUAL_UINT32(42, usage.claude.ageSeconds);
-    TEST_ASSERT_TRUE(usage.claude.fiveHour.present && usage.claude.fiveHour.known);
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 23.5f, usage.claude.fiveHour.usedPercentage);
-    TEST_ASSERT_TRUE(usage.claude.fiveHour.resetsAt == 1738425600);
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 61.0f, usage.claude.sevenDay.usedPercentage);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Claude).hasData);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Claude).stale);
+    TEST_ASSERT_EQUAL_UINT32(42, view(usage, ProviderId::Claude).ageSeconds);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Claude).fiveHour.present && view(usage, ProviderId::Claude).fiveHour.known);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 23.5f, view(usage, ProviderId::Claude).fiveHour.usedPercentage);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Claude).fiveHour.resetsAt == 1738425600);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 61.0f, view(usage, ProviderId::Claude).sevenDay.usedPercentage);
 
-    TEST_ASSERT_TRUE(usage.codex.hasData);
-    TEST_ASSERT_TRUE(usage.codex.stale);
-    TEST_ASSERT_EQUAL_UINT32(10, usage.codex.ageSeconds);
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 38.0f, usage.codex.fiveHour.usedPercentage);
-    TEST_ASSERT_FALSE(usage.codex.sevenDay.present);
-    TEST_ASSERT_TRUE(usage.cursor.hasData);
-    TEST_ASSERT_TRUE(usage.cursor.included.present && usage.cursor.included.known);
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 12.0f, usage.cursor.included.usedPercentage);
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 44.0f, usage.cursor.api.usedPercentage);
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 7.5f, usage.cursor.onDemand.usedPercentage);
-    TEST_ASSERT_TRUE(usage.cursor.included.resetsAt == 1738990000);
-    TEST_ASSERT_FALSE(usage.cursor.fiveHour.present);
-    TEST_ASSERT_FALSE(usage.cursor.sevenDay.present);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Codex).hasData);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Codex).stale);
+    TEST_ASSERT_EQUAL_UINT32(10, view(usage, ProviderId::Codex).ageSeconds);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 38.0f, view(usage, ProviderId::Codex).fiveHour.usedPercentage);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Codex).sevenDay.present);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Cursor).hasData);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Cursor).included.present && view(usage, ProviderId::Cursor).included.known);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 12.0f, view(usage, ProviderId::Cursor).included.usedPercentage);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 44.0f, view(usage, ProviderId::Cursor).api.usedPercentage);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 7.5f, view(usage, ProviderId::Cursor).onDemand.usedPercentage);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Cursor).included.resetsAt == 1738990000);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Cursor).fiveHour.present);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Cursor).sevenDay.present);
 }
 
 static void test_parse_cursor_unknown_and_missing_windows_remain_distinct() {
@@ -58,16 +64,16 @@ static void test_parse_cursor_unknown_and_missing_windows_remain_distinct() {
     ProvidersUsage usage;
 
     TEST_ASSERT_TRUE(parseUsage(json, usage));
-    TEST_ASSERT_TRUE(usage.cursor.hasData);
-    TEST_ASSERT_TRUE(usage.cursor.stale);
-    TEST_ASSERT_EQUAL_UINT32(1200, usage.cursor.ageSeconds);
-    TEST_ASSERT_TRUE(usage.cursor.included.present);
-    TEST_ASSERT_FALSE(usage.cursor.included.known);
-    TEST_ASSERT_TRUE(usage.cursor.onDemand.present);
-    TEST_ASSERT_FALSE(usage.cursor.onDemand.known);
-    TEST_ASSERT_FALSE(usage.cursor.api.present);
-    TEST_ASSERT_FALSE(usage.cursor.fiveHour.present);
-    TEST_ASSERT_FALSE(usage.cursor.sevenDay.present);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Cursor).hasData);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Cursor).stale);
+    TEST_ASSERT_EQUAL_UINT32(1200, view(usage, ProviderId::Cursor).ageSeconds);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Cursor).included.present);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Cursor).included.known);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Cursor).onDemand.present);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Cursor).onDemand.known);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Cursor).api.present);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Cursor).fiveHour.present);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Cursor).sevenDay.present);
 }
 
 static void test_parse_usage_null_percentage_is_unknown() {
@@ -78,10 +84,10 @@ static void test_parse_usage_null_percentage_is_unknown() {
     ProvidersUsage usage;
 
     TEST_ASSERT_TRUE(parseUsage(json, usage));
-    TEST_ASSERT_TRUE(usage.claude.fiveHour.present);
-    TEST_ASSERT_FALSE(usage.claude.fiveHour.known);
-    TEST_ASSERT_FALSE(usage.codex.hasData);
-    TEST_ASSERT_FALSE(usage.cursor.hasData);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Claude).fiveHour.present);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Claude).fiveHour.known);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Codex).hasData);
+    TEST_ASSERT_NULL(usage.find(ProviderId::Cursor));
 }
 
 static void test_parse_usage_without_data() {
@@ -91,9 +97,9 @@ static void test_parse_usage_without_data() {
     ProvidersUsage usage;
 
     TEST_ASSERT_TRUE(parseUsage(json, usage));
-    TEST_ASSERT_FALSE(usage.claude.hasData);
-    TEST_ASSERT_FALSE(usage.codex.hasData);
-    TEST_ASSERT_FALSE(usage.cursor.hasData);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Claude).hasData);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Codex).hasData);
+    TEST_ASSERT_NULL(usage.find(ProviderId::Cursor));
 }
 
 static void test_parse_usage_ignores_context() {
@@ -104,7 +110,7 @@ static void test_parse_usage_ignores_context() {
     ProvidersUsage usage;
 
     TEST_ASSERT_TRUE(parseUsage(json, usage));
-    TEST_ASSERT_EQUAL_UINT32(5, usage.claude.ageSeconds);
+    TEST_ASSERT_EQUAL_UINT32(5, view(usage, ProviderId::Claude).ageSeconds);
 }
 
 static void test_parse_usage_clamps_percentage() {
@@ -114,19 +120,42 @@ static void test_parse_usage_clamps_percentage() {
     ProvidersUsage usage;
 
     TEST_ASSERT_TRUE(parseUsage(json, usage));
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 100.0f, usage.codex.fiveHour.usedPercentage);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 100.0f, view(usage, ProviderId::Codex).fiveHour.usedPercentage);
 }
 
-static void test_parse_usage_missing_provider_block_is_no_data() {
+static void test_parse_usage_missing_provider_block_is_disabled() {
     const char *json = R"({"providers":{
         "claude":{"windows":[{"id":"five_hour","usedPercentage":10,"resetsAt":1}],
             "ageSeconds":0,"stale":false,"hasData":true}}})";
     ProvidersUsage usage;
 
     TEST_ASSERT_TRUE(parseUsage(json, usage));
-    TEST_ASSERT_TRUE(usage.claude.hasData);
-    TEST_ASSERT_FALSE(usage.codex.hasData);
-    TEST_ASSERT_FALSE(usage.cursor.hasData);
+    TEST_ASSERT_EQUAL_UINT8(1, usage.count);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::Claude).hasData);
+    TEST_ASSERT_NULL(usage.find(ProviderId::Codex));
+    TEST_ASSERT_NULL(usage.find(ProviderId::Cursor));
+}
+
+static void test_parse_usage_lists_providers_in_screen_order() {
+    const char *json = R"({"providers":{
+        "cursor":{"windows":[],"ageSeconds":0,"stale":false,"hasData":false},
+        "gemini":{"windows":[],"ageSeconds":0,"stale":false,"hasData":false},
+        "claude":{"windows":[],"ageSeconds":0,"stale":false,"hasData":false},
+        "codex":{"windows":[],"ageSeconds":0,"stale":false,"hasData":false}}})";
+    ProvidersUsage usage;
+
+    TEST_ASSERT_TRUE(parseUsage(json, usage));
+    TEST_ASSERT_EQUAL_UINT8(3, usage.count);
+    TEST_ASSERT_TRUE(usage.items[0].id == ProviderId::Codex);
+    TEST_ASSERT_TRUE(usage.items[1].id == ProviderId::Claude);
+    TEST_ASSERT_TRUE(usage.items[2].id == ProviderId::Cursor);
+}
+
+static void test_parse_usage_accepts_no_enabled_provider() {
+    ProvidersUsage usage;
+
+    TEST_ASSERT_TRUE(parseUsage(R"({"providers":{}})", usage));
+    TEST_ASSERT_EQUAL_UINT8(0, usage.count);
 }
 
 static void test_parse_usage_rejects_invalid_payloads() {
@@ -210,7 +239,9 @@ int main() {
     RUN_TEST(test_parse_usage_without_data);
     RUN_TEST(test_parse_usage_ignores_context);
     RUN_TEST(test_parse_usage_clamps_percentage);
-    RUN_TEST(test_parse_usage_missing_provider_block_is_no_data);
+    RUN_TEST(test_parse_usage_missing_provider_block_is_disabled);
+    RUN_TEST(test_parse_usage_lists_providers_in_screen_order);
+    RUN_TEST(test_parse_usage_accepts_no_enabled_provider);
     RUN_TEST(test_parse_usage_rejects_invalid_payloads);
     RUN_TEST(test_parse_pair_code);
     RUN_TEST(test_parse_pair_code_defaults_interval);

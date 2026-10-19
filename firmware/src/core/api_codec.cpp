@@ -48,9 +48,19 @@ void parseWindow(JsonObjectConst json, UsageView &view) {
     window->resetsAt = json["resetsAt"].as<int64_t>();
 }
 
-// An absent provider block reads as "no data yet"; a present one must be valid.
+struct ProviderKey {
+    const char *json;
+    ProviderId id;
+};
+
+// Keys the firmware knows how to draw, in ProviderId order.
+constexpr ProviderKey PROVIDER_KEYS[PROVIDER_COUNT] = {
+    {"codex", ProviderId::Codex},
+    {"claude", ProviderId::Claude},
+    {"cursor", ProviderId::Cursor},
+};
+
 bool parseProvider(JsonVariantConst json, UsageView &out) {
-    if (json.isNull()) return true;
     if (!json["hasData"].is<bool>()) return false;
 
     UsageView view;
@@ -125,10 +135,17 @@ bool parseUsage(const char *json, ProvidersUsage &out) {
     const JsonVariantConst providers = doc["providers"];
     if (!providers.is<JsonObjectConst>()) return false;
 
+    // A provider missing from the block is disabled, so it takes no space.
+    // Keys the firmware cannot draw are ignored.
     ProvidersUsage usage;
-    if (!parseProvider(providers["claude"], usage.claude)) return false;
-    if (!parseProvider(providers["codex"], usage.codex)) return false;
-    if (!parseProvider(providers["cursor"], usage.cursor)) return false;
+    for (const ProviderKey &key : PROVIDER_KEYS) {
+        const JsonVariantConst block = providers[key.json];
+        if (block.isNull()) continue;
+        ProviderUsage &entry = usage.items[usage.count];
+        entry.id = key.id;
+        if (!parseProvider(block, entry.view)) return false;
+        ++usage.count;
+    }
     out = usage;
     return true;
 }

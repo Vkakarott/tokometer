@@ -130,6 +130,10 @@ O botão **BOOT** da placa (GPIO9) troca de tela com um toque curto e alterna a
 janela de consumo com um toque longo. Ele só responde na tela de consumo. Os
 pinos ficam em `firmware/src/config/hardware_config.h`.
 
+O display mostra só os provedores visíveis nos Ajustes do app do Mac. Com dois
+ou mais, o ciclo é visão geral e depois o painel de cada um; com um só, a visão
+geral dá lugar ao painel dele. Ocultar todos mostra "Nenhum provedor ativo".
+
 A potência de transmissão do Wi-Fi é limitada a 8,5 dBm: em potência máxima a
 antena da C3 Mini falha na autenticação com o roteador.
 

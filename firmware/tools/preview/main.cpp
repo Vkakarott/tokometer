@@ -1,4 +1,5 @@
 #include <array>
+#include <initializer_list>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -46,9 +47,28 @@ UsageView cursorProvider(float included, float api, float onDemand) {
 
 ProvidersUsage sampleUsage() {
     ProvidersUsage result;
-    result.codex = provider(42, 26);
-    result.claude = provider(68, 81);
-    result.cursor = cursorProvider(12, 39, 8);
+    result.items[0] = {ProviderId::Codex, provider(42, 26)};
+    result.items[1] = {ProviderId::Claude, provider(68, 81)};
+    result.items[2] = {ProviderId::Cursor, cursorProvider(12, 39, 8)};
+    result.count = 3;
+    return result;
+}
+
+UsageView &viewOf(ProvidersUsage &usage, ProviderId id) {
+    for (uint8_t index = 0; index < usage.count; ++index) {
+        if (usage.items[index].id == id) return usage.items[index].view;
+    }
+    throw std::runtime_error("provider not in sample");
+}
+
+// The sample keeping only `ids`, as the backend sends it when the rest are hidden.
+ProvidersUsage keepOnly(const ProvidersUsage &usage, std::initializer_list<ProviderId> ids) {
+    ProvidersUsage result;
+    for (uint8_t index = 0; index < usage.count; ++index) {
+        for (ProviderId id : ids) {
+            if (usage.items[index].id == id) result.items[result.count++] = usage.items[index];
+        }
+    }
     return result;
 }
 
@@ -74,10 +94,9 @@ void savePpm(const IndexedCanvas &canvas, const std::string &path) {
 }
 
 void render(const std::string &outputDir, const char *name, const ProvidersUsage &usage,
-            uint8_t selectedProvider, bool overview, bool sevenDay,
-            const FrameContext &context) {
+            UsageLayout layout, bool sevenDay, const FrameContext &context) {
     IndexedCanvas canvas;
-    renderTftUsage(canvas, usage, selectedProvider, overview, sevenDay, context);
+    renderTftUsage(canvas, usage, resolveLayout(layout, usage), sevenDay, context);
     savePpm(canvas, outputDir + '/' + name + ".ppm");
     std::printf("%s\n", name);
 }
@@ -113,49 +132,58 @@ int main(int argc, char **argv) {
         context.nowSeconds = NOW_SECONDS;
         std::snprintf(context.clockText, sizeof(context.clockText), "14:27");
         const ProvidersUsage usage = sampleUsage();
-        const std::array<const char *, 3> names = {"codex", "claude", "cursor"};
-        for (uint8_t selected = 0; selected < names.size(); ++selected) {
-            for (bool sevenDay : {false, true}) {
-                const char *period = selected == 2 ? (sevenDay ? "-api" : "-plan")
-                                                  : (sevenDay ? "-7d" : "-5h");
-                const std::string name = std::string(names[selected]) + period;
-                render(outputDir, name.c_str(), usage, selected, false, sevenDay, context);
-            }
-        }
-        render(outputDir, "overview-5h", usage, 0, true, false, context);
-        render(outputDir, "overview-7d", usage, 0, true, true, context);
+        constexpr UsageLayout Overview = UsageLayout::Overview;
+        constexpr UsageLayout Codex = UsageLayout::CodexDashboard;
+        constexpr UsageLayout Claude = UsageLayout::ClaudeDashboard;
+        constexpr UsageLayout Cursor = UsageLayout::CursorDashboard;
+        render(outputDir, "codex-5h", usage, Codex, false, context);
+        render(outputDir, "codex-7d", usage, Codex, true, context);
+        render(outputDir, "claude-5h", usage, Claude, false, context);
+        render(outputDir, "claude-7d", usage, Claude, true, context);
+        render(outputDir, "cursor-plan", usage, Cursor, false, context);
+        render(outputDir, "cursor-api", usage, Cursor, true, context);
+        render(outputDir, "overview-5h", usage, Overview, false, context);
+        render(outputDir, "overview-7d", usage, Overview, true, context);
 
         ProvidersUsage extremes = usage;
-        extremes.codex = provider(100, 0);
-        extremes.claude = provider(0, 100);
-        extremes.cursor = cursorProvider(99, 1, 100);
-        render(outputDir, "full", extremes, 0, false, false, context);
-        render(outputDir, "zero", extremes, 0, false, true, context);
-        render(outputDir, "cursor-plan-full", extremes, 2, false, false, context);
+        viewOf(extremes, ProviderId::Codex) = provider(100, 0);
+        viewOf(extremes, ProviderId::Claude) = provider(0, 100);
+        viewOf(extremes, ProviderId::Cursor) = cursorProvider(99, 1, 100);
+        render(outputDir, "full", extremes, Codex, false, context);
+        render(outputDir, "zero", extremes, Codex, true, context);
+        render(outputDir, "cursor-plan-full", extremes, Cursor, false, context);
 
         ProvidersUsage missing = usage;
-        missing.codex = {};
-        missing.cursor = {};
-        render(outputDir, "missing-provider", missing, 0, false, false, context);
-        render(outputDir, "missing-overview", missing, 0, true, false, context);
-        render(outputDir, "all-missing", {}, 0, false, false, context);
+        viewOf(missing, ProviderId::Codex) = {};
+        viewOf(missing, ProviderId::Cursor) = {};
+        render(outputDir, "missing-provider", missing, Codex, false, context);
+        render(outputDir, "missing-overview", missing, Overview, false, context);
+
+        const ProvidersUsage twoProviders = keepOnly(usage, {ProviderId::Codex, ProviderId::Claude});
+        render(outputDir, "two-overview", twoProviders, Overview, false, context);
+        render(outputDir, "two-claude-5h", twoProviders, Claude, false, context);
+        render(outputDir, "two-saved-cursor", twoProviders, Cursor, false, context);
+        const ProvidersUsage oneProvider = keepOnly(usage, {ProviderId::Claude});
+        render(outputDir, "one-claude-5h", oneProvider, Overview, false, context);
+        render(outputDir, "one-claude-7d", oneProvider, Claude, true, context);
+        render(outputDir, "none-enabled", {}, Overview, false, context);
 
         ProvidersUsage stale = usage;
-        stale.codex.stale = true;
-        stale.codex.ageSeconds = 7800;
-        stale.claude.stale = true;
-        stale.claude.ageSeconds = 720;
-        render(outputDir, "stale", stale, 0, false, false, context);
-        render(outputDir, "stale-overview", stale, 0, true, false, context);
+        viewOf(stale, ProviderId::Codex).stale = true;
+        viewOf(stale, ProviderId::Codex).ageSeconds = 7800;
+        viewOf(stale, ProviderId::Claude).stale = true;
+        viewOf(stale, ProviderId::Claude).ageSeconds = 720;
+        render(outputDir, "stale", stale, Codex, false, context);
+        render(outputDir, "stale-overview", stale, Overview, false, context);
 
         ProvidersUsage reset = usage;
-        reset.codex.fiveHour.known = false;
-        reset.codex.sevenDay.present = false;
-        render(outputDir, "reset-window", reset, 0, false, false, context);
-        render(outputDir, "missing-window", reset, 0, false, true, context);
+        viewOf(reset, ProviderId::Codex).fiveHour.known = false;
+        viewOf(reset, ProviderId::Codex).sevenDay.present = false;
+        render(outputDir, "reset-window", reset, Codex, false, context);
+        render(outputDir, "missing-window", reset, Codex, true, context);
 
         FrameContext unsynced;
-        render(outputDir, "clock-unsynced", usage, 0, false, false, unsynced);
+        render(outputDir, "clock-unsynced", usage, Codex, false, unsynced);
 
         renderStatus(outputDir, "status-welcome", AppScreen::ConnectingWifi, WifiStatus::Connecting, unsynced);
         renderStatus(outputDir, "status-setup", AppScreen::ConnectingWifi, WifiStatus::Provisioning, unsynced);

@@ -18,6 +18,7 @@ mkdir -p "$output_dir"
     -I "$preview_dir/stubs" -I "$repo_dir/firmware/src" -I "$gfx_dir" \
     "$gfx_dir/Adafruit_GFX.cpp" \
     "$repo_dir/firmware/src/core/text_format.cpp" \
+    "$repo_dir/firmware/src/core/usage_layout.cpp" \
     "$repo_dir/firmware/src/display/tft_renderer.cpp" \
     "$repo_dir/firmware/src/display/status_screens.cpp" \
     "$preview_dir/main.cpp" -o "$output_dir/render-preview"
