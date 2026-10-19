@@ -32,13 +32,13 @@ public class ProviderParsingTests
     }
 
     [Fact]
-    public void Codex_login_without_an_account_asks_to_sign_in_again()
+    public void Codex_login_without_an_account_counts_as_signed_out()
     {
         using var temp = new TempDirectory();
         var file = temp.File("auth.json", """{"tokens":{"access_token":"abc"}}""");
 
         var error = Assert.Throws<ProviderFetchException>(() => CodexProvider.ReadLogin(file));
-        Assert.Equal(FetchFailure.NeedsAuth, error.Failure);
+        Assert.Equal(FetchFailure.SignedOut, error.Failure);
     }
 
     [Fact]
@@ -77,12 +77,12 @@ public class ProviderParsingTests
     }
 
     [Fact]
-    public void Cursor_without_a_session_asks_to_sign_in()
+    public void Cursor_without_a_session_counts_as_signed_out()
     {
         using var temp = new TempDirectory();
 
         var error = Assert.Throws<ProviderFetchException>(() => CursorProvider.ReadToken(temp.File("missing.vscdb")));
-        Assert.Equal(FetchFailure.NeedsAuth, error.Failure);
+        Assert.Equal(FetchFailure.SignedOut, error.Failure);
     }
 
     [Fact]

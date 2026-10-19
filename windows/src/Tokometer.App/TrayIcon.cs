@@ -48,8 +48,9 @@ internal sealed class TrayIcon : IDisposable
     private void Render()
     {
         var now = DateTimeOffset.Now;
-        var cards = UsageCards.Build(_monitor.Snapshots, _preferences, now);
-        _panel.Show(cards);
+        var snapshots = _monitor.Snapshots;
+        var cards = UsageCards.Build(snapshots, _preferences, now);
+        _panel.Show(cards, UsageCards.EmptyMessage(snapshots, _preferences));
         _icon.Text = UsageCards.Tooltip(cards);
         TrayArt.Apply(_icon, cards);
     }

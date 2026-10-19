@@ -19,9 +19,10 @@ public partial class UsagePanel : Window
         SizeChanged += (_, _) => PlaceAboveTray();
     }
 
-    public void Show(IReadOnlyList<ProviderCard> cards)
+    public void Show(IReadOnlyList<ProviderCard> cards, string emptyMessage)
     {
         Cards.ItemsSource = cards.Select(View).ToList();
+        EmptyText.Text = emptyMessage;
         EmptyText.Visibility = cards.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdatedText.Text = $"Atualizado às {DateTime.Now:HH:mm}";
     }

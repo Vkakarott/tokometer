@@ -39,6 +39,24 @@ public class MonitorAndPublisherTests
     }
 
     [Fact]
+    public async Task Missing_login_marks_the_provider_signed_out()
+    {
+        var clock = new FakeTimeProvider(Times.Now);
+        var provider = new ScriptedProvider(ProviderId.Cursor,
+            now => ProviderSnapshot.Fresh(ProviderId.Cursor, [FiveHour], now),
+            _ => throw ProviderFetchException.SignedOut("Entre no Cursor"));
+        var monitor = new UsageMonitor([provider], null, clock);
+
+        await monitor.RefreshAsync(force: false, default);
+        clock.Advance(TimeSpan.FromMinutes(5));
+        await monitor.RefreshAsync(force: false, default);
+
+        var cursor = monitor.Snapshots.Single(s => s.Id == ProviderId.Cursor);
+        Assert.Equal(StatusKind.SignedOut, cursor.Status);
+        Assert.Empty(cursor.Windows);
+    }
+
+    [Fact]
     public async Task Respects_the_refresh_interval_unless_forced()
     {
         var clock = new FakeTimeProvider(Times.Now);

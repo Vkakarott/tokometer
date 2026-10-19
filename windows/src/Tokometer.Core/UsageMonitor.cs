@@ -75,7 +75,9 @@ public sealed class UsageMonitor(IReadOnlyList<IUsageProvider> providers, Backen
         catch (Exception error) when (!cancellation.IsCancellationRequested)
         {
             if (error is ProviderFetchException { RetryAfter: { } wait }) _retryAfter[provider.Id] = now + wait;
-            Store(KeepLastGood(provider.Id, Describe(error)));
+            Store(error is ProviderFetchException { Failure: FetchFailure.SignedOut }
+                ? new ProviderSnapshot(provider.Id, StatusKind.SignedOut, error.Message, [], Fidelity.Official, null)
+                : KeepLastGood(provider.Id, Describe(error)));
         }
     }
 

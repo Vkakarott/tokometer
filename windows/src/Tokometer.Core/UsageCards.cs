@@ -7,9 +7,19 @@ public sealed record ProviderCard(ProviderId Id, string Name, string Status, boo
 /// <summary>Turns snapshots into what the tray panel shows, so the WPF side only lays it out.</summary>
 public static class UsageCards
 {
+    /// <summary>One card per provider that is visible in the settings and has a login on this PC.</summary>
     public static IReadOnlyList<ProviderCard> Build(IEnumerable<ProviderSnapshot> snapshots, Preferences preferences,
         DateTimeOffset now) =>
-        snapshots.Where(s => preferences.IsVisible(s.Id)).Select(s => Card(s, now)).ToList();
+        snapshots.Where(s => preferences.IsVisible(s.Id) && s.IsShown).Select(s => Card(s, now)).ToList();
+
+    /// <summary>What the panel says when <see cref="Build"/> returns no card.</summary>
+    public static string EmptyMessage(IEnumerable<ProviderSnapshot> snapshots, Preferences preferences)
+    {
+        var visible = snapshots.Where(s => preferences.IsVisible(s.Id)).ToList();
+        if (visible.Count == 0) return "Nenhum provedor visível. Ative um em Ajustes, no menu do ícone.";
+        if (visible.Any(s => s.Status == StatusKind.Waiting)) return "Procurando os logins deste computador…";
+        return "Nenhum login encontrado neste computador. Entre no app Claude, no Codex ou no Cursor e ele aparece aqui sozinho.";
+    }
 
     public static ProviderCard Card(ProviderSnapshot snapshot, DateTimeOffset now) => new(
         snapshot.Id,

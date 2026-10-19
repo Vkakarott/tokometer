@@ -61,13 +61,13 @@ public sealed class ClaudeProviderTests : IDisposable
     }
 
     [Fact]
-    public async Task Missing_login_asks_to_sign_in()
+    public async Task Missing_login_counts_as_signed_out()
     {
         _token = null;
 
         var error = await Assert.ThrowsAsync<ProviderFetchException>(() => Provider().FetchAsync(Times.Now, default));
 
-        Assert.Equal(FetchFailure.NeedsAuth, error.Failure);
+        Assert.Equal(FetchFailure.SignedOut, error.Failure);
         Assert.Empty(_handler.Requests);
     }
 

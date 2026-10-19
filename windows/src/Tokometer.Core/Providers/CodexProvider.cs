@@ -30,12 +30,12 @@ public sealed class CodexProvider(HttpClient http, string authFile) : IUsageProv
 
     internal static (string Token, string Account) ReadLogin(string authFile)
     {
-        if (!File.Exists(authFile)) throw ProviderFetchException.NeedsAuth("Entre no Codex CLI");
+        if (!File.Exists(authFile)) throw ProviderFetchException.SignedOut("Entre no Codex CLI");
         using var document = JsonDocument.Parse(File.ReadAllText(authFile));
         var tokens = document.RootElement.TryGetProperty("tokens", out var value) ? value : default;
         var token = Json.String(tokens, "access_token");
         var account = Json.String(tokens, "account_id");
-        if (token is null || account is null) throw ProviderFetchException.NeedsAuth("Entre novamente no Codex");
+        if (token is null || account is null) throw ProviderFetchException.SignedOut("Entre no Codex CLI");
         return (token, account);
     }
 

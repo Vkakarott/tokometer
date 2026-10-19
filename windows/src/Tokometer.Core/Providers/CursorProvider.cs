@@ -31,9 +31,9 @@ public sealed class CursorProvider(HttpClient http, string stateFile) : IUsagePr
 
     internal static string ReadToken(string stateFile)
     {
-        if (!File.Exists(stateFile)) throw ProviderFetchException.NeedsAuth("Abra o Cursor e entre na sua conta");
+        if (!File.Exists(stateFile)) throw ProviderFetchException.SignedOut("Abra o Cursor e entre na sua conta");
         var raw = QueryToken(stateFile)?.Trim()
-            ?? throw ProviderFetchException.NeedsAuth("Entre novamente no Cursor");
+            ?? throw ProviderFetchException.SignedOut("Entre no Cursor");
         var token = raw.StartsWith('"') ? JsonSerializer.Deserialize<string>(raw) ?? raw : raw;
         if (token.Split('.').Length != 3) throw ProviderFetchException.NeedsAuth("Entre novamente no Cursor");
         return token;

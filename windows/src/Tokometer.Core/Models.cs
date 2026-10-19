@@ -56,6 +56,10 @@ public enum StatusKind
     Ok,
     Stale,
     Error,
+    /// <summary>Not read yet; not shown, so a provider without login never flashes in.</summary>
+    Waiting,
+    /// <summary>No login on this PC; not shown.</summary>
+    SignedOut,
 }
 
 /// <summary>What the app knows about one provider right now.</summary>
@@ -69,8 +73,11 @@ public sealed record ProviderSnapshot(
 {
     public bool HasData => Windows.Count > 0 && ObservedAt is not null;
 
+    /// <summary>Whether the provider gets a card: it was read and has a login on this PC.</summary>
+    public bool IsShown => Status is not (StatusKind.Waiting or StatusKind.SignedOut);
+
     public static ProviderSnapshot Waiting(ProviderId id) =>
-        new(id, StatusKind.Error, "Aguardando a primeira leitura", [], Fidelity.Official, null);
+        new(id, StatusKind.Waiting, "Aguardando a primeira leitura", [], Fidelity.Official, null);
 
     public static ProviderSnapshot Fresh(ProviderId id, IReadOnlyList<UsageWindow> windows, DateTimeOffset now,
         Fidelity fidelity = Fidelity.Official) =>

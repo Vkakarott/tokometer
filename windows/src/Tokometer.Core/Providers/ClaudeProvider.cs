@@ -41,7 +41,7 @@ public sealed class ClaudeProvider(
     {
         if (!gate.IsOpen(now, knownWindows)) throw ProviderFetchException.Unavailable("Aguardando a próxima consulta do Claude");
         var token = readToken();
-        if (string.IsNullOrEmpty(token)) throw ProviderFetchException.NeedsAuth("Entre no Claude Code");
+        if (string.IsNullOrEmpty(token)) throw ProviderFetchException.SignedOut("Entre no Claude Code");
         var tokenId = ClaudePollGate.TokenId(token);
         if (gate.Rejects(tokenId)) throw ProviderFetchException.NeedsAuth("Entre novamente no Claude Code");
         var windows = await RequestWindowsAsync(token, tokenId, now, cancellation);

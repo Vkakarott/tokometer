@@ -2,6 +2,9 @@ namespace Tokometer.Core;
 
 public enum FetchFailure
 {
+    /// <summary>No login for this tool on this PC; the provider is left out of the panel.</summary>
+    SignedOut,
+    /// <summary>A login exists but the service rejected it.</summary>
     NeedsAuth,
     Unsupported,
     Unavailable,
@@ -16,6 +19,8 @@ public sealed class ProviderFetchException(FetchFailure failure, string message,
 
     /// <summary>Set only for <see cref="FetchFailure.RateLimited"/>.</summary>
     public TimeSpan? RetryAfter { get; } = retryAfter;
+
+    public static ProviderFetchException SignedOut(string message) => new(FetchFailure.SignedOut, message);
 
     public static ProviderFetchException NeedsAuth(string message) => new(FetchFailure.NeedsAuth, message);
 

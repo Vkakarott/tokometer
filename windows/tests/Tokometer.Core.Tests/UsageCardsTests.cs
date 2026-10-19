@@ -16,6 +16,45 @@ public class UsageCardsTests
     }
 
     [Fact]
+    public void Providers_without_login_or_not_read_yet_get_no_card()
+    {
+        ProviderSnapshot[] snapshots =
+        [
+            ProviderSnapshot.Fresh(ProviderId.Claude, [FiveHour], Times.Now),
+            new(ProviderId.Codex, StatusKind.SignedOut, "Entre no Codex CLI", [], Fidelity.Official, null),
+            ProviderSnapshot.Waiting(ProviderId.Cursor),
+        ];
+
+        var cards = UsageCards.Build(snapshots, new Preferences(), Times.Now);
+
+        Assert.Equal([ProviderId.Claude], cards.Select(c => c.Id));
+    }
+
+    [Fact]
+    public void A_rejected_login_still_gets_a_card()
+    {
+        var rejected = new ProviderSnapshot(ProviderId.Codex, StatusKind.Error, "Entre novamente no Codex", [], Fidelity.Official, null);
+
+        var card = UsageCards.Build([rejected], new Preferences(), Times.Now).Single();
+
+        Assert.True(card.IsProblem);
+        Assert.Equal("Entre novamente no Codex", card.Status);
+    }
+
+    [Fact]
+    public void Empty_panel_says_why()
+    {
+        var signedOut = Enum.GetValues<ProviderId>()
+            .Select(id => new ProviderSnapshot(id, StatusKind.SignedOut, null, [], Fidelity.Official, null)).ToList();
+        var waiting = Enum.GetValues<ProviderId>().Select(ProviderSnapshot.Waiting).ToList();
+        var nothingVisible = Enum.GetValues<ProviderId>().Aggregate(new Preferences(), (p, id) => p.WithVisibility(id, false));
+
+        Assert.StartsWith("Nenhum login encontrado", UsageCards.EmptyMessage(signedOut, new Preferences()));
+        Assert.StartsWith("Procurando", UsageCards.EmptyMessage(waiting, new Preferences()));
+        Assert.StartsWith("Nenhum provedor visível", UsageCards.EmptyMessage(signedOut, nothingVisible));
+    }
+
+    [Fact]
     public void Row_shows_percentage_fill_and_countdown()
     {
         var card = UsageCards.Card(ProviderSnapshot.Fresh(ProviderId.Codex, [FiveHour], Times.Now), Times.Now);
