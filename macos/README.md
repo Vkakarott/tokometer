@@ -45,6 +45,10 @@ sem esse arquivo, nada é enviado. Cada leitura vai uma vez só, e leituras sem
 janelas completas nunca são enviadas, para não apagar o dado que o backend já
 tem. Falhas aparecem no Console do macOS (subsistema `com.tokesp.app`).
 
+Os provedores marcados como visíveis nos Ajustes também são os únicos que o
+display mostra. O app envia essa lista (`PUT /providers`) ao abrir e a cada
+mudança; se o envio falhar, tenta de novo na próxima atualização.
+
 ## Verificar
 
 ```bash

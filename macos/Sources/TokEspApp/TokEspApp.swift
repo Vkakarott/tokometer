@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import Darwin
 
@@ -88,10 +89,11 @@ private struct MenuRowLabel: View {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = UsageStore()
     let preferences = AppPreferences()
+    let publisher = BackendPublisher()
     lazy var polling = NativePollingController(
         providers: [ClaudeUsageProvider(), CodexUsageProvider(), CursorUsageProvider()],
         store: store,
-        publisher: BackendPublisher()
+        publisher: publisher
     )
     lazy var notch = NotchPanelController(store: store, preferences: preferences)
     lazy var onboarding = OnboardingPanelController(
@@ -103,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var displayPairing = DisplayPairingPanelController()
     private let instanceLock = SingleInstanceLock()
     private var isPrimaryInstance = false
+    private var selectionObserver: AnyCancellable?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         isPrimaryInstance = instanceLock.acquire()
@@ -114,12 +117,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard isPrimaryInstance else { return }
         store.setDemoMode(preferences.demoMode)
+        observeProviderSelection()
         polling.start()
         if preferences.hasCompletedOnboarding {
             notch.show()
         } else {
             onboarding.show()
         }
+    }
+
+    /// The display shows the same providers the user keeps visible here.
+    private func observeProviderSelection() {
+        selectionObserver = preferences.$visibleProviders
+            .removeDuplicates()
+            .sink { [publisher] providers in
+                Task { await publisher.publishProviderSelection(providers) }
+            }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

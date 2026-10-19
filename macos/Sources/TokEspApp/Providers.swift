@@ -150,6 +150,7 @@ final class NativePollingController {
 
     func refresh() async {
         guard !store.isDemoMode else { return }
+        await publisher?.flushProviderSelection()
         for provider in providers {
             let now = Date.now
             if let next = retryAfter[provider.id], next > now { continue }

@@ -128,3 +128,30 @@ private func body(_ request: URLRequest) throws -> [String: Any] {
     #expect(BackendConfig.parse("export TOKESP_URL=\"http://localhost:43110\"") == nil)
     #expect(BackendConfig.parse("# export TOKESP_URL=x\nexport TOKESP_TOKEN=t") == nil)
 }
+
+@Test func sendsTheVisibleProvidersInCanonicalOrder() async throws {
+    let fake = FakeBackend()
+    await publisher(fake).publishProviderSelection([.codex, .claude])
+
+    let request = try #require(fake.requests.first)
+    #expect(request.url?.absoluteString == "http://localhost:43110/providers")
+    #expect(request.httpMethod == "PUT")
+    #expect(try body(request)["enabled"] as? [String] == ["claude", "codex"])
+}
+
+@Test func sendsAnEmptySelectionWhenEveryProviderIsHidden() async throws {
+    let fake = FakeBackend()
+    await publisher(fake).publishProviderSelection([])
+    #expect(try body(try #require(fake.requests.first))["enabled"] as? [String] == [])
+}
+
+@Test func retriesAFailedSelectionAndSendsItOnlyOnce() async throws {
+    let fake = FakeBackend()
+    fake.status = 503
+    let sender = publisher(fake)
+    await sender.publishProviderSelection([.claude])
+    fake.status = 204
+    await sender.flushProviderSelection()
+    await sender.flushProviderSelection()
+    #expect(fake.requests.count == 2, "one failed attempt, one success, then nothing")
+}

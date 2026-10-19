@@ -90,6 +90,16 @@ private extension ProviderID {
     }
 }
 
+/// The `PUT /providers` body: the providers the user keeps visible, which are
+/// the only ones the display shows.
+struct ProviderSelectionPayload: Encodable, Equatable, Sendable {
+    let enabled: [String]
+
+    init(_ providers: Set<ProviderID>) {
+        enabled = ProviderID.allCases.filter(providers.contains).map(\.rawValue)
+    }
+}
+
 /// Forwards what the app collects to the backend, which feeds the ESP32
 /// display. Each provider's reading is sent once; a failed send is retried on
 /// the next refresh.
@@ -98,6 +108,8 @@ actor BackendPublisher {
     private let send: @Sendable (URLRequest) async throws -> (Data, URLResponse)
     private let source: String
     private var lastSent: [String: IngestPayload] = [:]
+    private var pendingSelection: ProviderSelectionPayload?
+    private var sentSelection: ProviderSelectionPayload?
     private let logger = Logger(subsystem: "com.tokesp.app", category: "backend")
 
     init(
@@ -120,16 +132,34 @@ actor BackendPublisher {
               lastSent[payload.provider] != payload,
               let config = loadConfig() else { return }
         do {
-            try await post(payload, to: config)
+            try await deliver(payload, method: "POST", path: "ingest", to: config)
             lastSent[payload.provider] = payload
         } catch {
             logger.error("ingest failed for \(payload.provider, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private func post(_ payload: IngestPayload, to config: BackendConfig) async throws {
-        var request = URLRequest(url: config.url.appending(path: "ingest"))
-        request.httpMethod = "POST"
+    /// Records the choice and sends it. A failed send stays pending until
+    /// `flushProviderSelection` succeeds.
+    func publishProviderSelection(_ providers: Set<ProviderID>) async {
+        pendingSelection = ProviderSelectionPayload(providers)
+        await flushProviderSelection()
+    }
+
+    func flushProviderSelection() async {
+        guard let selection = pendingSelection, selection != sentSelection,
+              let config = loadConfig() else { return }
+        do {
+            try await deliver(selection, method: "PUT", path: "providers", to: config)
+            sentSelection = selection
+        } catch {
+            logger.error("provider selection failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func deliver(_ payload: some Encodable, method: String, path: String, to config: BackendConfig) async throws {
+        var request = URLRequest(url: config.url.appending(path: path))
+        request.httpMethod = method
         request.timeoutInterval = 5
         request.setValue("Bearer \(config.token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
