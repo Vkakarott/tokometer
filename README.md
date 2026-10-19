@@ -25,6 +25,7 @@ collector ───────► backend API ──► ESP32 (durante a migra�
 | `backend/` | Node + TypeScript. Ponte de snapshots e API do device. |
 | `collector/` | Statusline do Claude e poller do Codex. Alimenta o app e o backend. |
 | `macos/` | Aplicativo nativo: tokonotch, coleta local e aprovação de pareamento. |
+| `windows/` | App de bandeja para Windows: coleta local de Claude, Codex e Cursor, sem depender do display. |
 | `firmware/` | ESP32-C3 Mini + TFT SPI JD9853 240×296. Consome `docs/device-api.md`. |
 
 ## Rodar
@@ -153,3 +154,4 @@ antena da C3 Mini falha na autenticação com o roteador.
 - `docs/device-api.md` — contrato para o firmware
 - `collector/README.md` — configuração do statusline
 - `macos/README.md` — execução do tokonotch nativo
+- `windows/README.md` — instalação e publicação do app para Windows

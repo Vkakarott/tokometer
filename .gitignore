@@ -11,3 +11,6 @@ backend/state.json.tmp
 node_modules
 macos/.build/
 macos/.swiftpm/
+windows/**/bin/
+windows/**/obj/
+windows/artifacts/

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- NotifyIcon, the tray icon, only exists in Windows Forms. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Lets the project build on macOS and Linux; it only runs on Windows. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>Tokometer</AssemblyName>
+    <RootNamespace>Tokometer.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Product>Tokometer</Product>
+    <!-- Source-generated P/Invoke for DestroyIcon. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Windows Forms is only here for the tray icon; keep WPF types unambiguous. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <Using Include="System.Net.Http" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Tokometer.Core/Tokometer.Core.csproj" />
+  </ItemGroup>
+</Project>

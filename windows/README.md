@@ -1,0 +1,67 @@
+# Tokometer para Windows
+
+Ícone na bandeja do sistema que mostra o consumo das assinaturas de Claude,
+Codex e Cursor deste PC. É a versão Windows do app do Mac (`macos/`): lê o
+login que cada ferramenta já guarda no computador e consulta o serviço dela.
+Não precisa de backend nem do display ESP32.
+
+## Instalar
+
+1. Baixe `Tokometer-windows-x64.zip` na página de Releases do repositório.
+2. Extraia e abra `Tokometer.exe`. Não há instalador e não precisa de
+   administrador; o .NET já vai dentro do executável.
+3. O Windows pode mostrar "O Windows protegeu o computador", porque o
+   executável não é assinado. Clique em **Mais informações → Executar assim mesmo**.
+
+O ícone aparece perto do relógio (às vezes dentro da seta **^**; arraste-o
+para fora para deixá-lo sempre visível). O arco do ícone mostra o maior
+consumo entre os provedores visíveis: verde, laranja a partir de 70% e
+vermelho a partir de 90%.
+
+- **Clique:** abre o painel com o consumo de cada provedor.
+- **Botão direito:** Atualizar agora, Ajustes e Sair.
+- **Ajustes:** escolha quais provedores aparecem e se o app inicia com o
+  Windows (ligado por padrão).
+
+## De onde vêm os dados
+
+| Provedor | Login lido | Frequência |
+|---|---|---|
+| Claude | `%USERPROFILE%\.claude\.credentials.json` (Claude Code) | A cada 15 min; 1 min perto do limite de 5 h |
+| Codex | `%USERPROFILE%\.codex\auth.json` (Codex CLI) | A cada 1 min |
+| Cursor | `%APPDATA%\Cursor\User\globalStorage\state.vscdb` | A cada 5 min |
+
+Um provedor sem login aparece com o aviso para entrar na ferramenta. Uma
+falha temporária mantém o último valor, marcado com a idade do dado. Um valor
+de janela que já reiniciou aparece como `--%`, nunca como 0%.
+
+Variáveis opcionais: `CODEX_HOME` e `CLAUDE_CONFIG_DIR` mudam onde o login é
+procurado, e `TOKOMETER_STATE_DIR` muda onde o app guarda o estado
+(padrão `%LOCALAPPDATA%\Tokometer`).
+
+## Display ESP32 (opcional)
+
+Se existir `%USERPROFILE%\.config\tokesp\config.sh` com `TOKESP_URL` e
+`TOKESP_TOKEN`, o app também envia as leituras e os provedores visíveis ao
+backend, como o app do Mac. Sem esse arquivo, nada é enviado.
+
+## Desenvolver
+
+```bash
+cd windows
+dotnet test Tokometer.sln          # roda em qualquer sistema
+dotnet build Tokometer.sln         # compila também no macOS e no Linux
+```
+
+`Tokometer.Core` tem a coleta e a formatação e roda em qualquer sistema.
+`Tokometer.App` é a interface WPF e só abre no Windows.
+
+## Publicar uma versão
+
+O workflow `.github/workflows/windows-app.yml` compila numa máquina Windows,
+roda os testes e, para uma tag `windows-v*`, anexa o zip a uma Release:
+
+```bash
+git tag windows-v0.1.0
+git push origin windows-v0.1.0
+```

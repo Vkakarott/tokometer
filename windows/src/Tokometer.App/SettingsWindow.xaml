@@ -1,0 +1,16 @@
+<Window x:Class="Tokometer.App.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Ajustes do Tokometer" Width="380" SizeToContent="Height"
+        ResizeMode="NoResize" WindowStartupLocation="CenterScreen">
+    <StackPanel Margin="20">
+        <TextBlock Text="Provedores" FontWeight="SemiBold" Foreground="Black" Margin="0,0,0,6" />
+        <TextBlock Text="Os provedores marcados aparecem no painel e no ícone da bandeja."
+                   Foreground="#FF555555" TextWrapping="Wrap" Margin="0,0,0,8" />
+        <StackPanel x:Name="ProviderList" Margin="0,0,0,16" />
+        <TextBlock Text="Sistema" FontWeight="SemiBold" Foreground="Black" Margin="0,0,0,6" />
+        <CheckBox x:Name="StartWithWindows" Content="Iniciar com o Windows" />
+        <TextBlock Foreground="#FF555555" TextWrapping="Wrap" Margin="0,16,0,0" FontSize="11"
+                   Text="O Tokometer lê o login do Claude Code, do Codex CLI e do Cursor deste computador. Nada sai do PC além das consultas a cada serviço." />
+    </StackPanel>
+</Window>
