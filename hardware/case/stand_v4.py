@@ -107,7 +107,7 @@ def build_front(g, v3, comp, planes):
     return panel
 
 
-def cut_screen(g, v3, comp, panel):
+def cut_screen(g, v3, comp, panel, throat_edge_radius=0.2):
     center = g.screen_center_point()
     outer_sketch = comp.sketches.addWithoutEdges(g.front_faces(panel)[0])
     outer = g.sketch_rect_at(outer_sketch, center, *g.FUNNEL_OUTER, 1.2)
@@ -126,7 +126,7 @@ def cut_screen(g, v3, comp, panel):
     v3.fillet(g, comp, list(g.funnel_edges(panel, 0, g.FUNNEL_OUTER)),
               0.3, "Crisp screen surround edge break")
     v3.fillet(g, comp, list(g.funnel_edges(panel, -g.FUNNEL_DEPTH, g.OPENING)),
-              0.2, "Screen throat subtle edge break")
+              throat_edge_radius, "Screen throat subtle edge break")
 
 
 def color_feature(feature, appearance):

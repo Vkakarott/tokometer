@@ -1,8 +1,10 @@
 # Tokometer enclosure revisions
 
-The latest revision is **v4, an exterior design study**. It is not a JD9853
-hardware-fit model or a print-ready enclosure. The user requested aesthetic
-approval before enlarging the case and adapting the electronics.
+The latest revision is **v5, a serviceable assembly prototype**. It includes
+physical guides, locating pins, screw holes and captive-nut pockets. The v4
+exterior study remains preserved. The enclosure is not yet released for final
+printing: measured electronics footprints are used, but module thicknesses,
+offsets, connectors and printed tolerances still need verification.
 
 ## Preserved baseline
 
@@ -157,3 +159,94 @@ interference analysis found no volumetric overlaps. The exported native
 archive was reopened successfully with all four solids and a healthy timeline.
 These checks validate
 the CAD study, not fit, assembly, ventilation, printability or manufacturability.
+
+## Serviceable enclosure prototype (v5)
+
+Open **`tokometer_stand_v5_assembly`**, not the older v4 design study, to inspect
+the mechanical closure. `stand_v5.py` and `stand_v5_spec.py` generate a separate
+document and write only to `v5/`; all earlier revisions remain unchanged.
+
+### Mechanical closure
+
+- The front frame attaches to the base using two underside M3 screws. Two
+  2.4 mm locating pins on the base enter 3.0 mm blind sockets in the frame.
+- Two 1.8 mm wide, 2.2 mm tall longitudinal rails on the base engage channels
+  in the rear cover with 0.3 mm clearance per side and above the rail.
+- Front side/top tongues align the cover with the bezel. The seam has a
+  nominal 0.25 mm separation; the cover's screw tabs seat on the base.
+- Four additional underside M3 screws lock the cover to the base. Each screw
+  threads into a metal hex nut inserted into an inward-facing pocket; there
+  are no printed threads or flexible snap hooks.
+- The underside holes are 3.4 mm through, with 6.2 mm diameter, 3.4 mm deep
+  head recesses. The six closure screw references are M3 × 16, modeled without
+  threads, with 5.5 mm diameter × 3 mm heads. Match actual fastener dimensions.
+- Nut channels are 5.8 mm wide and 2.8 mm high, sized around M3 nuts with
+  5.5 mm across flats and 2.4 mm thickness. These nominal nut dimensions are
+  documented by [Accu's DIN 934 specification](https://www.accu.co.uk/hexagon-nuts/766459-NUT203M3).
+  Check actual hardware and a printed fit sample before production printing.
+
+The guides locate the parts; **the metal screws and nuts provide retention**.
+The cover will not lock without the four cover screws installed.
+
+### Assembly and opening
+
+1. Insert the two front-frame nuts through their inward-facing slots. Seat
+   the frame on the two base pins and install its two underside screws.
+2. Fit the display behind the bezel and secure its separate retaining frame.
+   Fit the ESP32-C3 on the base and secure its separate retaining bracket.
+   These supports are provisional until module depths, offsets and headers
+   are measured; do not clamp the glass or unknown rear components.
+3. Connect and route the wiring inside, away from the rails, screw tips and
+   the moving cover. Keep the external USB cable disconnected.
+4. Insert four nuts into the cover pockets. Lower the cover onto the rail
+   entries behind the front assembly, then slide it forward to meet the bezel.
+5. Install the four cover screws from underneath. The two frame screws stay
+   installed for normal servicing.
+6. To open, disconnect USB, remove only the four cover screws, and slide the
+   cover rearward. The front, base and electronics supports remain together.
+
+The display retainer uses four M3 clearances/nut pockets and the ESP retainer
+uses two. Their nominal fasteners are M3 × 6 and M3 × 8 respectively; confirm
+the final stack after measurement. A nominal 0.2 mm gap behind each mock PCB
+allows a fitted insulating shim; it is not a verified PCB clamping fit.
+
+### Size and unresolved measurements
+
+The new design envelope is approximately 68 mm wide × 84 mm tall × 65 mm
+deep. The display window is 40.0 × 31.8 mm, with reference PCB footprints of
+48.9 × 33.0 mm for the JD9853 and 16.0 × 20.7 mm for the ESP32-C3.
+
+`stand_v5_spec.py` explicitly labels the **unmeasured modeling assumptions**:
+4 mm display stack, 1.6 mm PCB thicknesses, centered display PCB, ESP PCB
+underside at 14 mm and USB center at 17.2 mm above the bottom. The 13 × 7 mm
+rear opening is retained as a provisional cable envelope. None of those
+assumptions is added to the measured record in `../dimensions.md`.
+
+Still required: display margins/stack/connector envelope; ESP headers, buttons,
+component heights and USB projection; actual cable clearance and print-fit
+testing. The internal retainers must be revised as necessary from those
+measurements. Decorative side grooves are not through-ventilation.
+
+### Outputs and checks
+
+- `v5/tokometer_stand_v5_assembly.f3d`: editable native assembly prototype.
+- `v5/open.png`: cover hidden, exposing base rails and internal supports.
+- `v5/cover_inside.png`: cover alone, exposing guide channels and nut pockets.
+- `v5/underside.png`: six recessed closure screw locations.
+- `v5/front.png`, `v5/rear.png`, `v5/preview.png`: assembled views.
+- `v5/validation.json`: native solid, interference and sampled opening checks.
+
+The generator checks all solids and the Fusion timeline, then samples the
+rearward cover travel at 85 positions between 0 and 80 mm. The cover screws
+and nuts are excluded from that motion test; the front fasteners remain.
+The test includes modeled supports and PCB references, not unmeasured wires,
+headers or connectors. It is a sampled CAD test, not a physical fit guarantee.
+No final-print meshes are exported. Hardware reference bodies must never be
+included in any later print export.
+
+Run the generator in a **new empty Fusion design**, with `stand.py` through
+`stand_v4.py` beside it. Run the local checks with:
+
+```sh
+python3 -m unittest discover -s hardware/case -p 'test_*.py'
+```

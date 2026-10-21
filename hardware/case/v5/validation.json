@@ -1,0 +1,320 @@
+{
+  "design": "tokometer_stand_v5_assembly",
+  "status": "Serviceable assembly prototype; electronics fit unverified",
+  "timeline_features": 409,
+  "timeline_issues": [],
+  "parts": [
+    {
+      "name": "v5_front_frame",
+      "volume_mm3": 16066.871,
+      "size_mm": [
+        67.6,
+        74.333,
+        14.262
+      ]
+    },
+    {
+      "name": "v5_rear_cover",
+      "volume_mm3": 34937.578,
+      "size_mm": [
+        68.0,
+        75.0,
+        60.596
+      ]
+    },
+    {
+      "name": "v5_service_base",
+      "volume_mm3": 36085.187,
+      "size_mm": [
+        66.0,
+        15.8,
+        61.344
+      ]
+    },
+    {
+      "name": "v5_display_retainer_provisional",
+      "volume_mm3": 1289.917,
+      "size_mm": [
+        63.0,
+        40.039,
+        6.389
+      ]
+    },
+    {
+      "name": "v5_esp_retainer_provisional",
+      "volume_mm3": 463.684,
+      "size_mm": [
+        31.6,
+        2.4,
+        21.7
+      ]
+    },
+    {
+      "name": "reference_jd9853_pcb_depth_unmeasured",
+      "volume_mm3": 2581.889,
+      "size_mm": [
+        48.9,
+        32.995,
+        4.893
+      ]
+    },
+    {
+      "name": "reference_jd9853_screen_depth_unmeasured",
+      "volume_mm3": 2861.957,
+      "size_mm": [
+        40.0,
+        31.866,
+        5.419
+      ]
+    },
+    {
+      "name": "reference_esp32c3_pcb_depth_unmeasured",
+      "volume_mm3": 529.92,
+      "size_mm": [
+        16.0,
+        1.6,
+        20.7
+      ]
+    },
+    {
+      "name": "reference_cover_screw_1_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_nut_1_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_screw_2_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_nut_2_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_screw_3_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_nut_3_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_screw_4_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_nut_4_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_front_screw_1_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_front_nut_1_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_front_screw_2_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_front_nut_2_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    }
+  ],
+  "unexpected_interferences": [],
+  "opening_test": {
+    "direction": "rearward (-Z), unplug USB and remove four underside screws first",
+    "sampled_travel_mm": [
+      0.0,
+      0.1,
+      0.25,
+      0.5,
+      0.75,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80
+    ],
+    "collisions": [],
+    "scope": "CAD solids only; excludes unmeasured wiring, headers and connectors"
+  },
+  "display_window_mm": [
+    40.0,
+    31.8
+  ],
+  "display_pcb_measured_mm": [
+    48.9,
+    33.0
+  ],
+  "esp_pcb_measured_mm": [
+    16.0,
+    20.7
+  ],
+  "shell_screw_count": 4,
+  "front_screw_count": 2,
+  "bottom_screw_length_mm": 16.0,
+  "slide_clearance_per_side_mm": 0.3,
+  "usb_opening_mm": [
+    13.0,
+    7.0
+  ],
+  "usb_center_height_mm": 17.2,
+  "provisional": {
+    "display_stack_mm": 4.0,
+    "display_pcb_offset_mm": [
+      0.0,
+      0.0
+    ],
+    "pcb_thickness_mm": 1.6,
+    "esp_board_bottom_mm": 14.0,
+    "esp_usb_height_above_pcb_mm": 1.6
+  },
+  "missing_measurements": [
+    "Display visible-area margins relative to the PCB",
+    "Display total stack, rear components and connector envelope",
+    "ESP32-C3 PCB/component thickness, headers, USB projection and buttons",
+    "Actual cable plug envelope and printed fit tolerances"
+  ],
+  "print_meshes_exported": false,
+  "physical_fit_verified": false
+}
