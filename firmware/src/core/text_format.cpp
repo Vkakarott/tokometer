@@ -78,8 +78,3 @@ void formatCountdown(uint32_t seconds, char *out, size_t size) {
     snprintf(out, size, "%u:%02u", static_cast<unsigned>(seconds / 60),
              static_cast<unsigned>(seconds % 60));
 }
-
-const char *stripUrlScheme(const char *url) {
-    const char *separator = strstr(url, "://");
-    return separator == nullptr ? url : separator + 3;
-}

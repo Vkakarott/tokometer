@@ -101,12 +101,6 @@ static void test_countdown() {
     TEST_ASSERT_EQUAL_STRING("0:00", text);
 }
 
-static void test_strip_url_scheme() {
-    TEST_ASSERT_EQUAL_STRING("tok.local/pair", stripUrlScheme("http://tok.local/pair"));
-    TEST_ASSERT_EQUAL_STRING("tok.local", stripUrlScheme("https://tok.local"));
-    TEST_ASSERT_EQUAL_STRING("tok.local", stripUrlScheme("tok.local"));
-}
-
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_primary_value_rounds_percentage);
@@ -117,6 +111,5 @@ int main() {
     RUN_TEST(test_age);
     RUN_TEST(test_user_code_gets_display_hyphen);
     RUN_TEST(test_countdown);
-    RUN_TEST(test_strip_url_scheme);
     return UNITY_END();
 }

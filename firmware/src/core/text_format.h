@@ -25,5 +25,3 @@ void formatUserCode(const char *userCode, char *out, size_t size);
 
 // 299 -> "4:59".
 void formatCountdown(uint32_t seconds, char *out, size_t size);
-
-const char *stripUrlScheme(const char *url);

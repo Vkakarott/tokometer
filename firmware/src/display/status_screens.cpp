@@ -186,8 +186,6 @@ void drawPairingWindow(Adafruit_GFX &canvas, const AppState &state, uint32_t now
     canvas.fillRoundRect(WINDOW_X + 16, CONTENT_TOP + 60, WINDOW_WIDTH - 32, 50, 6, Ink);
     drawText(canvas, code, CENTER_X, CONTENT_TOP + 72, &FreeSansBold18pt7b, Align::Center, Paper);
     drawText(canvas, expiry, CENTER_X, CONTENT_TOP + 124, BODY_FONT, Align::Center);
-    drawText(canvas, stripUrlScheme(state.pairCode.verificationUri), CENTER_X, CONTENT_TOP + 152, nullptr,
-             Align::Center);
 }
 
 // Double frame, like the system alert box.
