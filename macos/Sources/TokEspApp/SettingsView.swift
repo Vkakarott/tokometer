@@ -16,7 +16,7 @@ struct SettingsView: View {
                 LabeledContent("Estado") {
                     Text(store.sourceMessage)
                 }
-                Text("Claude, Codex e Cursor são consultados diretamente a partir das sessões deste Mac. O backend antigo não é usado para alimentar o tokonotch.")
+                Text("Claude, Codex, Cursor e Antigravity (Gemini e Claude/GPT) são consultados diretamente a partir das sessões deste Mac; o Antigravity é lido pela CLI agy. O backend antigo não é usado para alimentar o tokonotch.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Toggle("Usar dados de demonstração", isOn: $preferences.demoMode)
