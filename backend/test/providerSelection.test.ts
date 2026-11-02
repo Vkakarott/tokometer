@@ -3,7 +3,13 @@ import assert from 'node:assert/strict';
 import { ProviderSelection } from '../src/core/providerSelection.ts';
 
 test('enables every provider for an identity that never chose', () => {
-  assert.deepEqual(new ProviderSelection().enabledFor('default'), ['claude', 'codex', 'cursor']);
+  assert.deepEqual(new ProviderSelection().enabledFor('default'), [
+    'claude',
+    'codex',
+    'cursor',
+    'antigravity-gemini',
+    'antigravity-claude',
+  ]);
 });
 
 test('returns the chosen providers in the canonical order', () => {

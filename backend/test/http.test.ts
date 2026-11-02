@@ -126,6 +126,34 @@ test('serves Claude, Codex, and Cursor side by side without mixing them', async 
   assert.equal(providers.cursor.windows[0].id, 'included');
 });
 
+test('keeps the two Antigravity quota groups apart as separate providers', async () => {
+  const server = build();
+  const ingest = (provider: string, usedPercentage: number) =>
+    server.inject({
+      method: 'POST',
+      url: '/ingest',
+      headers: { authorization: 'Bearer collector-secret' },
+      payload: {
+        provider,
+        source: 'laptop',
+        observedAt: NOW,
+        windows: [
+          { id: 'five_hour', usedPercentage, resetsAt: NOW + 18_000 },
+          { id: 'seven_day', usedPercentage: usedPercentage / 2, resetsAt: NOW + 604_800 },
+        ],
+      },
+    });
+
+  assert.equal((await ingest('antigravity-gemini', 40)).statusCode, 204);
+  assert.equal((await ingest('antigravity-claude', 70)).statusCode, 204);
+
+  const { providers } = (await server.inject({ method: 'GET', url: '/usage/local' })).json();
+  assert.deepEqual(Object.keys(providers), ['claude', 'codex', 'cursor', 'antigravity-gemini', 'antigravity-claude']);
+  assert.equal(providers['antigravity-gemini'].windows[0].usedPercentage, 40);
+  assert.equal(providers['antigravity-claude'].windows[1].usedPercentage, 35);
+  assert.equal(providers.claude.hasData, false, 'Antigravity Claude quota is not the Claude subscription');
+});
+
 test('preserves Cursor billing windows through ingest, stale data, and reset', async () => {
   const nowRef = { value: NOW };
   const server = build(nowRef);
