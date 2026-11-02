@@ -38,7 +38,7 @@ providers nativos do aplicativo.
 
 ## Envio ao display
 
-O app envia ao backend (`POST /ingest`) o que coleta de Claude, Codex e Cursor,
+O app envia ao backend (`POST /ingest`) o que coleta de Claude, Codex, Cursor e Antigravity,
 e é isso que alimenta o display ESP32. Ele usa a mesma URL e o mesmo token dos
 collectors, lidos de `~/.config/tokesp/config.sh` (veja `collector/README.md`);
 sem esse arquivo, nada é enviado. Cada leitura vai uma vez só, e leituras sem
@@ -48,6 +48,21 @@ tem. Falhas aparecem no Console do macOS (subsistema `com.tokesp.app`).
 Os provedores marcados como visíveis nos Ajustes também são os únicos que o
 display mostra. O app envia essa lista (`PUT /providers`) ao abrir e a cada
 mudança; se o envio falhar, tenta de novo na próxima atualização.
+
+## Antigravity
+
+O Antigravity divide a cota em dois grupos, cada um com limite de 5 horas e
+semanal: modelos Gemini e modelos Claude/GPT. O app mostra cada grupo como um
+provedor separado (`Antigravity Gemini` e `Antigravity Claude/GPT`).
+
+A leitura vem de `agy -p /usage --output-format json`, o relatório de uso da
+própria CLI do Antigravity, que não gasta cota de modelo. O app nunca lê o login
+do Google: a CLI cuida da própria sessão. Por isso é preciso ter o `agy`
+instalado (em `~/.local/bin`, `/opt/homebrew/bin` ou `/usr/local/bin`) e
+autenticado. Uma execução atende os dois grupos, a cada 5 minutos.
+
+Quem já usava o app antes dessa versão precisa ativar os dois provedores nos
+Ajustes; instalações novas já os mostram.
 
 ## Verificar
 

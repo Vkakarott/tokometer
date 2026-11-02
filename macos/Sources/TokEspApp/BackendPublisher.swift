@@ -85,7 +85,7 @@ private extension ProviderID {
         switch self {
         case .claude: "claude-code"
         case .codex: "codex"
-        case .cursor: "cursor"
+        case .cursor, .antigravityGemini, .antigravityClaude: rawValue
         }
     }
 }

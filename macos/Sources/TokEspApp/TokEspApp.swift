@@ -91,7 +91,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let preferences = AppPreferences()
     let publisher = BackendPublisher()
     lazy var polling = NativePollingController(
-        providers: [ClaudeUsageProvider(), CodexUsageProvider(), CursorUsageProvider()],
+        providers: [
+            ClaudeUsageProvider(),
+            CodexUsageProvider(),
+            CursorUsageProvider(),
+            AntigravityUsageProvider(group: .gemini, reader: .shared),
+            AntigravityUsageProvider(group: .claude, reader: .shared),
+        ],
         store: store,
         publisher: publisher
     )

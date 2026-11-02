@@ -77,6 +77,16 @@ private func body(_ request: URLRequest) throws -> [String: Any] {
     #expect((payload["windows"] as? [[String: Any]])?.map { $0["id"] as? String } == ["included", "on_demand"])
 }
 
+@Test func sendsEachAntigravityGroupUnderItsOwnProviderName() async throws {
+    let fake = FakeBackend()
+    let sender = publisher(fake)
+    await sender.publish(snapshot(.antigravityGemini, windows: [window("five_hour", 0.25)]))
+    await sender.publish(snapshot(.antigravityClaude, windows: [window("five_hour", 0.6)]))
+
+    let providers = try fake.requests.map { try body($0)["provider"] as? String }
+    #expect(providers == ["antigravity-gemini", "antigravity-claude"])
+}
+
 @Test func dropsIncompleteWindowsAndSkipsWhenNoneRemain() async throws {
     let fake = FakeBackend()
     let sender = publisher(fake)

@@ -403,6 +403,8 @@ private enum ProviderAccent {
             case .claude: Color(red: 0.93, green: 0.34, blue: 0.12)
             case .codex: Color(red: 0.18, green: 0.82, blue: 0.43)
             case .cursor: .white
+            case .antigravityGemini: Color(red: 0.26, green: 0.56, blue: 1.0)
+            case .antigravityClaude: Color(red: 1.0, green: 0.72, blue: 0.26)
             }
         }
     }
@@ -424,6 +426,6 @@ struct ProviderIcon: View {
     }
 
     private var iconURL: URL {
-        Bundle.module.url(forResource: provider.rawValue, withExtension: "png")!
+        Bundle.module.url(forResource: provider.iconName, withExtension: "png")!
     }
 }
