@@ -182,6 +182,20 @@ int main(int argc, char **argv) {
         render(outputDir, "reset-window", reset, Codex, false, context);
         render(outputDir, "missing-window", reset, Codex, true, context);
 
+        ProvidersUsage antigravity = usage;
+        antigravity.items[3] = {ProviderId::AntigravityGemini, provider(25, 10)};
+        antigravity.items[4] = {ProviderId::AntigravityClaude, provider(60, 47)};
+        antigravity.count = 5;
+        render(outputDir, "antigravity-gemini-5h", antigravity, UsageLayout::AntigravityGeminiDashboard, false, context);
+        render(outputDir, "antigravity-claude-7d", antigravity, UsageLayout::AntigravityClaudeDashboard, true, context);
+        render(outputDir, "antigravity-side-cards", antigravity, Cursor, false, context);
+        render(outputDir, "five-overview", antigravity, Overview, false, context);
+        const ProvidersUsage antigravityOnly =
+            keepOnly(antigravity, {ProviderId::AntigravityGemini, ProviderId::AntigravityClaude});
+        render(outputDir, "antigravity-overview", antigravityOnly, Overview, false, context);
+        render(outputDir, "antigravity-pair-claude-5h", antigravityOnly,
+               UsageLayout::AntigravityClaudeDashboard, false, context);
+
         FrameContext unsynced;
         render(outputDir, "clock-unsynced", usage, Codex, false, unsynced);
 

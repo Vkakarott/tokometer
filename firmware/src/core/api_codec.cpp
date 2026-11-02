@@ -58,6 +58,8 @@ constexpr ProviderKey PROVIDER_KEYS[PROVIDER_COUNT] = {
     {"codex", ProviderId::Codex},
     {"claude", ProviderId::Claude},
     {"cursor", ProviderId::Cursor},
+    {"antigravity-gemini", ProviderId::AntigravityGemini},
+    {"antigravity-claude", ProviderId::AntigravityClaude},
 };
 
 bool parseProvider(JsonVariantConst json, UsageView &out) {

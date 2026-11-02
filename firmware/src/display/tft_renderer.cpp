@@ -28,6 +28,9 @@ constexpr Provider Providers[PROVIDER_COUNT] = {
     {"Codex", Mint, MintDim, ProviderIcons::Codex},
     {"Claude", Orange, OrangeDim, ProviderIcons::Claude},
     {"Cursor", Purple, PurpleDim, ProviderIcons::Cursor},
+    // The palette is full, so the Antigravity groups reuse the accent colours.
+    {"AG Gemini", Cyan, CyanDim, ProviderIcons::Antigravity},
+    {"AG Claude", OrangeHot, OrangeDim, ProviderIcons::Antigravity},
 };
 
 const Provider &style(ProviderId id) {
@@ -210,7 +213,9 @@ void windowCard(Adafruit_GFX &c, int y, int h, const ProviderUsage &entry, bool 
     const bool tall = h > 76;
     panel(c, 198, y, 84, h, p);
     icon(c, 205, y + 8, p);
-    text(c, p.name, 231, y + 11, Text);
+    // A longer name starts further left so it stays inside the card.
+    const int nameLeft = std::min(231, 281 - static_cast<int>(textWidth(c, p.name, nullptr)));
+    text(c, p.name, nameLeft, y + 11, Text);
     text(c, periodFor(entry.id, secondary), 231, y + 22, Muted);
     percentage(c, window, 240, y + (tall ? 62 : 32), p, false);
     char status[24];
@@ -282,6 +287,8 @@ constexpr int OVERVIEW_TOP = 44;
 constexpr int OVERVIEW_HEIGHT = 153;
 constexpr int OVERVIEW_GAP = 6;
 constexpr int COMPACT_ROW_HEIGHT = 47;
+// More rows would be shorter than COMPACT_ROW_HEIGHT; the rest keep their dashboards.
+constexpr uint8_t OVERVIEW_MAX_ROWS = 3;
 
 void overviewRow(Adafruit_GFX &c, int y, int h, const ProviderUsage &entry, const FrameContext &context) {
     const auto &p = style(entry.id);
@@ -289,7 +296,9 @@ void overviewRow(Adafruit_GFX &c, int y, int h, const ProviderUsage &entry, cons
     const bool tall = h > COMPACT_ROW_HEIGHT + 10;
     panel(c, 16, y, 264, h, p);
     icon(c, 26, top + 10, p);
-    text(c, p.name, 54, top + 8, Text, tall ? &FreeSansBold9pt7b : nullptr);
+    // A bold name wider than this would run into the 5H column.
+    const bool boldName = tall && textWidth(c, p.name, &FreeSansBold9pt7b) <= 64;
+    text(c, p.name, 54, top + 8, Text, boldName ? &FreeSansBold9pt7b : nullptr);
     char status[24];
     statusText(entry.view, windowFor(entry, false), context.nowSeconds, status, sizeof status);
     text(c, status, 54, top + (tall ? 28 : 24), entry.view.stale ? Orange : Muted);
@@ -315,13 +324,19 @@ void overview(Adafruit_GFX &c, const ProvidersUsage &usage, const FrameContext &
         noProviders(c);
         return;
     }
-    const int rowHeight = (OVERVIEW_HEIGHT - OVERVIEW_GAP * (usage.count - 1)) / usage.count;
-    char names[40] = "";
-    for (uint8_t index = 0; index < usage.count; ++index) {
+    const uint8_t rows = std::min(usage.count, OVERVIEW_MAX_ROWS);
+    const int rowHeight = (OVERVIEW_HEIGHT - OVERVIEW_GAP * (rows - 1)) / rows;
+    char names[48] = "";
+    for (uint8_t index = 0; index < rows; ++index) {
         const ProviderUsage &entry = usage.items[index];
         overviewRow(c, OVERVIEW_TOP + index * (rowHeight + OVERVIEW_GAP), rowHeight, entry, context);
         if (index > 0) strncat(names, " / ", sizeof names - strlen(names) - 1);
         strncat(names, style(entry.id).name, sizeof names - strlen(names) - 1);
+    }
+    if (usage.count > rows) {
+        char more[8];
+        snprintf(more, sizeof more, " +%u", static_cast<unsigned>(usage.count - rows));
+        strncat(names, more, sizeof names - strlen(names) - 1);
     }
     for (char *letter = names; *letter != '\0'; ++letter) *letter = toupper(*letter);
     text(c, names, 148, 216, Muted, nullptr, true);

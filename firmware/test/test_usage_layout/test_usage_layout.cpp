@@ -26,6 +26,14 @@ static void test_cycles_through_every_layout_with_all_providers() {
     assertLayout(UsageLayout::Overview, nextLayout(UsageLayout::CursorDashboard, usage));
 }
 
+static void test_cycles_through_the_antigravity_dashboards_after_cursor() {
+    const auto usage = usageWith({ProviderId::Cursor, ProviderId::AntigravityGemini, ProviderId::AntigravityClaude});
+
+    assertLayout(UsageLayout::AntigravityGeminiDashboard, nextLayout(UsageLayout::CursorDashboard, usage));
+    assertLayout(UsageLayout::AntigravityClaudeDashboard, nextLayout(UsageLayout::AntigravityGeminiDashboard, usage));
+    assertLayout(UsageLayout::Overview, nextLayout(UsageLayout::AntigravityClaudeDashboard, usage));
+}
+
 static void test_skips_the_dashboard_of_a_disabled_provider() {
     const auto usage = usageWith({ProviderId::Codex, ProviderId::Claude});
 
@@ -69,6 +77,7 @@ static void test_rejects_an_out_of_range_saved_index() {
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_cycles_through_every_layout_with_all_providers);
+    RUN_TEST(test_cycles_through_the_antigravity_dashboards_after_cursor);
     RUN_TEST(test_skips_the_dashboard_of_a_disabled_provider);
     RUN_TEST(test_single_provider_has_only_its_dashboard);
     RUN_TEST(test_keeps_the_saved_layout_while_it_is_available);

@@ -151,6 +151,30 @@ static void test_parse_usage_lists_providers_in_screen_order() {
     TEST_ASSERT_TRUE(usage.items[2].id == ProviderId::Cursor);
 }
 
+static void test_parse_usage_reads_antigravity_groups_as_separate_providers() {
+    const char *json = R"({"providers":{
+        "antigravity-claude":{"windows":[
+            {"id":"five_hour","usedPercentage":60,"resetsAt":1793667551},
+            {"id":"seven_day","usedPercentage":null,"resetsAt":1794247151}],
+            "ageSeconds":5,"stale":false,"hasData":true},
+        "antigravity-gemini":{"windows":[
+            {"id":"five_hour","usedPercentage":25,"resetsAt":1793667551}],
+            "ageSeconds":5,"stale":false,"hasData":true},
+        "claude":{"windows":[],"ageSeconds":0,"stale":false,"hasData":false}}})";
+    ProvidersUsage usage;
+
+    TEST_ASSERT_TRUE(parseUsage(json, usage));
+    TEST_ASSERT_EQUAL_UINT8(3, usage.count);
+    TEST_ASSERT_TRUE(usage.items[0].id == ProviderId::Claude);
+    TEST_ASSERT_TRUE(usage.items[1].id == ProviderId::AntigravityGemini);
+    TEST_ASSERT_TRUE(usage.items[2].id == ProviderId::AntigravityClaude);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 25.0f, view(usage, ProviderId::AntigravityGemini).fiveHour.usedPercentage);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 60.0f, view(usage, ProviderId::AntigravityClaude).fiveHour.usedPercentage);
+    TEST_ASSERT_TRUE(view(usage, ProviderId::AntigravityClaude).sevenDay.present);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::AntigravityClaude).sevenDay.known);
+    TEST_ASSERT_FALSE(view(usage, ProviderId::Claude).hasData);
+}
+
 static void test_parse_usage_accepts_no_enabled_provider() {
     ProvidersUsage usage;
 
@@ -241,6 +265,7 @@ int main() {
     RUN_TEST(test_parse_usage_clamps_percentage);
     RUN_TEST(test_parse_usage_missing_provider_block_is_disabled);
     RUN_TEST(test_parse_usage_lists_providers_in_screen_order);
+    RUN_TEST(test_parse_usage_reads_antigravity_groups_as_separate_providers);
     RUN_TEST(test_parse_usage_accepts_no_enabled_provider);
     RUN_TEST(test_parse_usage_rejects_invalid_payloads);
     RUN_TEST(test_parse_pair_code);

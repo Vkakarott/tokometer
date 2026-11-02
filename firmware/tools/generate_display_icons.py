@@ -9,7 +9,7 @@ SIZE = 22
 
 lines = ["#pragma once", "", "#include <cstdint>", "", "namespace ProviderIcons {",
          f"constexpr uint8_t Size = {SIZE};"]
-for name in ("codex", "claude", "cursor"):
+for name in ("codex", "claude", "cursor", "antigravity"):
     alpha = Image.open(SOURCE / f"{name}.png").convert("RGBA").getchannel("A")
     alpha = alpha.resize((SIZE, SIZE), Image.Resampling.LANCZOS)
     values = [min(3, (value + 42) // 85) for value in alpha.getdata()]

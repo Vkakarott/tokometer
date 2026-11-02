@@ -25,10 +25,12 @@ struct UsageView {
 
 // Providers the firmware can draw. The order is the order on screen and in the
 // BOOT button cycle. Supporting a new provider means a new id here, its JSON
-// key in api_codec and its name, colours and icon in the renderer.
-enum class ProviderId : uint8_t { Codex, Claude, Cursor };
+// key in api_codec and its name, colours and icon in the renderer. New ids go
+// last: a dashboard's saved layout index is derived from this order.
+// Antigravity's Gemini and Claude/GPT quota groups are separate providers.
+enum class ProviderId : uint8_t { Codex, Claude, Cursor, AntigravityGemini, AntigravityClaude };
 
-constexpr uint8_t PROVIDER_COUNT = 3;
+constexpr uint8_t PROVIDER_COUNT = 5;
 
 struct ProviderUsage {
     ProviderId id = ProviderId::Codex;
