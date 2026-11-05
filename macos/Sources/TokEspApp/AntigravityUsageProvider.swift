@@ -1,25 +1,29 @@
 import Foundation
 
-/// Antigravity shares one quota among the Gemini models and another among the
-/// Claude and GPT models; each group is shown as its own provider.
+/// Antigravity splits its quota across the Gemini models, the Claude and GPT
+/// models, and the separate Gemini 4 Argon allowance; each group is shown as
+/// its own provider.
 enum AntigravityQuotaGroup: Sendable {
     case gemini
     case claude
+    case argon
 
     var providerID: ProviderID {
         switch self {
         case .gemini: .antigravityGemini
         case .claude: .antigravityClaude
+        case .argon: .antigravityArgon
         }
     }
 
     /// Model-specific groups such as "Gemini 4 Argon" carry a number and are a
-    /// separate allowance, so only the unnumbered Gemini group matches.
+    /// separate allowance, so only the unnumbered Gemini group matches `.gemini`.
     func matches(groupName: String) -> Bool {
         let name = groupName.lowercased()
         switch self {
-        case .gemini: return name.contains("gemini") && !name.contains(where: \.isNumber)
+        case .gemini: return name.contains("gemini") && !name.contains("argon") && !name.contains(where: \.isNumber)
         case .claude: return name.contains("claude") || name.contains("gpt")
+        case .argon: return name.contains("argon")
         }
     }
 }

@@ -97,6 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             CursorUsageProvider(),
             AntigravityUsageProvider(group: .gemini, reader: .shared),
             AntigravityUsageProvider(group: .claude, reader: .shared),
+            AntigravityUsageProvider(group: .argon, reader: .shared),
         ],
         store: store,
         publisher: publisher

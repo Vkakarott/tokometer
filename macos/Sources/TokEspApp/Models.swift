@@ -6,6 +6,7 @@ enum ProviderID: String, CaseIterable, Codable, CodingKey, Identifiable {
     case cursor
     case antigravityGemini = "antigravity-gemini"
     case antigravityClaude = "antigravity-claude"
+    case antigravityArgon = "antigravity-argon"
 
     var id: String { rawValue }
 
@@ -28,13 +29,14 @@ enum ProviderID: String, CaseIterable, Codable, CodingKey, Identifiable {
         case .cursor: "Cursor"
         case .antigravityGemini: "Antigravity Gemini"
         case .antigravityClaude: "Antigravity Claude/GPT"
+        case .antigravityArgon: "Antigravity Argon"
         }
     }
 
-    /// Bundled PNG; both Antigravity quota groups share the Antigravity mark.
+    /// Bundled PNG; all Antigravity quota groups share the Antigravity mark.
     var iconName: String {
         switch self {
-        case .antigravityGemini, .antigravityClaude: "antigravity"
+        case .antigravityGemini, .antigravityClaude, .antigravityArgon: "antigravity"
         default: rawValue
         }
     }

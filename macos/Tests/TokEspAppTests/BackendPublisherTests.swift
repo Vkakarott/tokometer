@@ -82,9 +82,10 @@ private func body(_ request: URLRequest) throws -> [String: Any] {
     let sender = publisher(fake)
     await sender.publish(snapshot(.antigravityGemini, windows: [window("five_hour", 0.25)]))
     await sender.publish(snapshot(.antigravityClaude, windows: [window("five_hour", 0.6)]))
+    await sender.publish(snapshot(.antigravityArgon, windows: [window("seven_day", 0.04)]))
 
     let providers = try fake.requests.map { try body($0)["provider"] as? String }
-    #expect(providers == ["antigravity-gemini", "antigravity-claude"])
+    #expect(providers == ["antigravity-gemini", "antigravity-claude", "antigravity-argon"])
 }
 
 @Test func dropsIncompleteWindowsAndSkipsWhenNoneRemain() async throws {

@@ -51,17 +51,18 @@ mudança; se o envio falhar, tenta de novo na próxima atualização.
 
 ## Antigravity
 
-O Antigravity divide a cota em dois grupos, cada um com limite de 5 horas e
-semanal: modelos Gemini e modelos Claude/GPT. O app mostra cada grupo como um
-provedor separado (`Antigravity Gemini` e `Antigravity Claude/GPT`).
+O Antigravity divide a cota em grupos independentes: modelos Gemini, modelos
+Claude/GPT e a cota semanal separada do Gemini 4 Argon. O app mostra cada grupo
+como um provedor separado (`Antigravity Gemini`, `Antigravity Claude/GPT` e
+`Antigravity Argon`).
 
 A leitura vem de `agy -p /usage --output-format json`, o relatório de uso da
 própria CLI do Antigravity, que não gasta cota de modelo. O app nunca lê o login
 do Google: a CLI cuida da própria sessão. Por isso é preciso ter o `agy`
 instalado (em `~/.local/bin`, `/opt/homebrew/bin` ou `/usr/local/bin`) e
-autenticado. Uma execução atende os dois grupos, a cada 5 minutos.
+autenticado. Uma execução atende todos os grupos, a cada 5 minutos.
 
-Quem já usava o app antes dessa versão precisa ativar os dois provedores nos
+Quem já usava o app antes dessa versão precisa ativar os provedores nos
 Ajustes; instalações novas já os mostram.
 
 ## Verificar

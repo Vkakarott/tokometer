@@ -405,6 +405,7 @@ private enum ProviderAccent {
             case .cursor: .white
             case .antigravityGemini: Color(red: 0.26, green: 0.56, blue: 1.0)
             case .antigravityClaude: Color(red: 1.0, green: 0.72, blue: 0.26)
+            case .antigravityArgon: Color(red: 0.69, green: 0.45, blue: 1.0)
             }
         }
     }

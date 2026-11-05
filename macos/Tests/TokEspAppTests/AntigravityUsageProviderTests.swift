@@ -93,9 +93,17 @@ private func provider(_ group: AntigravityQuotaGroup, _ fake: FakeAgy, reader: A
     let argon = #"""
     ,{"name": "Gemini 4 Argon", "buckets": [{"id": "gemini-argon-wtu-weekly", "window": "weekly", "remaining_fraction": 0.01, "reset_time": "2026-11-09T21:59:11Z"}]}
     """#
-    let snapshot = try await provider(.gemini, FakeAgy(report(extraGroups: argon))).fetch(now: now)
+    let fake = FakeAgy(report(extraGroups: argon))
+    let reader = AntigravityUsageReader(run: { try fake.run() })
+    let gemini = try await provider(.gemini, fake, reader: reader).fetch(now: now)
+    let argonSnapshot = try await provider(.argon, fake, reader: reader).fetch(now: now)
 
-    #expect(abs((snapshot.windows[1].usedFraction ?? 0) - 0.1) < 0.000_1)
+    #expect(abs((gemini.windows[1].usedFraction ?? 0) - 0.1) < 0.000_1)
+    #expect(argonSnapshot.id == .antigravityArgon)
+    #expect(argonSnapshot.windows.map(\.id) == ["seven_day"])
+    #expect(argonSnapshot.headlineID == "seven_day")
+    #expect(abs((argonSnapshot.windows[0].usedFraction ?? 0) - 0.99) < 0.000_1)
+    #expect(fake.runs == 1)
 }
 
 @Test func bothGroupsShareOneCliRun() async throws {
