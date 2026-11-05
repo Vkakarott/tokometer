@@ -185,9 +185,13 @@ int main(int argc, char **argv) {
         ProvidersUsage antigravity = usage;
         antigravity.items[3] = {ProviderId::AntigravityGemini, provider(25, 10)};
         antigravity.items[4] = {ProviderId::AntigravityClaude, provider(60, 47)};
-        antigravity.count = 5;
+        UsageView argonView = provider(0, 4);
+        argonView.fiveHour = {};
+        antigravity.items[5] = {ProviderId::AntigravityArgon, argonView};
+        antigravity.count = 6;
         render(outputDir, "antigravity-gemini-5h", antigravity, UsageLayout::AntigravityGeminiDashboard, false, context);
         render(outputDir, "antigravity-claude-7d", antigravity, UsageLayout::AntigravityClaudeDashboard, true, context);
+        render(outputDir, "antigravity-argon-7d", antigravity, UsageLayout::AntigravityArgonDashboard, false, context);
         render(outputDir, "antigravity-side-cards", antigravity, Cursor, false, context);
         render(outputDir, "five-overview", antigravity, Overview, false, context);
         const ProvidersUsage antigravityOnly =

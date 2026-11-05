@@ -12,7 +12,8 @@ enum class UsageLayout : uint8_t {
     ClaudeDashboard,
     CursorDashboard,
     AntigravityGeminiDashboard,
-    AntigravityClaudeDashboard
+    AntigravityClaudeDashboard,
+    AntigravityArgonDashboard
 };
 
 constexpr uint8_t USAGE_LAYOUT_COUNT = 1 + PROVIDER_COUNT;

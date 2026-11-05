@@ -31,6 +31,7 @@ constexpr Provider Providers[PROVIDER_COUNT] = {
     // The palette is full, so the Antigravity groups reuse the accent colours.
     {"AG Gemini", Cyan, CyanDim, ProviderIcons::Antigravity},
     {"AG Claude", OrangeHot, OrangeDim, ProviderIcons::Antigravity},
+    {"AG Argon", Purple, PurpleDim, ProviderIcons::Antigravity},
 };
 
 const Provider &style(ProviderId id) {
@@ -40,6 +41,12 @@ const Provider &style(ProviderId id) {
 // Cursor bills by plan cycle instead of five-hour and seven-day windows.
 bool billsByCycle(ProviderId id) {
     return id == ProviderId::Cursor;
+}
+
+// A weekly-only provider has no 5-hour bucket, so default views fall back to 7D.
+bool effectiveSecondary(const ProviderUsage &entry, bool secondary) {
+    if (secondary || billsByCycle(entry.id)) return secondary;
+    return !entry.view.fiveHour.present && entry.view.sevenDay.present;
 }
 
 UsageWindow windowFor(const ProviderUsage &entry, bool secondary) {
@@ -209,14 +216,15 @@ void header(Adafruit_GFX &c, const FrameContext &context) {
 void windowCard(Adafruit_GFX &c, int y, int h, const ProviderUsage &entry, bool secondary,
                 const FrameContext &context) {
     const auto &p = style(entry.id);
-    const auto window = windowFor(entry, secondary);
+    const bool useSecondary = effectiveSecondary(entry, secondary);
+    const auto window = windowFor(entry, useSecondary);
     const bool tall = h > 76;
     panel(c, 198, y, 84, h, p);
     icon(c, 205, y + 8, p);
     // A longer name starts further left so it stays inside the card.
     const int nameLeft = std::min(231, 281 - static_cast<int>(textWidth(c, p.name, nullptr)));
     text(c, p.name, nameLeft, y + 11, Text);
-    text(c, periodFor(entry.id, secondary), 231, y + 22, Muted);
+    text(c, periodFor(entry.id, useSecondary), 231, y + 22, Muted);
     percentage(c, window, 240, y + (tall ? 62 : 32), p, false);
     char status[24];
     statusText(entry.view, window, context.nowSeconds, status, sizeof status);
@@ -261,7 +269,8 @@ void periodTabs(Adafruit_GFX &c, const ProviderUsage &entry, bool secondary) {
 void dashboard(Adafruit_GFX &c, const ProvidersUsage &usage, const ProviderUsage &entry, bool secondary,
                const FrameContext &context) {
     const auto &p = style(entry.id);
-    const auto window = windowFor(entry, secondary);
+    const bool useSecondary = effectiveSecondary(entry, secondary);
+    const auto window = windowFor(entry, useSecondary);
     panel(c, 14, 43, 174, 158, p);
     chamfer(c, 15, 44, 172, 156, 6, p.bright);
     const int labelWidth = 28 + textWidth(c, p.name, &FreeSansBold9pt7b);
@@ -272,13 +281,13 @@ void dashboard(Adafruit_GFX &c, const ProvidersUsage &usage, const ProviderUsage
     percentage(c, window, 100, 111, p, true);
     text(c, window.present ? "UTILIZADO" : "SEM DADOS", 100, 151, Muted, nullptr, true);
     c.drawFastHLine(65, 163, 71, Border);
-    text(c, billsByCycle(entry.id) ? "CICLO DO PLANO" : (secondary ? "ULTIMOS 7 DIAS" : "ULTIMAS 5 HORAS"),
+    text(c, billsByCycle(entry.id) ? "CICLO DO PLANO" : (useSecondary ? "ULTIMOS 7 DIAS" : "ULTIMAS 5 HORAS"),
          100, 171, Muted, nullptr, true);
     char status[24];
     statusText(entry.view, window, context.nowSeconds, status, sizeof status);
     text(c, status, 100, 189, entry.view.stale ? Orange : p.bright, nullptr, true);
     sideColumn(c, usage, entry, secondary, context);
-    periodTabs(c, entry, secondary);
+    periodTabs(c, entry, useSecondary);
 }
 
 // Rows share the space the three-provider layout uses, so fewer providers get
@@ -300,7 +309,7 @@ void overviewRow(Adafruit_GFX &c, int y, int h, const ProviderUsage &entry, cons
     const bool boldName = tall && textWidth(c, p.name, &FreeSansBold9pt7b) <= 64;
     text(c, p.name, 54, top + 8, Text, boldName ? &FreeSansBold9pt7b : nullptr);
     char status[24];
-    statusText(entry.view, windowFor(entry, false), context.nowSeconds, status, sizeof status);
+    statusText(entry.view, windowFor(entry, effectiveSecondary(entry, false)), context.nowSeconds, status, sizeof status);
     text(c, status, 54, top + (tall ? 28 : 24), entry.view.stale ? Orange : Muted);
     for (uint8_t period = 0; period < 2; ++period) {
         const auto w = windowFor(entry, period != 0);

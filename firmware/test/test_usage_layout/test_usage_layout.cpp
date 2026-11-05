@@ -27,11 +27,17 @@ static void test_cycles_through_every_layout_with_all_providers() {
 }
 
 static void test_cycles_through_the_antigravity_dashboards_after_cursor() {
-    const auto usage = usageWith({ProviderId::Cursor, ProviderId::AntigravityGemini, ProviderId::AntigravityClaude});
+    const auto usage = usageWith({
+        ProviderId::Cursor,
+        ProviderId::AntigravityGemini,
+        ProviderId::AntigravityClaude,
+        ProviderId::AntigravityArgon,
+    });
 
     assertLayout(UsageLayout::AntigravityGeminiDashboard, nextLayout(UsageLayout::CursorDashboard, usage));
     assertLayout(UsageLayout::AntigravityClaudeDashboard, nextLayout(UsageLayout::AntigravityGeminiDashboard, usage));
-    assertLayout(UsageLayout::Overview, nextLayout(UsageLayout::AntigravityClaudeDashboard, usage));
+    assertLayout(UsageLayout::AntigravityArgonDashboard, nextLayout(UsageLayout::AntigravityClaudeDashboard, usage));
+    assertLayout(UsageLayout::Overview, nextLayout(UsageLayout::AntigravityArgonDashboard, usage));
 }
 
 static void test_skips_the_dashboard_of_a_disabled_provider() {
