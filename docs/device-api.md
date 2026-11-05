@@ -70,7 +70,7 @@ por `user_code`.
 Header: `Authorization: Bearer <access_token>`
 
 Resposta `200`, com um bloco por provedor **ativo**, sempre na ordem Claude,
-Codex, Cursor, `antigravity-gemini`, `antigravity-claude`. Os ativos são os que
+Codex, Cursor, `antigravity-gemini`, `antigravity-claude`, `antigravity-argon`. Os ativos são os que
 estão visíveis nos Ajustes do app do Mac (veja `PUT /providers` abaixo); enquanto
 o app nunca enviou essa escolha, todos vêm. Um provedor ativo que nunca enviou nada chega com `hasData: false`. Um
 provedor desativado não aparece no objeto, e o display não deve reservar espaço
@@ -137,17 +137,16 @@ macOS app forwards its Cursor readings (see `macos/README.md`).
 
 ### Antigravity quota groups
 
-Antigravity reports two independent quota groups, so the contract exposes them
-as two providers: `antigravity-gemini` (Gemini models) and `antigravity-claude`
-(Claude and GPT models). Each one uses the same `five_hour` and `seven_day`
-window IDs as Claude and Codex. The collector name sent to `POST /ingest` equals
-the provider ID. Like every other provider, a percentage is the share of the
+Antigravity reports independent quota groups, so the contract exposes them
+as separate providers: `antigravity-gemini` (Gemini models), `antigravity-claude`
+(Claude and GPT models), and `antigravity-argon` (Gemini 4 Argon). Each one uses
+the same `five_hour` and `seven_day` window IDs as Claude and Codex (Argon only
+reports `seven_day`). The collector name sent to `POST /ingest` equals the
+provider ID. Like every other provider, a percentage is the share of the
 window's quota already used, not a token count.
 
-The macOS app reads both groups from `agy -p /usage --output-format json` (the
-Antigravity CLI's own usage report) and forwards them (see `macos/README.md`).
-Separate quota groups that Antigravity may add, such as a model-specific weekly
-group, are ignored.
+The macOS app reads all three groups from `agy -p /usage --output-format json`
+(the Antigravity CLI's own usage report) and forwards them (see `macos/README.md`).
 
 ### `PUT /providers` (app do Mac)
 

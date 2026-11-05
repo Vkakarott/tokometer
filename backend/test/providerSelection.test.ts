@@ -9,6 +9,7 @@ test('enables every provider for an identity that never chose', () => {
     'cursor',
     'antigravity-gemini',
     'antigravity-claude',
+    'antigravity-argon',
   ]);
 });
 

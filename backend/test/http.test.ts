@@ -126,7 +126,7 @@ test('serves Claude, Codex, and Cursor side by side without mixing them', async 
   assert.equal(providers.cursor.windows[0].id, 'included');
 });
 
-test('keeps the two Antigravity quota groups apart as separate providers', async () => {
+test('keeps the Antigravity quota groups apart as separate providers', async () => {
   const server = build();
   const ingest = (provider: string, usedPercentage: number) =>
     server.inject({
@@ -146,11 +146,20 @@ test('keeps the two Antigravity quota groups apart as separate providers', async
 
   assert.equal((await ingest('antigravity-gemini', 40)).statusCode, 204);
   assert.equal((await ingest('antigravity-claude', 70)).statusCode, 204);
+  assert.equal((await ingest('antigravity-argon', 10)).statusCode, 204);
 
   const { providers } = (await server.inject({ method: 'GET', url: '/usage/local' })).json();
-  assert.deepEqual(Object.keys(providers), ['claude', 'codex', 'cursor', 'antigravity-gemini', 'antigravity-claude']);
+  assert.deepEqual(Object.keys(providers), [
+    'claude',
+    'codex',
+    'cursor',
+    'antigravity-gemini',
+    'antigravity-claude',
+    'antigravity-argon',
+  ]);
   assert.equal(providers['antigravity-gemini'].windows[0].usedPercentage, 40);
   assert.equal(providers['antigravity-claude'].windows[1].usedPercentage, 35);
+  assert.equal(providers['antigravity-argon'].windows[1].usedPercentage, 5);
   assert.equal(providers.claude.hasData, false, 'Antigravity Claude quota is not the Claude subscription');
 });
 

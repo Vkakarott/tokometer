@@ -1,7 +1,13 @@
 export type WindowId = 'five_hour' | 'seven_day' | 'included' | 'api' | 'on_demand';
 
-/** Antigravity splits its quota into a Gemini group and a Claude/GPT group; each is its own provider. */
-export type ProviderId = 'claude' | 'codex' | 'cursor' | 'antigravity-gemini' | 'antigravity-claude';
+/** Antigravity splits its quota into Gemini, Claude/GPT, and Argon groups; each is its own provider. */
+export type ProviderId =
+  | 'claude'
+  | 'codex'
+  | 'cursor'
+  | 'antigravity-gemini'
+  | 'antigravity-claude'
+  | 'antigravity-argon';
 
 export const PROVIDER_IDS: readonly ProviderId[] = [
   'claude',
@@ -9,6 +15,7 @@ export const PROVIDER_IDS: readonly ProviderId[] = [
   'cursor',
   'antigravity-gemini',
   'antigravity-claude',
+  'antigravity-argon',
 ];
 
 /** Collectors name the tool they read from; views name the provider. */
@@ -18,6 +25,7 @@ export const PROVIDER_BY_COLLECTOR = {
   cursor: 'cursor',
   'antigravity-gemini': 'antigravity-gemini',
   'antigravity-claude': 'antigravity-claude',
+  'antigravity-argon': 'antigravity-argon',
 } as const satisfies Record<string, ProviderId>;
 
 export type CollectorName = keyof typeof PROVIDER_BY_COLLECTOR;
