@@ -1,12 +1,12 @@
 {
   "design": "tokometer_stand_v6_assembly",
   "status": "Layout A prototype; electronics fit unverified",
-  "timeline_features": 376,
+  "timeline_features": 367,
   "timeline_issues": [],
   "parts": [
     {
       "name": "v6_front_frame",
-      "volume_mm3": 16177.148,
+      "volume_mm3": 15544.976,
       "size_mm": [
         67.6,
         74.333,
@@ -15,7 +15,7 @@
     },
     {
       "name": "v6_rear_cover",
-      "volume_mm3": 34937.427,
+      "volume_mm3": 34924.223,
       "size_mm": [
         68.0,
         75.0,
@@ -24,56 +24,56 @@
     },
     {
       "name": "v6_service_base",
-      "volume_mm3": 36333.263,
+      "volume_mm3": 37774.814,
       "size_mm": [
         66.0,
-        17.0,
+        24.5,
         61.344
       ]
     },
     {
-      "name": "v6_esp_retainer_provisional",
-      "volume_mm3": 458.308,
+      "name": "reference_battery_envelope",
+      "volume_mm3": 18397.5,
       "size_mm": [
-        31.6,
-        2.4,
-        21.0
-      ]
-    },
-    {
-      "name": "reference_battery_board_envelope_estimated",
-      "volume_mm3": 16157.76,
-      "size_mm": [
-        42.0,
-        16.0,
+        44.6,
+        16.5,
         25.0
       ]
     },
     {
-      "name": "reference_esp32c3_pcb_depth_unmeasured",
-      "volume_mm3": 512.0,
+      "name": "reference_esp32c3_reserved_envelope",
+      "volume_mm3": 4698.9,
       "size_mm": [
-        16.0,
-        1.6,
-        20.0
+        18.0,
+        11.5,
+        22.7
       ]
     },
     {
       "name": "reference_jd9853_pcb_depth_unmeasured",
-      "volume_mm3": 1760.137,
+      "volume_mm3": 1977.706,
       "size_mm": [
-        48.87,
-        32.945,
-        4.395
+        51.0,
+        35.432,
+        4.645
       ]
     },
     {
       "name": "reference_jd9853_screen_depth_unmeasured",
-      "volume_mm3": 3282.072,
+      "volume_mm3": 2679.961,
       "size_mm": [
-        38.5,
-        31.12,
-        5.837
+        40.0,
+        33.532,
+        5.341
+      ]
+    },
+    {
+      "name": "reference_usb_c_board",
+      "volume_mm3": 576.473,
+      "size_mm": [
+        18.0,
+        4.2,
+        21.0
       ]
     },
     {
@@ -279,120 +279,192 @@
     "scope": "CAD solids only; excludes unmeasured wiring, headers and connectors"
   },
   "display_pcb_measured_mm": [
-    48.87,
-    33.0
+    51.0,
+    35.5
   ],
   "esp_pcb_measured_mm": [
-    16.0,
-    20.0
+    18.0,
+    22.7
   ],
   "battery_envelope_measured_mm": [
-    42.0,
-    24.0,
-    16.0
+    44.6,
+    25.0,
+    16.5
+  ],
+  "usb_board_measured_mm": [
+    18.0,
+    20.0,
+    1.0
   ],
   "shell_screw_count": 4,
   "front_screw_count": 2,
   "layout": {
-    "display_window_mm": [
-      38.5,
-      31.0
+    "display_opening_mm": [
+      40.0,
+      33.5
     ],
-    "display_window_is_case_opening": true,
-    "display_pcb_front_depth_mm": 6.9,
+    "display_opening_margins_to_pcb_mm": [
+      5.5,
+      1.0
+    ],
+    "display_pcb_front_depth_mm": 6.15,
     "display_posts_uv_mm": [
       [
-        -22.5,
-        -14.9
+        -23.75,
+        -15.85
       ],
       [
-        -22.5,
-        14.9
+        -23.75,
+        15.85
       ],
       [
-        22.5,
-        -14.9
+        23.75,
+        -15.85
       ],
       [
-        22.5,
-        14.9
+        23.75,
+        15.85
       ]
     ],
     "battery_x_range_mm": [
-      -21.0,
-      21.0
+      -22.3,
+      22.3
     ],
     "battery_z_range_mm": [
       -61.0,
-      -37.0
+      -36.0
     ],
     "battery_y_range_mm": [
-      11.0,
-      27.0
+      18.5,
+      35.0
+    ],
+    "usb_board_z_range_mm": [
+      -61.0,
+      -41.0
+    ],
+    "usb_board_y_range_mm": [
+      11.4,
+      12.4
+    ],
+    "usb_board_holes_xz_mm": [
+      [
+        -8.45,
+        -57.5
+      ],
+      [
+        8.45,
+        -57.5
+      ],
+      [
+        0.0,
+        -44.4
+      ]
     ],
     "usb_c_center_height_mm": 14.0,
     "usb_opening_mm": [
       13.0,
-      7.0
+      7.5
     ],
     "usb_opening_y_range_mm": [
-      10.5,
-      17.5
+      10.25,
+      17.75
     ],
     "esp_z_range_mm": [
-      -33.0,
-      -13.0
+      -31.5,
+      -8.8
     ],
-    "esp_y_range_mm": [
-      12.0,
-      13.6
+    "esp_reserved_y_range_mm": [
+      9.0,
+      20.5
     ],
     "clearances_mm": {
-      "usb_c_tip_to_rear_wall_at_battery_top": 0.3760831889081473,
-      "battery_to_cover_screw_tabs_per_side": 1.0,
+      "usb_c_tip_to_rear_wall_at_connector_top": 0.77123050259965,
+      "battery_bottom_over_cover_tabs": 0.5,
+      "battery_wing_overhang_past_tab_inner_edge_per_side": 0.3000000000000007,
+      "usb_connector_top_to_battery_bottom": 2.9000000000000004,
+      "usb_opening_top_to_battery_bottom": 0.75,
       "battery_to_front_stop": 0.5,
-      "wire_gap_front_stop_to_esp": 2.0,
-      "usb_opening_vs_usb_c_width_per_side": 1.8499999999999996
+      "esp_rim_rear_to_battery_front_stop": 1.5,
+      "esp_rim_to_front_screw_tabs_per_side": 1.0,
+      "opening_vs_plug_cover_per_side": 0.5,
+      "opening_vs_plug_cover_height_per_side": 0.5
     },
     "measured_by_user": {
+      "display_pcb_mm": [
+        51.0,
+        35.5
+      ],
+      "display_stack_mm": 3.25,
       "display_hole_diameter_mm": 2.0,
       "display_hole_edge_to_edge_mm": [
-        43.0,
-        27.8
+        45.5,
+        29.7
       ],
       "display_hole_centres_mm": [
-        45.0,
-        29.8
-      ]
+        47.5,
+        31.7
+      ],
+      "esp_pcb_mm": [
+        18.0,
+        22.7
+      ],
+      "esp_total_height_mm": 11.5,
+      "battery_envelope_mm": [
+        44.6,
+        25.0,
+        16.5
+      ],
+      "usb_board_mm": [
+        18.0,
+        20.0,
+        1.0
+      ],
+      "usb_board_hole_diameter_mm": 1.0,
+      "usb_board_holes_centres_mm": 16.9
     },
-    "estimated": {
-      "usb_c_body_width_mm": 9.3,
-      "usb_c_protrusion_mm": 1.0
+    "standard_not_measured": {
+      "usb_plug_metal_mm": [
+        8.4,
+        2.6
+      ],
+      "usb_plug_cover_mm": [
+        12.0,
+        6.5
+      ],
+      "opening_clearance_per_side_mm": 0.5
     },
     "assumptions": {
-      "display_stack_mm": 4.0,
-      "display_pcb_offset_mm": [
-        0.0,
-        0.0
-      ],
       "display_screw": "M1.6 self-tapping, head 3.0 mm",
       "post_diameter_mm": 3.0,
       "post_pilot_diameter_mm": 1.3,
-      "battery_bottom_mm": 11.0,
-      "usb_c_height_mm": 3.2,
-      "usb_c_above_battery_bottom_mm": 3.0,
-      "usb_c_x_mm": 0.0,
-      "esp_pcb_thickness_mm": 1.6,
-      "esp_board_bottom_mm": 12.0,
-      "esp_usb_edge_orientation": "not modeled"
+      "post_pilot_depth_mm": 2.8,
+      "display_stack_taken_as_glass_front_to_pcb_back": true,
+      "battery_raised_over_cover_tabs_by_mm": 0.5,
+      "usb_c_body_mm": [
+        9.3,
+        3.2
+      ],
+      "usb_c_length_mm": 7.35,
+      "usb_c_protrusion_mm": 1.0,
+      "usb_board_third_hole_edge": "edge opposite the connector",
+      "usb_board_hole_pair_from_rear_mm": 3.5,
+      "usb_board_pins_boss_diameters_mm": [
+        0.9,
+        2.0
+      ],
+      "esp_rests_on_base_with_rim_mm": [
+        0.3,
+        1.2,
+        6.0
+      ]
     }
   },
   "missing_measurements": [
-    "Lit area size and its margins to the 38.5 x 31.0 opening (only known smaller)",
-    "Display total stack (glass to highest rear point), 8-pin header position/height/direction and connector envelope",
-    "ESP32-C3 thickness, USB-C edge and projection, BOOT/RESET positions",
-    "Battery board: USB-C height, offset and protrusion; whether the tail lies inside the 24 mm; wire pass-through; power switch",
-    "Actual cable plug envelope and printed fit tolerances"
+    "Lit area size and its margins to the 40.0 x 33.5 opening (only known smaller)",
+    "USB-C receptacle of the USB-C board: height, length, protrusion and height above the board (typical values assumed)",
+    "USB-C board holes: which edge the third hole is measured from, and where the pair sits along the length (assumed)",
+    "Wire routing between battery, USB-C board and ESP32-C3",
+    "Display rear split between PCB and components inside the 3.25 mm stack"
   ],
   "print_meshes_exported": false,
   "physical_fit_verified": false
