@@ -95,67 +95,68 @@ def display_references(g, s, v4, comp, front, board_front):
 
 
 def battery_cradle(g, s, builder, base):
-    front_z = s.battery_front_z()
+    """Two ribs lift the battery above the cover tabs; a front stop locates it."""
     rib_height = s.BATTERY_BOTTOM - s.BASE_HEIGHT + 0.1
     for sign in (-1, 1):
         x = sign * s.BATTERY_RIB_X
-        builder.slab(g.BASE_T - 0.1, x - s.BATTERY_RIB_WIDTH / 2, s.BATTERY_REAR_Z,
-                     x + s.BATTERY_RIB_WIDTH / 2, front_z, rib_height, g.JOIN, base)
+        builder.slab(g.BASE_T - 0.1, x - s.BATTERY_RIB_WIDTH / 2, s.BATTERY_REAR_Z + 1.0,
+                     x + s.BATTERY_RIB_WIDTH / 2, s.battery_front_z() - 1.0,
+                     rib_height, g.JOIN, base)
     half = s.BATTERY_FRONT_STOP_HALF_WIDTH
     builder.slab(g.BASE_T - 0.1, -half, s.BATTERY_FRONT_STOP[0], half,
-                 s.BATTERY_FRONT_STOP[1], s.BATTERY_STOP_HEIGHT + 0.1, g.JOIN, base)
+                 s.BATTERY_FRONT_STOP[1], s.BATTERY_FRONT_STOP_TOP - g.BASE_T + 0.1,
+                 g.JOIN, base)
 
 
 def battery_reference(g, s, builder):
     half = s.BATTERY[0] / 2
     body = builder.slab(s.BATTERY_BOTTOM, -half, s.BATTERY_REAR_Z, half,
                         s.battery_front_z(), s.BATTERY[2], g.NEW)
-    body.name = "reference_battery_board_envelope_estimated"
-    width, height = s.USB_C_BODY
-    builder.slab(s.USB_CENTER_HEIGHT - height / 2, s.USB_C_X - width / 2,
-                 s.BATTERY_REAR_Z - s.USB_C_PROTRUSION, s.USB_C_X + width / 2,
-                 s.BATTERY_REAR_Z + 0.01, height, g.JOIN, body)
+    body.name = "reference_battery_envelope"
     return body
 
 
-def esp_posts(g, s, builder, base, clamp_y):
-    for x, z in s.ESP_RETAINER_SCREWS:
-        builder.slab(g.BASE_T - 0.1, x - 3.8, z - 3.8, x + 3.8, z + 3.8,
-                     clamp_y - g.BASE_T + 0.1, g.JOIN, base)
-        builder.cylinder(g.BASE_T - 4, x, z, s.SCREW_CLEARANCE,
-                         clamp_y - g.BASE_T + 4.1, g.CUT, base)
-        sign = math.copysign(1, x)
-        x0, x1 = sorted((sign * 8, sign * 18))
-        builder.slab(10.0, x0, z - s.NUT_SLOT_WIDTH / 2, x1,
-                     z + s.NUT_SLOT_WIDTH / 2, s.NUT_SLOT_HEIGHT, g.CUT, base)
+def usb_board_mount(g, s, builder, base):
+    """Three bosses with locating pins that pass through the board's holes."""
+    for x, z in s.usb_hole_positions():
+        builder.cylinder(g.BASE_T - 0.1, x, z, s.USB_BOSS_DIAMETER,
+                         s.USB_BOARD_BOTTOM - g.BASE_T + 0.1, g.JOIN, base)
+        builder.cylinder(s.USB_BOARD_BOTTOM - 0.05, x, z, s.USB_PIN_DIAMETER,
+                         s.USB_BOARD[2] + 0.05, g.JOIN, base)
 
 
-def esp_clamp(g, s, builder, clamp_y, rear, front):
-    clamp = builder.slab(clamp_y, -8.2, rear + 2, -6.6, front + 3.0, 2.4, g.NEW)
-    clamp.name = "v6_esp_retainer_provisional"
-    builder.slab(clamp_y, -8.2, front + 1.0, 8.2, front + 3.0, 2.4, g.JOIN, clamp)
-    builder.slab(clamp_y, 6.6, rear + 2, 8.2, front + 3.0, 2.4, g.JOIN, clamp)
-    for x, z in s.ESP_RETAINER_SCREWS:
-        sign = math.copysign(1, x)
-        x0, x1 = sorted((sign * 6.6, sign * 15.8))
-        builder.slab(clamp_y, x0, z - 3.8, x1, z + 3.8, 2.4, g.JOIN, clamp)
-        builder.cylinder(clamp_y - 0.1, x, z, s.SCREW_CLEARANCE, 2.6, g.CUT, clamp)
-    return clamp
+def usb_board_reference(g, s, builder):
+    half = s.USB_BOARD[0] / 2
+    board = builder.slab(s.USB_BOARD_BOTTOM, -half, s.USB_BOARD_REAR_Z, half,
+                         s.usb_board_front_z(), s.USB_BOARD[2], g.NEW)
+    board.name = "reference_usb_c_board"
+    for x, z in s.usb_hole_positions():
+        builder.cylinder(s.USB_BOARD_BOTTOM - 0.1, x, z, s.USB_HOLE_DIAMETER,
+                         s.USB_BOARD[2] + 0.2, g.CUT, board)
+    width, height = s.USB_C_BODY
+    start = s.USB_BOARD_REAR_Z - s.USB_C_PROTRUSION
+    builder.slab(s.USB_BOARD_BOTTOM + s.USB_BOARD[2] - 0.01, s.USB_C_X - width / 2, start,
+                 s.USB_C_X + width / 2, start + s.USB_C_LENGTH, height + 0.01, g.JOIN, board)
+    return board
 
 
-def esp_mount(g, s, builder, base):
-    rear = s.ESP_BOARD_REAR
-    front = rear + s.ESP_PCB[1]
-    for x in (-7.4, 7.4):
-        builder.slab(g.BASE_T - 0.1, x - 0.6, rear + 2.0, x + 0.6, front - 2.0,
-                     s.ESP_BOARD_BOTTOM - g.BASE_T + 0.1, g.JOIN, base)
-    clamp_y = s.ESP_BOARD_BOTTOM + s.ESP_PCB_THICKNESS + 0.2
-    esp_posts(g, s, builder, base, clamp_y)
-    clamp = esp_clamp(g, s, builder, clamp_y, rear, front)
-    pcb = builder.slab(s.ESP_BOARD_BOTTOM, -s.ESP_PCB[0] / 2, rear,
-                       s.ESP_PCB[0] / 2, front, s.ESP_PCB_THICKNESS, g.NEW)
-    pcb.name = "reference_esp32c3_pcb_depth_unmeasured"
-    return clamp, pcb
+def esp_cradle(g, s, builder, base):
+    """Low rim around the ESP footprint; nothing of the ESP leaves the case."""
+    inner = s.ESP_PCB[0] / 2 + s.ESP_RIM_CLEARANCE
+    outer = s.esp_rim_half_width()
+    rear = s.ESP_REAR_Z - s.ESP_RIM_CLEARANCE
+    front = s.esp_front_z() + s.ESP_RIM_CLEARANCE
+    builder.slab(g.BASE_T - 0.1, -outer, rear - s.ESP_RIM_WALL, outer,
+                 front + s.ESP_RIM_WALL, s.ESP_RIM_HEIGHT + 0.1, g.JOIN, base)
+    builder.slab(g.BASE_T, -inner, rear, inner, front, s.ESP_RIM_HEIGHT + 0.2, g.CUT, base)
+
+
+def esp_reference(g, s, builder):
+    half = s.ESP_PCB[0] / 2
+    body = builder.slab(s.ESP_BOTTOM, -half, s.ESP_REAR_Z, half, s.esp_front_z(),
+                        s.ESP_TOTAL_HEIGHT, g.NEW)
+    body.name = "reference_esp32c3_reserved_envelope"
+    return body
 
 
 def make_colors(app, design, previous, g):
@@ -182,19 +183,22 @@ def build_all(app, design, g, s, v5, v4, v3, previous):
     board_front = display_posts(g, s, v4, comp, front)
     display_pcb, glass = display_references(g, s, v4, comp, front, board_front)
     battery_cradle(g, s, builder, base)
+    usb_board_mount(g, s, builder, base)
+    esp_cradle(g, s, builder, base)
     battery = battery_reference(g, s, builder)
-    esp_retainer, esp_pcb = esp_mount(g, s, builder, base)
+    usb_board = usb_board_reference(g, s, builder)
+    esp = esp_reference(g, s, builder)
     fasteners = v5.bottom_fasteners(g, s, builder)
     front.name, shell.name, base.name = "v6_front_frame", "v6_rear_cover", "v6_service_base"
-    paint(colors, front, shell, base, esp_retainer, (display_pcb, esp_pcb), glass, battery, fasteners)
-    parts = (front, shell, base, esp_retainer)
-    references = (display_pcb, glass, battery, esp_pcb) + fasteners
+    paint(colors, front, shell, base, (display_pcb, usb_board, esp), glass, battery, fasteners)
+    parts = (front, shell, base)
+    references = (display_pcb, glass, battery, usb_board, esp) + fasteners
     return parts, references, fasteners
 
 
-def paint(colors, front, shell, base, esp_retainer, pcbs, glass, battery, fasteners):
+def paint(colors, front, shell, base, pcbs, glass, battery, fasteners):
     front.appearance, shell.appearance = colors["Ivory front"], colors["Beige cover"]
-    base.appearance, esp_retainer.appearance = colors["Warm grey base"], colors["Mounts"]
+    base.appearance = colors["Warm grey base"]
     for pcb in pcbs:
         pcb.appearance = colors["Provisional PCB"]
     glass.appearance = colors["Graphite"]
@@ -228,44 +232,63 @@ def capture_views(app, v5, parts, references, fasteners):
 
 def layout_report(s):
     return {
-        "display_window_mm": list(s.DISPLAY_WINDOW),
-        "display_window_is_case_opening": True,
-        "display_pcb_front_depth_mm": s.PLATE_DEPTH + s.DISPLAY_STACK - s.DISPLAY_PCB_THICKNESS,
+        "display_opening_mm": list(s.DISPLAY_WINDOW),
+        "display_opening_margins_to_pcb_mm": list(s.DISPLAY_WINDOW_MARGINS),
+        "display_pcb_front_depth_mm": s.DISPLAY_PCB_FRONT_DEPTH,
         "display_posts_uv_mm": [list(uv) for uv in post_positions(s)],
         "battery_x_range_mm": [-s.BATTERY[0] / 2, s.BATTERY[0] / 2],
         "battery_z_range_mm": [s.BATTERY_REAR_Z, s.battery_front_z()],
         "battery_y_range_mm": [s.BATTERY_BOTTOM, s.battery_top()],
+        "usb_board_z_range_mm": [s.USB_BOARD_REAR_Z, s.usb_board_front_z()],
+        "usb_board_y_range_mm": [s.USB_BOARD_BOTTOM, s.USB_BOARD_BOTTOM + s.USB_BOARD[2]],
+        "usb_board_holes_xz_mm": [list(p) for p in s.usb_hole_positions()],
         "usb_c_center_height_mm": s.USB_CENTER_HEIGHT,
         "usb_opening_mm": list(s.USB_OPENING),
         "usb_opening_y_range_mm": [s.USB_CENTER_HEIGHT - s.USB_OPENING[1] / 2,
                                    s.USB_CENTER_HEIGHT + s.USB_OPENING[1] / 2],
-        "esp_z_range_mm": [s.ESP_BOARD_REAR, s.ESP_BOARD_REAR + s.ESP_PCB[1]],
-        "esp_y_range_mm": [s.ESP_BOARD_BOTTOM, s.ESP_BOARD_BOTTOM + s.ESP_PCB_THICKNESS],
+        "esp_z_range_mm": [s.ESP_REAR_Z, s.esp_front_z()],
+        "esp_reserved_y_range_mm": [s.ESP_BOTTOM, s.ESP_BOTTOM + s.ESP_TOTAL_HEIGHT],
         "clearances_mm": {
-            "usb_c_tip_to_rear_wall_at_battery_top":
-                s.BATTERY_REAR_Z - s.USB_C_PROTRUSION - s.rear_wall_inner_z(s.battery_top()),
-            "battery_to_cover_screw_tabs_per_side": 22.0 - s.BATTERY[0] / 2,
+            "usb_c_tip_to_rear_wall_at_connector_top":
+                s.USB_BOARD_REAR_Z - s.USB_C_PROTRUSION - s.rear_wall_inner_z(s.usb_connector_top()),
+            "battery_bottom_over_cover_tabs": s.BATTERY_BOTTOM - s.COVER_TAB_TOP,
+            "battery_wing_overhang_past_tab_inner_edge_per_side":
+                s.BATTERY[0] / 2 - s.COVER_TAB_INNER_X,
+            "usb_connector_top_to_battery_bottom": s.BATTERY_BOTTOM - s.usb_connector_top(),
+            "usb_opening_top_to_battery_bottom":
+                s.BATTERY_BOTTOM - s.USB_CENTER_HEIGHT - s.USB_OPENING[1] / 2,
             "battery_to_front_stop": s.BATTERY_FRONT_STOP[0] - s.battery_front_z(),
-            "wire_gap_front_stop_to_esp": s.ESP_BOARD_REAR - s.BATTERY_FRONT_STOP[1],
-            "usb_opening_vs_usb_c_width_per_side": (s.USB_OPENING[0] - s.USB_C_BODY[0]) / 2,
+            "esp_rim_rear_to_battery_front_stop":
+                s.ESP_REAR_Z - s.ESP_RIM_CLEARANCE - s.ESP_RIM_WALL - s.BATTERY_FRONT_STOP[1],
+            "esp_rim_to_front_screw_tabs_per_side": s.FRONT_SLAB_INNER_X - s.esp_rim_half_width(),
+            "opening_vs_plug_cover_per_side": (s.USB_OPENING[0] - s.USB_PLUG_COVER[0]) / 2,
+            "opening_vs_plug_cover_height_per_side": (s.USB_OPENING[1] - s.USB_PLUG_COVER[1]) / 2,
         },
-        "measured_by_user": {"display_hole_diameter_mm": s.DISPLAY_HOLE_DIAMETER,
-                             "display_hole_edge_to_edge_mm": list(s.DISPLAY_HOLE_EDGE_TO_EDGE),
-                             "display_hole_centres_mm": list(s.DISPLAY_HOLE_SPACING)},
-        "estimated": {"usb_c_body_width_mm": s.USB_C_BODY[0],
-                      "usb_c_protrusion_mm": s.USB_C_PROTRUSION},
-        "assumptions": {"display_stack_mm": s.DISPLAY_STACK,
-                        "display_pcb_offset_mm": list(s.DISPLAY_BOARD_OFFSET),
-                        "display_screw": "M1.6 self-tapping, head {} mm".format(s.SCREW_HEAD_DIAMETER),
+        "measured_by_user": {
+            "display_pcb_mm": list(s.DISPLAY_PCB), "display_stack_mm": s.DISPLAY_STACK,
+            "display_hole_diameter_mm": s.DISPLAY_HOLE_DIAMETER,
+            "display_hole_edge_to_edge_mm": list(s.DISPLAY_HOLE_EDGE_TO_EDGE),
+            "display_hole_centres_mm": list(s.DISPLAY_HOLE_SPACING),
+            "esp_pcb_mm": list(s.ESP_PCB), "esp_total_height_mm": s.ESP_TOTAL_HEIGHT,
+            "battery_envelope_mm": list(s.BATTERY), "usb_board_mm": list(s.USB_BOARD),
+            "usb_board_hole_diameter_mm": s.USB_HOLE_DIAMETER,
+            "usb_board_holes_centres_mm": s.USB_HOLES_CENTRES},
+        "standard_not_measured": {"usb_plug_metal_mm": list(s.USB_PLUG_METAL),
+                                  "usb_plug_cover_mm": list(s.USB_PLUG_COVER),
+                                  "opening_clearance_per_side_mm": s.USB_OPENING_CLEARANCE},
+        "assumptions": {"display_screw": "M1.6 self-tapping, head {} mm".format(s.SCREW_HEAD_DIAMETER),
                         "post_diameter_mm": s.POST_DIAMETER,
                         "post_pilot_diameter_mm": s.POST_PILOT_DIAMETER,
-                        "battery_bottom_mm": s.BATTERY_BOTTOM,
-                        "usb_c_height_mm": s.USB_C_BODY[1],
-                        "usb_c_above_battery_bottom_mm": s.USB_C_ABOVE_BATTERY_BOTTOM,
-                        "usb_c_x_mm": s.USB_C_X,
-                        "esp_pcb_thickness_mm": s.ESP_PCB_THICKNESS,
-                        "esp_board_bottom_mm": s.ESP_BOARD_BOTTOM,
-                        "esp_usb_edge_orientation": "not modeled"},
+                        "post_pilot_depth_mm": s.POST_PILOT_DEPTH,
+                        "display_stack_taken_as_glass_front_to_pcb_back": True,
+                        "battery_raised_over_cover_tabs_by_mm": s.BATTERY_CLEAR_OVER_TABS,
+                        "usb_c_body_mm": list(s.USB_C_BODY), "usb_c_length_mm": s.USB_C_LENGTH,
+                        "usb_c_protrusion_mm": s.USB_C_PROTRUSION,
+                        "usb_board_third_hole_edge": "edge opposite the connector",
+                        "usb_board_hole_pair_from_rear_mm": s.USB_HOLE_ROW_FROM_REAR,
+                        "usb_board_pins_boss_diameters_mm": [s.USB_PIN_DIAMETER, s.USB_BOSS_DIAMETER],
+                        "esp_rests_on_base_with_rim_mm": [s.ESP_RIM_CLEARANCE, s.ESP_RIM_WALL,
+                                                          s.ESP_RIM_HEIGHT]},
     }
 
 
@@ -276,6 +299,7 @@ def write_report(design, s, solids, opening):
               "display_pcb_measured_mm": list(s.DISPLAY_PCB),
               "esp_pcb_measured_mm": list(s.ESP_PCB),
               "battery_envelope_measured_mm": list(s.BATTERY),
+              "usb_board_measured_mm": list(s.USB_BOARD),
               "shell_screw_count": len(s.SHELL_SCREWS), "front_screw_count": len(s.FRONT_SCREWS),
               "layout": layout_report(s), "missing_measurements": list(s.MISSING_MEASUREMENTS),
               "print_meshes_exported": False, "physical_fit_verified": False}
@@ -285,8 +309,7 @@ def write_report(design, s, solids, opening):
 
 def collect_parts(design):
     bodies = {body.name: body for body in design.rootComponent.bRepBodies}
-    parts = tuple(bodies[n] for n in ("v6_front_frame", "v6_rear_cover",
-                                      "v6_service_base", "v6_esp_retainer_provisional"))
+    parts = tuple(bodies[n] for n in ("v6_front_frame", "v6_rear_cover", "v6_service_base"))
     named = [n for n in bodies if n.startswith("reference_")]
     references = tuple(bodies[n] for n in sorted(named, key=reference_order))
     fasteners = tuple(body for name, body in bodies.items() if "_screw_" in name or "_nut_" in name)
@@ -294,7 +317,7 @@ def collect_parts(design):
 
 
 def reference_order(name):
-    return (0 if "jd9853" in name or "battery" in name or "esp32" in name else 1, name)
+    return (1 if "_screw_" in name or "_nut_" in name else 0, name)
 
 
 def finalize(app, design, g, s, v5, v4, previous, parts, references, fasteners):
@@ -344,8 +367,8 @@ def run(context):
 
 
 def check_opening(g, v5, parts, references):
-    front, shell, base, esp_retainer = parts
-    fixed = (front, base, esp_retainer) + tuple(
+    front, shell, base = parts
+    fixed = (front, base) + tuple(
         r for r in references if "_cover_" not in r.name)
     return v5.validate_opening(g, shell, fixed)
 

@@ -1,8 +1,14 @@
 """Layout A specification for the v6 enclosure, in mm.
 
-Every value is tagged MEASURED (user caliper, see ../dimensions.md), ESTIMATED
-(read from photos) or ASSUMPTION (a modeling choice, NOT a measurement of the
-user's modules). The outer shell, joints and fasteners are inherited from v5.
+Every value is tagged MEASURED (user caliper, see ../dimensions.md), DERIVED
+(arithmetic on measured values), STANDARD (typical market value, not measured)
+or ASSUMPTION (a modeling choice, NOT a measurement of the user's modules).
+The outer shell, joints and fasteners are inherited from v5.
+
+Layout: the display hangs on four posts behind the front opening; the USB-C
+board sits low at the rear with its connector facing the rear opening; the
+battery is raised above it (it is wider than the clear width between the cover
+screw tabs); the ESP32-C3 sits in front of them, in its own low cradle.
 """
 
 CASE_WIDTH = 68.0
@@ -14,57 +20,79 @@ FRONT_LEAN = BODY_HEIGHT * 5.8 / 57.7
 REAR_LEAN = BODY_HEIGHT * 2.0 / 57.7
 SCREEN_FROM_TOP = 28.0
 
-# MEASURED and CONFIRMED by the user: the opening of the case. It is slightly
-# larger than the area that lights up (the lit area is smaller, not measured).
-DISPLAY_WINDOW = (38.5, 31.0)
-DISPLAY_PCB = (48.87, 33.0)  # MEASURED
-DISPLAY_PCB_THICKNESS = 1.1  # MEASURED
+# --- Display (all MEASURED unless noted) -------------------------------------
+DISPLAY_PCB = (51.0, 35.5)
+DISPLAY_PCB_THICKNESS = 1.1
+DISPLAY_STACK = 3.25  # glass front to highest rear point, with components
+# Case opening, centred on the PCB; slightly larger than the lit area.
+DISPLAY_WINDOW = (40.0, 33.5)
+DISPLAY_WINDOW_MARGINS = ((DISPLAY_PCB[0] - DISPLAY_WINDOW[0]) / 2,
+                          (DISPLAY_PCB[1] - DISPLAY_WINDOW[1]) / 2)  # 5.5, 1.0
 FUNNEL_RUN = 8.0
 FUNNEL_OUTER = (DISPLAY_WINDOW[0] + FUNNEL_RUN, DISPLAY_WINDOW[1] + FUNNEL_RUN)
-ESP_PCB = (16.0, 20.0)  # MEASURED (x width, z length when lying flat)
-ESP_PCB_THICKNESS = 1.6  # ASSUMPTION
-BATTERY = (42.0, 24.0, 16.0)  # MEASURED envelope: x width, z length, y height
-
-# --- Display: four posts on the front plate (layout A) -------------------
-DISPLAY_STACK = 4.0  # ASSUMPTION
-DISPLAY_BOARD_OFFSET = (0.0, 0.0)  # ASSUMPTION: PCB centred on the window
-# MEASURED by the user: holes of 2.0 mm; 43.0 x 27.8 mm inner edge to inner
-# edge on both axes (long side, short side), so 45.0 x 29.8 mm centre to centre.
+DISPLAY_BOARD_OFFSET = (0.0, 0.0)  # opening centred on the PCB (user's instruction)
 DISPLAY_HOLE_DIAMETER = 2.0
-DISPLAY_HOLE_EDGE_TO_EDGE = (43.0, 27.8)
+DISPLAY_HOLE_EDGE_TO_EDGE = (45.5, 29.7)  # long side, short side; convention confirmed
 DISPLAY_HOLE_SPACING = (DISPLAY_HOLE_EDGE_TO_EDGE[0] + DISPLAY_HOLE_DIAMETER,
-                        DISPLAY_HOLE_EDGE_TO_EDGE[1] + DISPLAY_HOLE_DIAMETER)
-# Screw choice: M1.6 self-tapping (clearance 0.4 mm in the 2.0 mm hole). M2 would
+                        DISPLAY_HOLE_EDGE_TO_EDGE[1] + DISPLAY_HOLE_DIAMETER)  # 47.5, 31.7
+# Screw choice: M1.6 self-tapping (0.4 mm clearance in the 2.0 mm hole). M2 would
 # have no clearance in a 2.0 mm hole, so it is not used.
 SCREW_HEAD_DIAMETER = 3.0  # ASSUMPTION, typical M1.6 pan head
-POST_DIAMETER = 3.0  # ASSUMPTION: stays inside the PCB edge (1.6 mm short side)
+POST_DIAMETER = 3.0  # ASSUMPTION: stays inside the PCB edge (1.75 / 1.9 mm)
 POST_PILOT_DIAMETER = 1.3  # ASSUMPTION: self-tapping M1.6 in printed plastic
-POST_PILOT_DEPTH = 2.7
+POST_PILOT_DEPTH = 2.8  # ASSUMPTION: runs 0.65 mm into the 4 mm front plate
 PLATE_DEPTH = 4.0  # front plate thickness inherited from v5
+# ASSUMPTION: the 3.25 mm total is taken as glass front to PCB back, so no rear
+# component stands behind the PCB; the real split is unmeasured.
+DISPLAY_PCB_FRONT_DEPTH = PLATE_DEPTH + DISPLAY_STACK - DISPLAY_PCB_THICKNESS
 
-# --- Battery module: USB-C toward the rear (layout A) ---------------------
-BATTERY_BOTTOM = 11.0  # ASSUMPTION: rests on 2 mm cradle ribs
-BATTERY_REAR_Z = -61.0  # 0.3 mm margin from the inner rear wall at its top
-USB_C_BODY = (9.3, 3.2)  # width ESTIMATED (9.3 +- 0.5); height ASSUMPTION
-USB_C_PROTRUSION = 1.0  # ESTIMATED (1.0 +- 0.7)
-USB_C_ABOVE_BATTERY_BOTTOM = 3.0  # ASSUMPTION
-USB_C_X = 0.0  # ASSUMPTION: tail centred on the case
-USB_CENTER_HEIGHT = BATTERY_BOTTOM + USB_C_ABOVE_BATTERY_BOTTOM
-USB_OPENING = (13.0, 7.0)  # ASSUMPTION: provisional cable envelope, kept from v5
+# --- ESP32-C3 Mini (MEASURED) ------------------------------------------------
+ESP_PCB = (18.0, 22.7)  # x width, z length when lying flat
+ESP_PCB_THICKNESS = 1.0
+ESP_TOTAL_HEIGHT = 11.5  # with header and pins; used only to reserve space
+ESP_BOTTOM = BASE_HEIGHT  # ASSUMPTION: rests on the base
+ESP_REAR_Z = -31.5  # ASSUMPTION
+ESP_RIM_CLEARANCE = 0.3  # ASSUMPTION
+ESP_RIM_WALL = 1.2  # ASSUMPTION
+ESP_RIM_HEIGHT = 6.0  # ASSUMPTION: low retaining rim, nothing leaves the case
+
+# --- Battery with charging board (MEASURED envelope) -------------------------
+BATTERY = (44.6, 25.0, 16.5)  # x width wing tip to wing tip, z, y thickness
+COVER_TAB_INNER_X = 22.0  # cover screw tabs, inherited from v5
+COVER_TAB_TOP = BASE_HEIGHT + 9.0  # inherited from v5
+BATTERY_CLEAR_OVER_TABS = 0.5  # ASSUMPTION
+BATTERY_BOTTOM = COVER_TAB_TOP + BATTERY_CLEAR_OVER_TABS
+BATTERY_REAR_Z = -61.0  # ASSUMPTION
 BATTERY_RIB_X = 15.0
 BATTERY_RIB_WIDTH = 3.0
-# No side stops: the cover's screw tabs (|x| >= 22) sweep the whole length when
-# the cover slides off (CAD check, 24 mm3 collision at 20 mm travel), so the base
-# cannot hold anything at |x| >= 22. The 1.0 mm gap to the rear tabs locates the
-# battery sideways while the cover is on.
-BATTERY_STOP_HEIGHT = 8.0
-BATTERY_FRONT_STOP = (-36.5, -35.0)  # 0.5 mm clearance to the battery front
+BATTERY_FRONT_STOP = (-35.5, -34.5)  # 0.5 mm clearance to the battery front
 BATTERY_FRONT_STOP_HALF_WIDTH = 10.0
+BATTERY_FRONT_STOP_TOP = 24.5
 
-# --- ESP32-C3 Mini, beside the battery, toward the front ------------------
-ESP_BOARD_BOTTOM = 12.0  # ASSUMPTION
-ESP_BOARD_REAR = -33.0  # ASSUMPTION: 2 mm wire gap to the battery front stop
-ESP_RETAINER_SCREWS = ((-12.0, -23.0), (12.0, -23.0))
+# --- USB-C board (independent; MEASURED unless noted) ------------------------
+USB_BOARD = (18.0, 20.0, 1.0)  # x width, z length, thickness
+USB_BOARD_REAR_Z = -61.0  # ASSUMPTION; connector faces the rear
+USB_C_X = 0.0  # centred on the board
+USB_CENTER_HEIGHT = 14.0  # the height the case is programmed for (inherited)
+USB_C_BODY = (9.3, 3.2)  # ASSUMPTION: typical receptacle width and height
+USB_C_LENGTH = 7.35  # ASSUMPTION: typical receptacle length
+USB_C_PROTRUSION = 1.0  # ASSUMPTION: connector beyond the board edge
+USB_BOARD_BOTTOM = USB_CENTER_HEIGHT - USB_C_BODY[1] / 2 - USB_BOARD[2]  # 11.4
+USB_HOLE_DIAMETER = 1.0
+USB_HOLES_EDGE_TO_EDGE = 15.9  # the two holes on the USB-C line
+USB_HOLES_CENTRES = USB_HOLES_EDGE_TO_EDGE + USB_HOLE_DIAMETER  # 16.9
+USB_HOLE_ROW_FROM_REAR = 3.5  # ASSUMPTION: where the pair sits along the length
+USB_MIDDLE_HOLE_FROM_FRONT = 3.4  # MEASURED value; the user's "bottom" is taken
+# ASSUMPTION: "bottom" is the edge opposite the connector.
+USB_BOSS_DIAMETER = 2.0  # ASSUMPTION
+USB_PIN_DIAMETER = 0.9  # ASSUMPTION: 0.1 mm clearance in the 1.0 mm holes
+
+# --- Rear opening: generic plug (STANDARD, not measured) ----------------------
+USB_PLUG_METAL = (8.4, 2.6)  # STANDARD
+USB_PLUG_COVER = (12.0, 6.5)  # STANDARD moulded cover
+USB_OPENING_CLEARANCE = 0.5  # per side, chosen by the user
+USB_OPENING = (USB_PLUG_COVER[0] + 2 * USB_OPENING_CLEARANCE,
+               USB_PLUG_COVER[1] + 2 * USB_OPENING_CLEARANCE)  # 13.0 x 7.5
 
 SLIDE_CLEARANCE = 0.3
 GUIDE_X = 30.0
@@ -82,18 +110,19 @@ NUT_SLOT_WIDTH = 5.8
 NUT_SLOT_HEIGHT = 2.8
 NUT_SEAT_HEIGHT = 13.0
 BOTTOM_SCREW_LENGTH = 16.0
+FRONT_SLAB_INNER_X = 11.5  # front screw tabs, inherited from v5
 
 # The inner rear wall leans forward with height (inherited v3 profile).
 REAR_WALL_SLOPE = REAR_LEAN / BODY_HEIGHT
 
 MISSING_MEASUREMENTS = (
-    "Lit area size and its margins to the 38.5 x 31.0 opening (only known smaller)",
-    "Display total stack (glass to highest rear point), 8-pin header "
-    "position/height/direction and connector envelope",
-    "ESP32-C3 thickness, USB-C edge and projection, BOOT/RESET positions",
-    "Battery board: USB-C height, offset and protrusion; whether the tail "
-    "lies inside the 24 mm; wire pass-through; power switch",
-    "Actual cable plug envelope and printed fit tolerances",
+    "Lit area size and its margins to the 40.0 x 33.5 opening (only known smaller)",
+    "USB-C receptacle of the USB-C board: height, length, protrusion and height "
+    "above the board (typical values assumed)",
+    "USB-C board holes: which edge the third hole is measured from, and where "
+    "the pair sits along the length (assumed)",
+    "Wire routing between battery, USB-C board and ESP32-C3",
+    "Display rear split between PCB and components inside the 3.25 mm stack",
 )
 
 
@@ -109,30 +138,88 @@ def battery_top():
     return BATTERY_BOTTOM + BATTERY[2]
 
 
+def usb_board_front_z():
+    return USB_BOARD_REAR_Z + USB_BOARD[1]
+
+
+def usb_hole_positions():
+    """(x, z) of the three USB-C board holes."""
+    row = USB_BOARD_REAR_Z + USB_HOLE_ROW_FROM_REAR
+    half = USB_HOLES_CENTRES / 2
+    return ((-half, row), (half, row), (0.0, usb_board_front_z() - USB_MIDDLE_HOLE_FROM_FRONT))
+
+
+def usb_connector_top():
+    return USB_CENTER_HEIGHT + USB_C_BODY[1] / 2
+
+
+def esp_front_z():
+    return ESP_REAR_Z + ESP_PCB[1]
+
+
+def esp_rim_half_width():
+    return ESP_PCB[0] / 2 + ESP_RIM_CLEARANCE + ESP_RIM_WALL
+
+
 def validate():
-    assert DISPLAY_WINDOW[0] < DISPLAY_PCB[0] < CASE_WIDTH - 2 * WALL
+    inner_width = CASE_WIDTH - 2 * WALL
+    assert DISPLAY_WINDOW[0] < DISPLAY_PCB[0] < inner_width
     assert DISPLAY_WINDOW[1] < DISPLAY_PCB[1]
-    assert FUNNEL_OUTER[0] < CASE_WIDTH - 2 * WALL
+    assert DISPLAY_WINDOW_MARGINS == (5.5, 1.0)
+    assert FUNNEL_OUTER[0] < inner_width
     assert GUIDE_WIDTH + 2 * SLIDE_CLEARANCE < 3.0
     assert NUT_SLOT_WIDTH > NUT_ACROSS_FLATS
     assert HEAD_POCKET_DEPTH + BOTTOM_SCREW_LENGTH > NUT_SEAT_HEIGHT + NUT_THICKNESS
-    # the rear wall at the top of the battery leaves the 0.3 mm margin
-    tip = BATTERY_REAR_Z - USB_C_PROTRUSION
-    assert tip - rear_wall_inner_z(battery_top()) >= 0.3 - 1e-9
-    assert USB_CENTER_HEIGHT - USB_OPENING[1] / 2 > BASE_HEIGHT + 0.25
-    assert USB_OPENING[0] > USB_C_BODY[0] and USB_OPENING[1] > USB_C_BODY[1]
-    # battery clears the cover screw tabs (|x| >= 22) by at least 1 mm
-    assert 22.0 - BATTERY[0] / 2 >= 1.0
-    assert BATTERY[0] / 2 < 22.0  # stay inside the cover tab sweep
-    assert BATTERY_FRONT_STOP[0] - battery_front_z() >= 0.5
-    assert ESP_BOARD_REAR - BATTERY_FRONT_STOP[1] >= 1.5
-    # display posts and screw heads sit on the PCB, inside its edge
-    assert DISPLAY_HOLE_SPACING == (45.0, 29.8)
+    assert all(abs(x) + HEAD_POCKET_DIAMETER / 2 < (CASE_WIDTH - 2) / 2
+               for x, _ in SHELL_SCREWS + FRONT_SCREWS)
+    validate_display()
+    validate_battery()
+    validate_usb()
+    validate_esp()
+
+
+def validate_display():
+    assert DISPLAY_HOLE_SPACING == (47.5, 31.7)
     for axis in (0, 1):
         edge = (DISPLAY_PCB[axis] - DISPLAY_HOLE_SPACING[axis]) / 2
         assert POST_DIAMETER / 2 <= edge + 1e-9
         assert SCREW_HEAD_DIAMETER / 2 <= edge + 1e-9
     assert POST_PILOT_DIAMETER < DISPLAY_HOLE_DIAMETER
-    assert POST_PILOT_DEPTH < DISPLAY_STACK - DISPLAY_PCB_THICKNESS
-    assert all(abs(x) + HEAD_POCKET_DIAMETER / 2 < (CASE_WIDTH - 2) / 2
-               for x, _ in SHELL_SCREWS + FRONT_SCREWS)
+    # the pilot may enter the plate, but at least 2.5 mm of plate stays solid
+    post_length = DISPLAY_PCB_FRONT_DEPTH - PLATE_DEPTH
+    assert PLATE_DEPTH - max(0.0, POST_PILOT_DEPTH - post_length) >= 2.5
+    assert POST_PILOT_DEPTH >= 2.5  # screw engagement
+
+
+def validate_battery():
+    # wings reach beyond the cover tabs' inner edge, so the battery rides above them
+    assert BATTERY[0] / 2 > COVER_TAB_INNER_X
+    assert BATTERY_BOTTOM - COVER_TAB_TOP >= 0.4
+    assert BATTERY[0] / 2 < CASE_WIDTH / 2 - WALL
+    assert BATTERY_FRONT_STOP[0] - battery_front_z() >= 0.5 - 1e-9
+    assert rear_wall_inner_z(battery_top()) < BATTERY_REAR_Z
+
+
+def validate_usb():
+    tip = USB_BOARD_REAR_Z - USB_C_PROTRUSION
+    assert tip - rear_wall_inner_z(usb_connector_top()) >= 0.3
+    assert USB_OPENING == (13.0, 7.5)
+    assert USB_OPENING[0] > USB_PLUG_COVER[0] and USB_OPENING[1] > USB_PLUG_COVER[1]
+    opening_bottom = USB_CENTER_HEIGHT - USB_OPENING[1] / 2
+    opening_top = USB_CENTER_HEIGHT + USB_OPENING[1] / 2
+    assert opening_bottom > BASE_HEIGHT + 0.25
+    assert opening_top < BATTERY_BOTTOM
+    assert usb_connector_top() + 1.0 <= BATTERY_BOTTOM
+    assert USB_BOARD_BOTTOM > BASE_HEIGHT
+    assert USB_PIN_DIAMETER < USB_HOLE_DIAMETER
+    assert max(abs(x) for x, _ in usb_hole_positions()) - 0.5 < USB_BOARD[0] / 2 + 1.0
+
+
+def validate_esp():
+    # the 11.5 mm ESP cannot sit under the raised battery, so it stays in front of it
+    assert ESP_BOTTOM + ESP_TOTAL_HEIGHT > BATTERY_BOTTOM
+    assert ESP_REAR_Z - BATTERY_FRONT_STOP[1] >= 1.5
+    assert FRONT_SLAB_INNER_X - esp_rim_half_width() >= 1.0
+    assert esp_front_z() + ESP_RIM_CLEARANCE + ESP_RIM_WALL < -4.5
+    # the rim's rear wall stays clear of the battery front stop
+    assert ESP_REAR_Z - ESP_RIM_CLEARANCE - ESP_RIM_WALL - BATTERY_FRONT_STOP[1] >= 1.0
