@@ -350,6 +350,34 @@ Run the generator in a **new empty Fusion design**, with `stand.py` through
 python3 -m unittest discover -s hardware/case -p 'test_*.py'
 ```
 
+### STL files for printing
+
+`hardware/case/stl/` holds the three printable parts, exported from the model
+at commit `fa88b80`. Units are mm; the origin is on the bed (each part is centred
+on X/Y with its lowest point at Z = 0). The meshes are binary STL, closed and
+consistently oriented (every edge shared by exactly two triangles); the volumes
+match the native solids within 0.1%. `stl/stl_report.json` has the full check.
+No supports are baked in, and the hardware reference bodies are not included.
+
+| File | Orientation | Bounding box X × Y × Z (mm) | Triangles | Bed contact (mm²) |
+|---|---|---|---|---|
+| `hardware/case/stl/v6_front_frame.stl` | front face down | 67.600 × 74.589 × 14.427 | 26592 | 2399 |
+| `hardware/case/stl/v6_rear_cover.stl` | upside down, top on the bed | 68.000 × 60.594 × 75.000 | 9110 | 2996 |
+| `hardware/case/stl/v6_service_base.stl` | underside on the bed | 66.000 × 61.343 × 24.500 | 8424 | 3672 |
+
+Print notes: the front frame lies face down, so its funnel (about 58° from
+vertical) and the outer bevel (about 47°) are overhangs and may need supports on
+the visible face; four zero-area slivers (< 0.0001 mm) were dropped from its mesh.
+The cover is upside down with its flat top on the bed, and the base sits on its
+underside. These orientations are suggestions for the first test print.
+
+To regenerate: with the v6 model open in Fusion, run `stl_v6.export_raw(<raw
+folder>)` through Fusion's Python API (it writes the three bodies in model
+coordinates without editing the design), then run the orientation step outside
+Fusion (`stl_v6.process(<raw folder>, "hardware/case/stl")`, from
+`hardware/case`). The tests in `test_stl_v6.py` check the mesh tools and the
+exported files.
+
 ### Remaining work
 
 Nothing else needs to be measured (USB-C receptacle, wiring, lit area and the

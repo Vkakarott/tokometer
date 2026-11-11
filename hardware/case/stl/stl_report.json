@@ -1,0 +1,93 @@
+{
+  "units": "mm",
+  "origin": "centred on X/Y, lowest point on the bed (Z = 0)",
+  "parts": [
+    {
+      "triangles": 26592,
+      "vertices": 13288,
+      "degenerate_triangles": 0,
+      "open_edges": 0,
+      "edges_used_more_than_once": 0,
+      "closed_manifold": true,
+      "volume_mm3": 15528.7,
+      "removed_degenerate_triangles": 4,
+      "bed_contact_area_mm2": 2399.3,
+      "name": "v6_front_frame",
+      "file": "v6_front_frame.stl",
+      "orientation": "front face down",
+      "bbox_min_mm": [
+        -33.8,
+        -37.294,
+        0.0
+      ],
+      "bbox_max_mm": [
+        33.8,
+        37.294,
+        14.427
+      ],
+      "size_mm": [
+        67.6,
+        74.589,
+        14.427
+      ]
+    },
+    {
+      "triangles": 9110,
+      "vertices": 4539,
+      "degenerate_triangles": 0,
+      "open_edges": 0,
+      "edges_used_more_than_once": 0,
+      "closed_manifold": true,
+      "volume_mm3": 34924.1,
+      "removed_degenerate_triangles": 0,
+      "bed_contact_area_mm2": 2996.2,
+      "name": "v6_rear_cover",
+      "file": "v6_rear_cover.stl",
+      "orientation": "upside down, top on the bed",
+      "bbox_min_mm": [
+        -34.0,
+        -30.297,
+        0.0
+      ],
+      "bbox_max_mm": [
+        34.0,
+        30.297,
+        75.0
+      ],
+      "size_mm": [
+        68.0,
+        60.594,
+        75.0
+      ]
+    },
+    {
+      "triangles": 8424,
+      "vertices": 4202,
+      "degenerate_triangles": 0,
+      "open_edges": 0,
+      "edges_used_more_than_once": 0,
+      "closed_manifold": true,
+      "volume_mm3": 37978.4,
+      "removed_degenerate_triangles": 0,
+      "bed_contact_area_mm2": 3672.1,
+      "name": "v6_service_base",
+      "file": "v6_service_base.stl",
+      "orientation": "underside on the bed",
+      "bbox_min_mm": [
+        -33.0,
+        -30.671,
+        0.0
+      ],
+      "bbox_max_mm": [
+        33.0,
+        30.671,
+        24.5
+      ],
+      "size_mm": [
+        66.0,
+        61.343,
+        24.5
+      ]
+    }
+  ]
+}
