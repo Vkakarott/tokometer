@@ -267,44 +267,64 @@ v5 ones (the generator imports `stand_v5.py`); only the interior is new.
 Coordinates: x across, y up from the underside, z negative toward the rear;
 the front face leans, so display positions are measured along it.
 
+**All dimensions were re-measured on 2026-11-11** and the earlier ones were
+wrong (see `../dimensions.md`). v5 was generated with the superseded values
+(38.5 × 31.0 window, 48.87 × 33.0 PCB, 20 × 16 ESP); it stays as a prototype
+and is not updated.
+
 ### Layout
 
 | Part | Position | Status |
 |---|---|---|
-| Display window | 38.5 × 31.0 mm in the front plate | MEASURED and CONFIRMED as the **case opening**, slightly larger than the lit area (which is smaller, not measured) |
-| Display PCB 48.87 × 33.0 × 1.1 | 6.9–8.0 mm behind the front face, centred on the window | PCB measured; depth and centring ASSUMED |
-| Display posts | 4 × Ø3.0 mm at 45.0 × 29.8 mm centres (PCB holes Ø2.0), Ø1.3 × 2.7 mm pilot holes for M1.6 self-tapping screws | hole Ø2.0 and 43.0 / 27.8 mm edge-to-edge MEASURED (centres derived: +2.0); post and pilot diameters ASSUMED |
-| Battery 42 × 24 × 16 | x ±21, z −61 to −37, y 11 to 27, on two 3 mm wide ribs (x ±15) | envelope MEASURED; resting height ASSUMED |
-| Battery USB-C | 9.3 × 3.2 mm, centred (x 0), centre at y 14.0, tip 1.0 mm beyond the battery rear (z −62.0) | width and protrusion ESTIMATED; height, height above the base and x ASSUMED |
-| Rear USB opening | 13 × 7 mm, centre y 14.0 (y 10.5–17.5), x 0 | provisional cable envelope kept from v5; aligned with the USB-C |
-| ESP32-C3 20 × 16 | z −33 to −13, y 12.0–13.6, x ±8, on two rails and under a two-screw retainer | footprint MEASURED; thickness, height and USB-edge direction ASSUMED/not modeled |
-| Battery front stop | z −36.5 to −35.0, x ±10, 8 mm tall | design choice |
+| Front opening | 40.0 × 33.5 in the front plate, centred on the PCB (5.5 mm per side horizontally, 1.0 mm vertically) | MEASURED; slightly larger than the lit area |
+| Display PCB 51.0 × 35.5 × 1.1 | 6.15–7.25 mm behind the front face | PCB and 3.25 mm total stack MEASURED; the stack is taken as glass front to PCB back (ASSUMED) |
+| Display posts | 4 × Ø3.0 at 47.5 × 31.7 mm centres (PCB holes Ø2.0, 45.5 × 29.7 edge to edge), Ø1.3 × 2.8 mm pilot holes for M1.6 self-tapping screws | holes MEASURED, convention confirmed; post and pilot ASSUMED |
+| Battery 44.6 × 25.0 × 16.5 | x ±22.3, z −61 to −36, **y 18.5 to 35.0**, on two ribs (x ±15) with a front stop | envelope MEASURED; height and position ASSUMED |
+| USB-C board 18 × 20 × 1 | z −61 to −41, y 11.4–12.4, on 3 bosses with Ø0.9 locating pins | board and holes MEASURED; hole row position and "bottom" edge ASSUMED |
+| USB-C receptacle | 9.3 × 3.2 × 7.35, centred (x 0), centre at y 14.0, 1.0 mm beyond the board edge (tip z −62.0) | ASSUMED typical |
+| Rear opening | 13.0 × 7.5, centre y 14.0 (y 10.25–17.75), x 0 | STANDARD plug, see below |
+| ESP32-C3 | board 18.0 × 22.7 × 1.0, reserved envelope 11.5 tall, z −31.5 to −8.8, y 9.0–20.5, x ±9, inside a 6 mm rim (0.3 mm clearance) | footprint and 11.5 MEASURED; nothing leaves the case |
+
+The rear opening is sized for a generic USB-C plug with a typical moulded
+cover, not a measured cable: cover about 12 × 6.5 mm (metal about 8.4 × 2.6)
+plus 0.5 mm per side gives 13.0 × 7.5. The earlier provisional 13 × 7 did not
+cover the height.
+
+### Why the battery is raised
+
+The battery is 44.6 mm wide but the cover's screw tabs (|x| ≥ 22.0, up to
+y 18.0) sweep the whole length when the cover slides off, leaving only 44.0 mm
+between their inner edges. The battery therefore rides on two ribs with its bottom at
+y 18.5, 0.5 mm above the tabs; its wings overhang the tab inner edge by 0.3 mm
+per side. The USB-C board sits under it, and the 11.5 mm ESP (it would reach
+y 20.5 and touch the battery) sits in front of it instead.
 
 ### Clearances
 
-- USB-C tip to the inner rear wall: 0.38 mm at the top of the battery (the
-  wall leans forward), more below. Opening wider than the USB-C by 1.85 mm per
-  side.
-- Battery to the cover screw tabs: 1.0 mm per side. Battery to the front
-  stop: 0.5 mm. Wire gap between the front stop and the ESP: 2.0 mm.
-- There are **no battery side stops**. The cover's screw tabs (|x| ≥ 22 mm)
-  sweep the whole length when the cover slides off; side stops at x 21.5–23.5
-  produced a 24 mm³ collision at 20 mm travel. The 1.0 mm gap to the rear tabs
-  locates the battery sideways only while the cover is on.
-- Display screws: M1.6 self-tapping (0.4 mm clearance in the measured Ø2.0
-  holes; M2 would have none). The screws themselves, the display header and
-  all wiring are not modeled.
+- Rear wall to the USB-C tip: 0.77 mm at the connector top (the wall leans
+  forward with height).
+- Battery bottom over the cover tabs: 0.5 mm. USB-C top to battery bottom:
+  2.9 mm. Rear opening top to battery bottom: 0.75 mm.
+- Battery to the front stop: 0.5 mm. ESP rim to the front stop: 1.5 mm. ESP
+  rim to the front screw tabs: 1.0 mm per side.
+- The 11.5 mm ESP (y 9.0–20.5) and the display PCB (bottom at about y 38)
+  never overlap in height or depth.
+- Display screws: M1.6 self-tapping (0.4 mm clearance in the Ø2.0 holes; M2
+  would have none). The screws, the display header (irrelevant to the case)
+  and all wiring are not modeled.
+- The 0.9 mm locating pins only position the USB-C board; it needs glue or a
+  heat stake to be retained.
 
 ### Outputs and checks
 
 `v6/` holds `tokometer_stand_v6_assembly.f3d`, `open.png` (cover hidden),
 `layout_top.png` (interior from above), `cover_inside.png`, `underside.png`,
 `front.png`, `rear.png`, `preview.png` and `validation.json` (solids, layout
-positions, clearances, estimated/assumed values, missing measurements).
-The model has 364 healthy timeline entries, 20 solids and no interference; the
-cover slides rearward 0–80 mm (85 samples) without touching any other solid.
-This is a CAD check, not a physical fit guarantee; no print meshes are
-exported.
+positions, clearances, measured/standard/assumed values, missing
+measurements). The model has 367 healthy timeline entries, 20 solids and no
+interference; the cover slides rearward 0–80 mm (85 samples) without touching
+any other solid. This is a CAD check, not a physical fit guarantee; no print
+meshes are exported.
 
 Run the generator in a **new empty Fusion design**, with `stand.py` through
 `stand_v5.py` beside it. If a single call times out, pass `OPTIONS` through
