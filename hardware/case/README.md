@@ -312,8 +312,15 @@ y 20.5 and touch the battery) sits in front of it instead.
 - Display screws: M1.6 self-tapping (0.4 mm clearance in the Ø2.0 holes; M2
   would have none). The screws, the display header (irrelevant to the case)
   and all wiring are not modeled.
-- The 0.9 mm locating pins only position the USB-C board; it needs glue or a
-  heat stake to be retained.
+- **USB-C board fixation (user's decision):** the board is held only by its
+  three Ø0.9 locating pins in the Ø1.0 holes; no glue and no heat stake. The
+  pins give no vertical retention and are thin printed parts that take the
+  plug insertion and extraction loads. This is recorded as the design, not as
+  a verified fit.
+- **Battery retention:** nothing holds the raised battery down or sideways
+  except gravity, two ribs, the front stop and the rear wall. The cover tabs
+  top out at y 18.0, below the battery bottom at y 18.5, so they do not contain
+  it either; only the cover's side walls (|x| = 32) limit sideways travel.
 
 ### Outputs and checks
 
