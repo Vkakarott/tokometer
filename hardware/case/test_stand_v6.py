@@ -83,12 +83,19 @@ class FitTests(unittest.TestCase):
                                + spec.USB_C_BODY[1] / 2, spec.USB_CENTER_HEIGHT)
         self.assertEqual(spec.USB_C_X, 0.0)
 
-    def test_usb_c_tip_stays_inside_the_rear_wall(self):
-        tip = spec.USB_BOARD_REAR_Z - spec.USB_C_PROTRUSION
-        self.assertGreaterEqual(tip - spec.rear_wall_inner_z(spec.usb_connector_top()), 0.3)
+    def test_usb_connector_sits_near_the_outer_face_inside_the_opening(self):
+        recess = spec.usb_tip_z() - spec.rear_outer_z(spec.USB_CENTER_HEIGHT)
+        self.assertGreater(recess, 0.0)
+        self.assertLessEqual(recess, 1.5)
+        board_top = spec.USB_BOARD_BOTTOM + spec.USB_BOARD[2]
+        gap = spec.USB_BOARD_REAR_Z - spec.rear_wall_inner_z(board_top)
+        self.assertGreaterEqual(gap, spec.USB_BOARD_WALL_GAP_MIN)
+        self.assertGreaterEqual((spec.USB_OPENING[0] - spec.USB_C_BODY[0]) / 2, 1.5)
+        self.assertGreaterEqual((spec.USB_OPENING[1] - spec.USB_C_BODY[1]) / 2, 1.5)
 
     def test_unknowns_remain_explicit(self):
-        self.assertEqual(len(spec.MISSING_MEASUREMENTS), 5)
+        self.assertEqual(len(spec.MISSING_MEASUREMENTS), 1)
+        self.assertIn("printed sample", spec.MISSING_MEASUREMENTS[0])
         text = (ROOT / "stand_v6_spec.py").read_text()
         self.assertIn("NOT a measurement", text)
         self.assertIn("STANDARD", text)
@@ -120,6 +127,7 @@ class NativeValidationReportTests(unittest.TestCase):
         self.assertEqual(self.report["battery_envelope_measured_mm"], list(spec.BATTERY))
         self.assertEqual(self.report["esp_pcb_measured_mm"], list(spec.ESP_PCB))
         self.assertEqual(self.report["usb_board_measured_mm"], list(spec.USB_BOARD))
+        self.assertEqual(self.report["missing_measurements"], list(spec.MISSING_MEASUREMENTS))
 
     def test_nothing_is_claimed_as_verified(self):
         self.assertFalse(self.report["physical_fit_verified"])

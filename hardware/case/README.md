@@ -280,8 +280,8 @@ and is not updated.
 | Display PCB 51.0 × 35.5 × 1.1 | 6.15–7.25 mm behind the front face | PCB and 3.25 mm total stack MEASURED; the stack is taken as glass front to PCB back (ASSUMED) |
 | Display posts | 4 × Ø3.0 at 47.5 × 31.7 mm centres (PCB holes Ø2.0, 45.5 × 29.7 edge to edge), Ø1.3 × 2.8 mm pilot holes for M1.6 self-tapping screws | holes MEASURED, convention confirmed; post and pilot ASSUMED |
 | Battery 44.6 × 25.0 × 16.5 | x ±22.3, z −61 to −36, **y 18.5 to 35.0**, on two ribs (x ±15) with a front stop | envelope MEASURED; height and position ASSUMED |
-| USB-C board 18 × 20 × 1 | z −61 to −41, y 11.4–12.4, on 3 bosses with Ø0.9 locating pins | board and holes MEASURED; hole row position and "bottom" edge ASSUMED |
-| USB-C receptacle | 9.3 × 3.2 × 7.35, centred (x 0), centre at y 14.0, 1.0 mm beyond the board edge (tip z −62.0) | ASSUMED typical |
+| USB-C board 18 × 20 × 1 | z −62.55 to −42.55, y 11.4–12.4, on 3 bosses with Ø0.9 locating pins; its rear corners stop 0.33 mm short of the inner rear wall | board and holes MEASURED; hole pair 3.5 mm from the connector edge and "bottom" = opposite edge CONFIRMED; z position ASSUMED |
+| USB-C receptacle | 9.3 × 3.2 × 7.35, centred (x 0), centre at y 14.0, 1.0 mm beyond the board edge; the tip (z −63.55) sits inside the opening tunnel, **1.28 mm** from the outer face | typical values; no measurement needed (user's decision) |
 | Rear opening | 13.0 × 7.5, centre y 14.0 (y 10.25–17.75), x 0 | STANDARD plug, see below |
 | ESP32-C3 | board 18.0 × 22.7 × 1.0, reserved envelope 11.5 tall, z −31.5 to −8.8, y 9.0–20.5, x ±9, inside a 6 mm rim (0.3 mm clearance) | footprint and 11.5 MEASURED; nothing leaves the case |
 
@@ -301,8 +301,11 @@ y 20.5 and touch the battery) sits in front of it instead.
 
 ### Clearances
 
-- Rear wall to the USB-C tip: 0.77 mm at the connector top (the wall leans
-  forward with height).
+- USB-C tip to the rear outer face: 1.28 mm, inside the opening tunnel (it was
+  2.83 mm). Flush is not possible without notching the wall: the 18 mm board
+  is wider than the 13 mm opening, so its rear corners stop 0.33 mm short of
+  the 2 mm wall. The connector has 1.85 mm of clearance per side and 2.15 mm
+  above and below inside the opening.
 - Battery bottom over the cover tabs: 0.5 mm. USB-C top to battery bottom:
   2.9 mm. Rear opening top to battery bottom: 0.75 mm.
 - Battery to the front stop: 0.5 mm. ESP rim to the front stop: 1.5 mm. ESP
@@ -341,3 +344,10 @@ Run the generator in a **new empty Fusion design**, with `stand.py` through
 ```sh
 python3 -m unittest discover -s hardware/case -p 'test_*.py'
 ```
+
+### Remaining work
+
+Nothing else needs to be measured (USB-C receptacle, wiring, lit area and the
+3.25 mm stack split were closed by the user's decisions; see
+`../dimensions.md`). Only the **physical fit test of a printed sample**
+remains.

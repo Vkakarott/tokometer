@@ -249,8 +249,12 @@ def layout_report(s):
         "esp_z_range_mm": [s.ESP_REAR_Z, s.esp_front_z()],
         "esp_reserved_y_range_mm": [s.ESP_BOTTOM, s.ESP_BOTTOM + s.ESP_TOTAL_HEIGHT],
         "clearances_mm": {
-            "usb_c_tip_to_rear_wall_at_connector_top":
-                s.USB_BOARD_REAR_Z - s.USB_C_PROTRUSION - s.rear_wall_inner_z(s.usb_connector_top()),
+            "usb_c_tip_recess_from_outer_face":
+                s.usb_tip_z() - s.rear_outer_z(s.USB_CENTER_HEIGHT),
+            "usb_board_rear_edge_to_inner_wall":
+                s.USB_BOARD_REAR_Z - s.rear_wall_inner_z(s.USB_BOARD_BOTTOM + s.USB_BOARD[2]),
+            "usb_c_in_opening_width_per_side": (s.USB_OPENING[0] - s.USB_C_BODY[0]) / 2,
+            "usb_c_in_opening_height_per_side": (s.USB_OPENING[1] - s.USB_C_BODY[1]) / 2,
             "battery_bottom_over_cover_tabs": s.BATTERY_BOTTOM - s.COVER_TAB_TOP,
             "battery_wing_overhang_past_tab_inner_edge_per_side":
                 s.BATTERY[0] / 2 - s.COVER_TAB_INNER_X,
@@ -264,6 +268,8 @@ def layout_report(s):
             "opening_vs_plug_cover_per_side": (s.USB_OPENING[0] - s.USB_PLUG_COVER[0]) / 2,
             "opening_vs_plug_cover_height_per_side": (s.USB_OPENING[1] - s.USB_PLUG_COVER[1]) / 2,
         },
+        "confirmed_by_user": {"usb_board_third_hole_edge": "edge opposite the connector",
+                              "usb_board_hole_pair_from_connector_edge_mm": s.USB_HOLE_ROW_FROM_REAR},
         "measured_by_user": {
             "display_pcb_mm": list(s.DISPLAY_PCB), "display_stack_mm": s.DISPLAY_STACK,
             "display_hole_diameter_mm": s.DISPLAY_HOLE_DIAMETER,
@@ -284,8 +290,6 @@ def layout_report(s):
                         "battery_raised_over_cover_tabs_by_mm": s.BATTERY_CLEAR_OVER_TABS,
                         "usb_c_body_mm": list(s.USB_C_BODY), "usb_c_length_mm": s.USB_C_LENGTH,
                         "usb_c_protrusion_mm": s.USB_C_PROTRUSION,
-                        "usb_board_third_hole_edge": "edge opposite the connector",
-                        "usb_board_hole_pair_from_rear_mm": s.USB_HOLE_ROW_FROM_REAR,
                         "usb_board_pins_boss_diameters_mm": [s.USB_PIN_DIAMETER, s.USB_BOSS_DIAMETER],
                         "esp_rests_on_base_with_rim_mm": [s.ESP_RIM_CLEARANCE, s.ESP_RIM_WALL,
                                                           s.ESP_RIM_HEIGHT]},

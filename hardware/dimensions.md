@@ -79,7 +79,8 @@ The USB-C board is separate from the battery board.
 | Mounting holes | 3 × Ø1.0 | MEASURED. |
 | Two holes on the USB-C line, edge to edge | 15.9 | MEASURED. |
 | Two holes on the USB-C line, centre to centre | 16.9 | DERIVED: 15.9 + 1.0. |
-| Third hole | centred, 3.4 from the bottom of the board | MEASURED. Which edge "bottom" is, is an assumption (see the spec). |
+| Third hole | centred, 3.4 from the bottom of the board | MEASURED. "Bottom" is the edge opposite the connector (CONFIRMED by the user). |
+| Pair of holes along the length | 3.5 from the connector edge | CONFIRMED by the user. |
 
 The neck width of the USB-C tail is not needed.
 
@@ -100,13 +101,17 @@ measurements:
 | Clearance to the opening | about 0.5 per side | Chosen by the user. |
 | Rear opening | 13.0 × 7.5 | DERIVED: 12 + 1.0 and 6.5 + 1.0, centred on the USB-C. The previous provisional 13 × 7 did not cover the height. |
 
-## Still to measure
+## Still to do
 
-- Lit area size and its margins to the opening (only known to be smaller).
-- Real USB-C receptacle of the USB-C board: height, length and how far it
-  protrudes beyond the board edge, and its height above the board.
-- Which edge the third USB-C-board hole is measured from, and where the two
-  holes sit along the board length.
-- Wire routing between the battery, the USB-C board and the ESP32-C3 (wire
-  length, pass-through position, clearance).
-- The actual cable plug, only if a specific cable is chosen later.
+Nothing else needs to be measured. Decisions by the user, 2026-11-11:
+
+- **USB-C receptacle:** no measurement needed. The rear opening has ample
+  clearance for any cable as long as the connector sits near the case edge.
+- **Wiring:** ignored; the case is hollow and the wires fit easily.
+- **Lit area:** irrelevant; only the 40.0 × 33.5 opening matters.
+- **Display 3.25 mm stack:** the assumption stays (glass to the back of the
+  PCB, no component behind it); no measurement needed.
+
+Remaining: a **physical fit test of a printed sample** (tolerances, the
+Ø0.9 mm USB-C board pins, the M1.6 display posts, the ESP rim and the plug in
+the rear opening).

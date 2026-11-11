@@ -42,8 +42,8 @@ POST_DIAMETER = 3.0  # ASSUMPTION: stays inside the PCB edge (1.75 / 1.9 mm)
 POST_PILOT_DIAMETER = 1.3  # ASSUMPTION: self-tapping M1.6 in printed plastic
 POST_PILOT_DEPTH = 2.8  # ASSUMPTION: runs 0.65 mm into the 4 mm front plate
 PLATE_DEPTH = 4.0  # front plate thickness inherited from v5
-# ASSUMPTION: the 3.25 mm total is taken as glass front to PCB back, so no rear
-# component stands behind the PCB; the real split is unmeasured.
+# ASSUMPTION, kept by the user's decision (no measurement needed): the 3.25 mm
+# total is taken as glass front to PCB back, with no component behind the PCB.
 DISPLAY_PCB_FRONT_DEPTH = PLATE_DEPTH + DISPLAY_STACK - DISPLAY_PCB_THICKNESS
 
 # --- ESP32-C3 Mini (MEASURED) ------------------------------------------------
@@ -71,19 +71,24 @@ BATTERY_FRONT_STOP_TOP = 24.5
 
 # --- USB-C board (independent; MEASURED unless noted) ------------------------
 USB_BOARD = (18.0, 20.0, 1.0)  # x width, z length, thickness
-USB_BOARD_REAR_Z = -61.0  # ASSUMPTION; connector faces the rear
+# ASSUMPTION: as far back as the 18 mm board can go (it is wider than the 13 mm
+# opening, so its rear corners stop 0.33 mm short of the 2 mm wall's inner face).
+# The connector then sits inside the opening tunnel, close to the outer face.
+USB_BOARD_REAR_Z = -62.55
+USB_BOARD_WALL_GAP_MIN = 0.3
 USB_C_X = 0.0  # centred on the board
 USB_CENTER_HEIGHT = 14.0  # the height the case is programmed for (inherited)
-USB_C_BODY = (9.3, 3.2)  # ASSUMPTION: typical receptacle width and height
-USB_C_LENGTH = 7.35  # ASSUMPTION: typical receptacle length
-USB_C_PROTRUSION = 1.0  # ASSUMPTION: connector beyond the board edge
+# The receptacle needs no measurement (user's decision): the opening has ample
+# clearance for any cable as long as the connector sits near the case edge.
+USB_C_BODY = (9.3, 3.2)  # typical receptacle width and height
+USB_C_LENGTH = 7.35  # typical receptacle length
+USB_C_PROTRUSION = 1.0  # typical, connector beyond the board edge
 USB_BOARD_BOTTOM = USB_CENTER_HEIGHT - USB_C_BODY[1] / 2 - USB_BOARD[2]  # 11.4
 USB_HOLE_DIAMETER = 1.0
 USB_HOLES_EDGE_TO_EDGE = 15.9  # the two holes on the USB-C line
 USB_HOLES_CENTRES = USB_HOLES_EDGE_TO_EDGE + USB_HOLE_DIAMETER  # 16.9
-USB_HOLE_ROW_FROM_REAR = 3.5  # ASSUMPTION: where the pair sits along the length
-USB_MIDDLE_HOLE_FROM_FRONT = 3.4  # MEASURED value; the user's "bottom" is taken
-# ASSUMPTION: "bottom" is the edge opposite the connector.
+USB_HOLE_ROW_FROM_REAR = 3.5  # CONFIRMED by the user: pair 3.5 mm from the connector edge
+USB_MIDDLE_HOLE_FROM_FRONT = 3.4  # MEASURED; CONFIRMED: "bottom" is the edge opposite the connector
 USB_BOSS_DIAMETER = 2.0  # ASSUMPTION
 USB_PIN_DIAMETER = 0.9  # ASSUMPTION: 0.1 mm clearance in the 1.0 mm holes
 
@@ -116,18 +121,21 @@ FRONT_SLAB_INNER_X = 11.5  # front screw tabs, inherited from v5
 REAR_WALL_SLOPE = REAR_LEAN / BODY_HEIGHT
 
 MISSING_MEASUREMENTS = (
-    "Lit area size and its margins to the 40.0 x 33.5 opening (only known smaller)",
-    "USB-C receptacle of the USB-C board: height, length, protrusion and height "
-    "above the board (typical values assumed)",
-    "USB-C board holes: which edge the third hole is measured from, and where "
-    "the pair sits along the length (assumed)",
-    "Wire routing between battery, USB-C board and ESP32-C3",
-    "Display rear split between PCB and components inside the 3.25 mm stack",
+    "Physical fit test of a printed sample: tolerances, the 0.9 mm USB-C board "
+    "pins, the M1.6 display posts, the ESP rim and the plug in the rear opening",
 )
 
 
 def rear_wall_inner_z(y):
     return -(CASE_DEPTH - WALL) + REAR_WALL_SLOPE * (y - BASE_HEIGHT)
+
+
+def rear_outer_z(y):
+    return -CASE_DEPTH + REAR_WALL_SLOPE * (y - BASE_HEIGHT)
+
+
+def usb_tip_z():
+    return USB_BOARD_REAR_Z - USB_C_PROTRUSION
 
 
 def battery_front_z():
@@ -201,8 +209,13 @@ def validate_battery():
 
 
 def validate_usb():
-    tip = USB_BOARD_REAR_Z - USB_C_PROTRUSION
-    assert tip - rear_wall_inner_z(usb_connector_top()) >= 0.3
+    board_top = USB_BOARD_BOTTOM + USB_BOARD[2]
+    assert USB_BOARD_REAR_Z - rear_wall_inner_z(board_top) >= USB_BOARD_WALL_GAP_MIN
+    # the connector sits inside the opening tunnel, close to the outer face
+    assert usb_tip_z() > rear_outer_z(USB_CENTER_HEIGHT - USB_C_BODY[1] / 2)
+    assert usb_tip_z() - rear_outer_z(USB_CENTER_HEIGHT) <= 1.5
+    assert (USB_OPENING[0] - USB_C_BODY[0]) / 2 >= 1.5
+    assert (USB_OPENING[1] - USB_C_BODY[1]) / 2 >= 1.5
     assert USB_OPENING == (13.0, 7.5)
     assert USB_OPENING[0] > USB_PLUG_COVER[0] and USB_OPENING[1] > USB_PLUG_COVER[1]
     opening_bottom = USB_CENTER_HEIGHT - USB_OPENING[1] / 2
