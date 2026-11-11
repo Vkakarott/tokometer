@@ -1,10 +1,14 @@
 # Tokometer enclosure revisions
 
-The latest revision is **v5, a serviceable assembly prototype**. It includes
-physical guides, locating pins, screw holes and captive-nut pockets. The v4
-exterior study remains preserved. The enclosure is not yet released for final
-printing: measured electronics footprints are used, but module thicknesses,
-offsets, connectors and printed tolerances still need verification.
+The latest revision is **v6, the layout A prototype** (display on four posts,
+battery module with its USB-C toward the rear, ESP32-C3 in front of it). It
+reuses the v5 shell, joints and fasteners; **v5 stays preserved** as the
+serviceable assembly prototype with physical guides, locating pins, screw holes
+and captive-nut pockets, and the v4 exterior study is preserved too. The
+enclosure is not yet released for final printing: measured electronics
+footprints are used, but module thicknesses, offsets, connectors and printed
+tolerances still need verification. Current measured values live in
+`../dimensions.md`.
 
 ## Preserved baseline
 
@@ -129,8 +133,9 @@ the visual identity of the front:
 
 The screen opening is 35.5 × 28.3 mm **at the study scale**. The dark screen
 body is only an appearance placeholder. Neither its opening nor its body
-represents the final JD9853 module. The existing 40.0 × 31.8 mm window and
-48.9 × 33.0 mm PCB measurements in `../dimensions.md` remain unchanged.
+represents the final JD9853 module. (When v4 was made, `../dimensions.md` held
+a 40.0 × 31.8 mm window and a 48.9 × 33.0 mm PCB; both were later revised to
+38.5 × 31.0 and 48.87 × 33.0.)
 
 The four concept solids are the rear shell, front bezel, recessed foot and
 screen placeholder. Old OLED rails, ESP32 DevKit mounts and snap features
@@ -213,8 +218,10 @@ allows a fitted insulating shim; it is not a verified PCB clamping fit.
 ### Size and unresolved measurements
 
 The new design envelope is approximately 68 mm wide × 84 mm tall × 65 mm
-deep. The display window is 40.0 × 31.8 mm, with reference PCB footprints of
-48.9 × 33.0 mm for the JD9853 and 16.0 × 20.7 mm for the ESP32-C3.
+deep. The display window is 38.5 × 31.0 mm, with reference PCB footprints of
+48.87 × 33.0 mm for the JD9853 and 16.0 × 20.0 mm for the ESP32-C3 (current
+measurements; `v5/validation.json` was generated earlier with the previous
+40.0 × 31.8 / 20.7 values and has not been regenerated).
 
 `stand_v5_spec.py` explicitly labels the **unmeasured modeling assumptions**:
 4 mm display stack, 1.6 mm PCB thicknesses, centered display PCB, ESP PCB
@@ -246,6 +253,61 @@ included in any later print export.
 
 Run the generator in a **new empty Fusion design**, with `stand.py` through
 `stand_v4.py` beside it. Run the local checks with:
+
+```sh
+python3 -m unittest discover -s hardware/case -p 'test_*.py'
+```
+
+## Layout A prototype (v6)
+
+Open **`tokometer_stand_v6_assembly`**. `stand_v6.py` and `stand_v6_spec.py`
+generate a separate document and write only to `v6/`. The outer shell, base
+joints, cover guides, six M3 closure screws and the opening sequence are the
+v5 ones (the generator imports `stand_v5.py`); only the interior is new.
+Coordinates: x across, y up from the underside, z negative toward the rear;
+the front face leans, so display positions are measured along it.
+
+### Layout
+
+| Part | Position | Status |
+|---|---|---|
+| Display window | 38.5 × 31.0 mm in the front plate | MEASURED and CONFIRMED as the **case opening**, slightly larger than the lit area (which is smaller, not measured) |
+| Display PCB 48.87 × 33.0 × 1.1 | 6.9–8.0 mm behind the front face, centred on the window | PCB measured; depth and centring ASSUMED |
+| Display posts | 4 × Ø3.2 mm, 45.9 × 29.6 mm apart, Ø1.3 × 2.7 mm pilot holes for M1.6 self-tapping screws | spacing ESTIMATED from photos (±0.6 / ±0.8); diameters ASSUMED |
+| Battery 42 × 24 × 16 | x ±21, z −61 to −37, y 11 to 27, on two 3 mm wide ribs (x ±15) | envelope MEASURED; resting height ASSUMED |
+| Battery USB-C | 9.3 × 3.2 mm, centred (x 0), centre at y 14.0, tip 1.0 mm beyond the battery rear (z −62.0) | width and protrusion ESTIMATED; height, height above the base and x ASSUMED |
+| Rear USB opening | 13 × 7 mm, centre y 14.0 (y 10.5–17.5), x 0 | provisional cable envelope kept from v5; aligned with the USB-C |
+| ESP32-C3 20 × 16 | z −33 to −13, y 12.0–13.6, x ±8, on two rails and under a two-screw retainer | footprint MEASURED; thickness, height and USB-edge direction ASSUMED/not modeled |
+| Battery front stop | z −36.5 to −35.0, x ±10, 8 mm tall | design choice |
+
+### Clearances
+
+- USB-C tip to the inner rear wall: 0.38 mm at the top of the battery (the
+  wall leans forward), more below. Opening wider than the USB-C by 1.85 mm per
+  side.
+- Battery to the cover screw tabs: 1.0 mm per side. Battery to the front
+  stop: 0.5 mm. Wire gap between the front stop and the ESP: 2.0 mm.
+- There are **no battery side stops**. The cover's screw tabs (|x| ≥ 22 mm)
+  sweep the whole length when the cover slides off; side stops at x 21.5–23.5
+  produced a 24 mm³ collision at 20 mm travel. The 1.0 mm gap to the rear tabs
+  locates the battery sideways only while the cover is on.
+- The M1.6 display screws, the display header and all wiring are not modeled.
+
+### Outputs and checks
+
+`v6/` holds `tokometer_stand_v6_assembly.f3d`, `open.png` (cover hidden),
+`layout_top.png` (interior from above), `cover_inside.png`, `underside.png`,
+`front.png`, `rear.png`, `preview.png` and `validation.json` (solids, layout
+positions, clearances, estimated/assumed values, missing measurements).
+The model has 364 healthy timeline entries, 20 solids and no interference; the
+cover slides rearward 0–80 mm (85 samples) without touching any other solid.
+This is a CAD check, not a physical fit guarantee; no print meshes are
+exported.
+
+Run the generator in a **new empty Fusion design**, with `stand.py` through
+`stand_v5.py` beside it. If a single call times out, pass `OPTIONS` through
+`runpy.run_path(..., init_globals={"OPTIONS": {...}})` to split the stages
+(`opening`, `views`, `export`, `finalize_only`, `log`). Local checks:
 
 ```sh
 python3 -m unittest discover -s hardware/case -p 'test_*.py'
