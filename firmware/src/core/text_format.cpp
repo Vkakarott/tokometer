@@ -54,6 +54,22 @@ void formatResetIn(const UsageWindow &window, int64_t nowSeconds, char *out, siz
     formatDuration(remaining > 0 ? remaining : 0, out, size);
 }
 
+void formatWindowStatus(const UsageView &view, const UsageWindow &window, int64_t nowSeconds, char *out, size_t size) {
+    if (!view.hasData || !window.present) {
+        snprintf(out, size, "Sem dados");
+    } else if (view.stale) {
+        char age[12];
+        formatAge(view.ageSeconds, age, sizeof age);
+        snprintf(out, size, "! %s", age);
+    } else if (!window.known) {
+        snprintf(out, size, "Aguardando");
+    } else if (nowSeconds <= 0 || window.resetsAt <= 0) {
+        snprintf(out, size, "Sem horario");
+    } else {
+        formatResetIn(window, nowSeconds, out, size);
+    }
+}
+
 void formatAge(uint32_t ageSeconds, char *out, size_t size) {
     if (ageSeconds < SECONDS_PER_MINUTE) {
         snprintf(out, size, "agora");

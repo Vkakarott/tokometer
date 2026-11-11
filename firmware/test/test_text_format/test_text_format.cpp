@@ -101,6 +101,46 @@ static void test_countdown() {
     TEST_ASSERT_EQUAL_STRING("0:00", text);
 }
 
+static void test_status_says_no_data_for_the_absent_five_hour_window_of_argon() {
+    UsageView argon;
+    argon.hasData = true;
+    argon.sevenDay = knownWindow(4.0f, 1000);
+    char text[24];
+
+    formatWindowStatus(argon, argon.fiveHour, 500, text, sizeof text);
+    TEST_ASSERT_EQUAL_STRING("Sem dados", text);
+    formatWindowStatus(argon, argon.sevenDay, 500, text, sizeof text);
+    TEST_ASSERT_EQUAL_STRING("8min", text);
+}
+
+static void test_status_without_provider_data_says_no_data() {
+    UsageView empty;
+    char text[24];
+
+    formatWindowStatus(empty, knownWindow(10.0f, 1000), 500, text, sizeof text);
+    TEST_ASSERT_EQUAL_STRING("Sem dados", text);
+}
+
+static void test_status_reports_stale_waiting_and_missing_clock() {
+    UsageView view;
+    view.hasData = true;
+    UsageWindow reset = knownWindow(50.0f, 1000);
+    char text[24];
+
+    view.stale = true;
+    view.ageSeconds = 180;
+    formatWindowStatus(view, reset, 500, text, sizeof text);
+    TEST_ASSERT_EQUAL_STRING("! 3min", text);
+
+    view.stale = false;
+    reset.known = false;
+    formatWindowStatus(view, reset, 500, text, sizeof text);
+    TEST_ASSERT_EQUAL_STRING("Aguardando", text);
+
+    formatWindowStatus(view, knownWindow(50.0f, 1000), 0, text, sizeof text);
+    TEST_ASSERT_EQUAL_STRING("Sem horario", text);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_primary_value_rounds_percentage);
@@ -111,5 +151,8 @@ int main() {
     RUN_TEST(test_age);
     RUN_TEST(test_user_code_gets_display_hyphen);
     RUN_TEST(test_countdown);
+    RUN_TEST(test_status_says_no_data_for_the_absent_five_hour_window_of_argon);
+    RUN_TEST(test_status_without_provider_data_says_no_data);
+    RUN_TEST(test_status_reports_stale_waiting_and_missing_clock);
     return UNITY_END();
 }

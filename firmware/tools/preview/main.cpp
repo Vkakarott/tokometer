@@ -191,7 +191,8 @@ int main(int argc, char **argv) {
         antigravity.count = 6;
         render(outputDir, "antigravity-gemini-5h", antigravity, UsageLayout::AntigravityGeminiDashboard, false, context);
         render(outputDir, "antigravity-claude-7d", antigravity, UsageLayout::AntigravityClaudeDashboard, true, context);
-        render(outputDir, "antigravity-argon-7d", antigravity, UsageLayout::AntigravityArgonDashboard, false, context);
+        render(outputDir, "antigravity-argon-5h", antigravity, UsageLayout::AntigravityArgonDashboard, false, context);
+        render(outputDir, "antigravity-argon-7d", antigravity, UsageLayout::AntigravityArgonDashboard, true, context);
         render(outputDir, "antigravity-side-cards", antigravity, Cursor, false, context);
         render(outputDir, "five-overview", antigravity, Overview, false, context);
         const ProvidersUsage antigravityOnly =

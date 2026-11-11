@@ -17,6 +17,10 @@ void formatPrimaryValue(const UsageWindow &window, char *out, size_t size);
 // window is unknown or the clock has not synced yet (nowSeconds == 0).
 void formatResetIn(const UsageWindow &window, int64_t nowSeconds, char *out, size_t size);
 
+// Line under a window: "Sem dados" when the provider or the window has nothing,
+// the data age when stale, "Aguardando" after a reset, otherwise the time left.
+void formatWindowStatus(const UsageView &view, const UsageWindow &window, int64_t nowSeconds, char *out, size_t size);
+
 // Age of the data ("agora", "3min", "2h", "2d").
 void formatAge(uint32_t ageSeconds, char *out, size_t size);
 
