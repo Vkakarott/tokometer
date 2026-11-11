@@ -1,7 +1,7 @@
 {
   "design": "tokometer_stand_v6_assembly",
   "status": "Layout A prototype; electronics fit unverified",
-  "timeline_features": 367,
+  "timeline_features": 370,
   "timeline_issues": [],
   "parts": [
     {
@@ -24,7 +24,7 @@
     },
     {
       "name": "v6_service_base",
-      "volume_mm3": 37774.814,
+      "volume_mm3": 37974.814,
       "size_mm": [
         66.0,
         24.5,
@@ -360,6 +360,18 @@
         -45.949999999999996
       ]
     ],
+    "usb_board_stop_z_range_mm": [
+      -42.5,
+      -40.5
+    ],
+    "usb_board_stop_y_range_mm": [
+      9.0,
+      14.0
+    ],
+    "usb_board_stop_x_range_mm": [
+      -10.0,
+      10.0
+    ],
     "usb_c_center_height_mm": 14.0,
     "usb_opening_mm": [
       13.0,
@@ -380,6 +392,12 @@
     "clearances_mm": {
       "usb_c_tip_recess_from_outer_face": 1.276689774696706,
       "usb_board_rear_edge_to_inner_wall": 0.33214904679376644,
+      "usb_board_front_edge_to_stop": 0.04999999999999716,
+      "usb_pin_play_per_side": 0.04999999999999999,
+      "usb_stop_top_to_board_top": 1.5999999999999996,
+      "usb_stop_top_to_battery_bottom": 4.5,
+      "usb_stop_to_battery_front_stop": 5.0,
+      "usb_stop_to_esp_rim": 7.5,
       "usb_c_in_opening_width_per_side": 1.8499999999999996,
       "usb_c_in_opening_height_per_side": 2.15,
       "battery_bottom_over_cover_tabs": 0.5,

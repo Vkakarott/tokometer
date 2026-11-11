@@ -93,6 +93,20 @@ class FitTests(unittest.TestCase):
         self.assertGreaterEqual((spec.USB_OPENING[0] - spec.USB_C_BODY[0]) / 2, 1.5)
         self.assertGreaterEqual((spec.USB_OPENING[1] - spec.USB_C_BODY[1]) / 2, 1.5)
 
+    def test_usb_board_has_a_stop_behind_it(self):
+        rear, front = spec.usb_stop_z()
+        self.assertAlmostEqual(rear - spec.usb_board_front_z(), spec.USB_STOP_GAP)
+        self.assertGreater(spec.USB_STOP_GAP, 0.0)
+        self.assertLessEqual(spec.USB_STOP_GAP, 0.1)
+        self.assertGreaterEqual(spec.USB_STOP_THICKNESS, 1.6)
+        self.assertGreaterEqual(spec.USB_STOP_HALF_WIDTH, spec.USB_BOARD[0] / 2)
+        self.assertGreaterEqual(spec.BATTERY_BOTTOM - spec.USB_STOP_TOP, 4.0)
+        self.assertGreaterEqual(spec.BATTERY_FRONT_STOP[0] - front, 3.0)
+
+    def test_pins_are_kept(self):
+        self.assertEqual(spec.USB_PIN_DIAMETER, 0.9)
+        self.assertAlmostEqual(spec.usb_pin_play_per_side(), 0.05)
+
     def test_unknowns_remain_explicit(self):
         self.assertEqual(len(spec.MISSING_MEASUREMENTS), 1)
         self.assertIn("printed sample", spec.MISSING_MEASUREMENTS[0])
@@ -122,6 +136,7 @@ class NativeValidationReportTests(unittest.TestCase):
         self.assertEqual(layout["display_opening_mm"], list(spec.DISPLAY_WINDOW))
         self.assertEqual(layout["usb_opening_mm"], list(spec.USB_OPENING))
         self.assertEqual(layout["usb_c_center_height_mm"], spec.USB_CENTER_HEIGHT)
+        self.assertEqual(layout["usb_board_stop_z_range_mm"], list(spec.usb_stop_z()))
         self.assertEqual(layout["measured_by_user"]["display_hole_centres_mm"],
                          list(spec.DISPLAY_HOLE_SPACING))
         self.assertEqual(self.report["battery_envelope_measured_mm"], list(spec.BATTERY))

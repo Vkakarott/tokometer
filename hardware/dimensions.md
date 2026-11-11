@@ -84,9 +84,11 @@ The USB-C board is separate from the battery board.
 
 The neck width of the USB-C tail is not needed.
 
-**Fixation (user's decision, 2026-11-11):** the board is held only by three
-locating pins (Ø0.9 mm pins in the Ø1.0 mm holes); no glue and no heat
-stake.
+**Fixation (user's decision, 2026-11-11):** the board is held by three
+locating pins (Ø0.9 mm pins in the Ø1.0 mm holes); no glue and no heat stake.
+A stop wall behind the board (the side opposite the connector) takes the
+plug's insertion thrust, so the pins only locate (authorized by the user after
+the design review).
 
 ## USB cable plug (STANDARD, not measured)
 

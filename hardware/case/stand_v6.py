@@ -125,6 +125,14 @@ def usb_board_mount(g, s, builder, base):
                          s.USB_BOARD[2] + 0.05, g.JOIN, base)
 
 
+def usb_board_stop(g, s, builder, base):
+    """Wall behind the board: it takes the plug's insertion thrust."""
+    rear, front = s.usb_stop_z()
+    half = s.USB_STOP_HALF_WIDTH
+    builder.slab(g.BASE_T - 0.1, -half, rear, half, front,
+                 s.USB_STOP_TOP - g.BASE_T + 0.1, g.JOIN, base)
+
+
 def usb_board_reference(g, s, builder):
     half = s.USB_BOARD[0] / 2
     board = builder.slab(s.USB_BOARD_BOTTOM, -half, s.USB_BOARD_REAR_Z, half,
@@ -184,6 +192,7 @@ def build_all(app, design, g, s, v5, v4, v3, previous):
     display_pcb, glass = display_references(g, s, v4, comp, front, board_front)
     battery_cradle(g, s, builder, base)
     usb_board_mount(g, s, builder, base)
+    usb_board_stop(g, s, builder, base)
     esp_cradle(g, s, builder, base)
     battery = battery_reference(g, s, builder)
     usb_board = usb_board_reference(g, s, builder)
@@ -242,6 +251,9 @@ def layout_report(s):
         "usb_board_z_range_mm": [s.USB_BOARD_REAR_Z, s.usb_board_front_z()],
         "usb_board_y_range_mm": [s.USB_BOARD_BOTTOM, s.USB_BOARD_BOTTOM + s.USB_BOARD[2]],
         "usb_board_holes_xz_mm": [list(p) for p in s.usb_hole_positions()],
+        "usb_board_stop_z_range_mm": list(s.usb_stop_z()),
+        "usb_board_stop_y_range_mm": [s.BASE_HEIGHT, s.USB_STOP_TOP],
+        "usb_board_stop_x_range_mm": [-s.USB_STOP_HALF_WIDTH, s.USB_STOP_HALF_WIDTH],
         "usb_c_center_height_mm": s.USB_CENTER_HEIGHT,
         "usb_opening_mm": list(s.USB_OPENING),
         "usb_opening_y_range_mm": [s.USB_CENTER_HEIGHT - s.USB_OPENING[1] / 2,
@@ -253,6 +265,13 @@ def layout_report(s):
                 s.usb_tip_z() - s.rear_outer_z(s.USB_CENTER_HEIGHT),
             "usb_board_rear_edge_to_inner_wall":
                 s.USB_BOARD_REAR_Z - s.rear_wall_inner_z(s.USB_BOARD_BOTTOM + s.USB_BOARD[2]),
+            "usb_board_front_edge_to_stop": s.usb_stop_z()[0] - s.usb_board_front_z(),
+            "usb_pin_play_per_side": s.usb_pin_play_per_side(),
+            "usb_stop_top_to_board_top": s.USB_STOP_TOP - s.USB_BOARD_BOTTOM - s.USB_BOARD[2],
+            "usb_stop_top_to_battery_bottom": s.BATTERY_BOTTOM - s.USB_STOP_TOP,
+            "usb_stop_to_battery_front_stop": s.BATTERY_FRONT_STOP[0] - s.usb_stop_z()[1],
+            "usb_stop_to_esp_rim":
+                s.ESP_REAR_Z - s.ESP_RIM_CLEARANCE - s.ESP_RIM_WALL - s.usb_stop_z()[1],
             "usb_c_in_opening_width_per_side": (s.USB_OPENING[0] - s.USB_C_BODY[0]) / 2,
             "usb_c_in_opening_height_per_side": (s.USB_OPENING[1] - s.USB_C_BODY[1]) / 2,
             "battery_bottom_over_cover_tabs": s.BATTERY_BOTTOM - s.COVER_TAB_TOP,

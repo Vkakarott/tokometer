@@ -280,7 +280,7 @@ and is not updated.
 | Display PCB 51.0 × 35.5 × 1.1 | 6.15–7.25 mm behind the front face | PCB and 3.25 mm total stack MEASURED; the stack is taken as glass front to PCB back (ASSUMED) |
 | Display posts | 4 × Ø3.0 at 47.5 × 31.7 mm centres (PCB holes Ø2.0, 45.5 × 29.7 edge to edge), Ø1.3 × 2.8 mm pilot holes for M1.6 self-tapping screws | holes MEASURED, convention confirmed; post and pilot ASSUMED |
 | Battery 44.6 × 25.0 × 16.5 | x ±22.3, z −61 to −36, **y 18.5 to 35.0**, on two ribs (x ±15) with a front stop | envelope MEASURED; height and position ASSUMED |
-| USB-C board 18 × 20 × 1 | z −62.55 to −42.55, y 11.4–12.4, on 3 bosses with Ø0.9 locating pins; its rear corners stop 0.33 mm short of the inner rear wall | board and holes MEASURED; hole pair 3.5 mm from the connector edge and "bottom" = opposite edge CONFIRMED; z position ASSUMED |
+| USB-C board 18 × 20 × 1 | z −62.55 to −42.55, y 11.4–12.4, on 3 bosses with Ø0.9 locating pins; its rear corners stop 0.33 mm short of the inner rear wall; a 20 × 2.0 mm stop (z −42.5 to −40.5, up to y 14.0) sits behind its front edge | board and holes MEASURED; hole pair 3.5 mm from the connector edge and "bottom" = opposite edge CONFIRMED; z position ASSUMED |
 | USB-C receptacle | 9.3 × 3.2 × 7.35, centred (x 0), centre at y 14.0, 1.0 mm beyond the board edge; the tip (z −63.55) sits inside the opening tunnel, **1.28 mm** from the outer face | typical values; no measurement needed (user's decision) |
 | Rear opening | 13.0 × 7.5, centre y 14.0 (y 10.25–17.75), x 0 | STANDARD plug, see below |
 | ESP32-C3 | board 18.0 × 22.7 × 1.0, reserved envelope 11.5 tall, z −31.5 to −8.8, y 9.0–20.5, x ±9, inside a 6 mm rim (0.3 mm clearance) | footprint and 11.5 MEASURED; nothing leaves the case |
@@ -315,11 +315,16 @@ y 20.5 and touch the battery) sits in front of it instead.
 - Display screws: M1.6 self-tapping (0.4 mm clearance in the Ø2.0 holes; M2
   would have none). The screws, the display header (irrelevant to the case)
   and all wiring are not modeled.
-- **USB-C board fixation (user's decision):** the board is held only by its
-  three Ø0.9 locating pins in the Ø1.0 holes; no glue and no heat stake. The
-  pins give no vertical retention and are thin printed parts that take the
-  plug insertion and extraction loads. This is recorded as the design, not as
-  a verified fit.
+- **USB-C board fixation (user's decision, plus the stop):** the board is held
+  by its three Ø0.9 locating pins in the Ø1.0 holes; no glue and no heat stake.
+  A stop wall behind the board (x ±10, z −42.5 to −40.5, y 9 to 14, 2.0 mm
+  thick) takes the plug's insertion thrust. Its gap to the board's front edge
+  is 0.05 mm, equal to the pins' play per side (0.05 mm); the stop is much
+  stiffer than the pins, so it carries the load. It sits 1.6 mm above the board
+  top, 4.5 mm below the battery, 5.0 mm from the battery's front stop and 7.5 mm
+  from the ESP rim. The gap must be tuned in the printed fit test. The stop only
+  helps insertion: pulling the plug out loads the pins and friction alone, and
+  nothing holds the board down vertically.
 - **Battery retention:** nothing holds the raised battery down or sideways
   except gravity, two ribs, the front stop and the rear wall. The cover tabs
   top out at y 18.0, below the battery bottom at y 18.5, so they do not contain

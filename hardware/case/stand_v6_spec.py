@@ -91,6 +91,14 @@ USB_HOLE_ROW_FROM_REAR = 3.5  # CONFIRMED by the user: pair 3.5 mm from the conn
 USB_MIDDLE_HOLE_FROM_FRONT = 3.4  # MEASURED; CONFIRMED: "bottom" is the edge opposite the connector
 USB_BOSS_DIAMETER = 2.0  # ASSUMPTION
 USB_PIN_DIAMETER = 0.9  # ASSUMPTION: 0.1 mm clearance in the 1.0 mm holes
+# Stop behind the board (the side opposite the connector): the plug's insertion
+# thrust pushes the board forward onto it, so the pins only locate. The gap equals
+# the pins' play (0.05 mm per side); the stop is far stiffer than the pins, so it
+# takes the load. Final gap to be tuned in the printed fit test.
+USB_STOP_GAP = 0.05
+USB_STOP_THICKNESS = 2.0
+USB_STOP_HALF_WIDTH = 10.0
+USB_STOP_TOP = 14.0  # 1.6 mm above the board top, 4.5 mm below the battery
 
 # --- Rear opening: generic plug (STANDARD, not measured) ----------------------
 USB_PLUG_METAL = (8.4, 2.6)  # STANDARD
@@ -161,6 +169,16 @@ def usb_connector_top():
     return USB_CENTER_HEIGHT + USB_C_BODY[1] / 2
 
 
+def usb_stop_z():
+    """(rear face, front face) of the stop behind the USB-C board."""
+    start = usb_board_front_z() + USB_STOP_GAP
+    return start, start + USB_STOP_THICKNESS
+
+
+def usb_pin_play_per_side():
+    return (USB_HOLE_DIAMETER - USB_PIN_DIAMETER) / 2
+
+
 def esp_front_z():
     return ESP_REAR_Z + ESP_PCB[1]
 
@@ -183,6 +201,7 @@ def validate():
     validate_display()
     validate_battery()
     validate_usb()
+    validate_usb_stop()
     validate_esp()
 
 
@@ -226,6 +245,19 @@ def validate_usb():
     assert USB_BOARD_BOTTOM > BASE_HEIGHT
     assert USB_PIN_DIAMETER < USB_HOLE_DIAMETER
     assert max(abs(x) for x, _ in usb_hole_positions()) - 0.5 < USB_BOARD[0] / 2 + 1.0
+
+
+def validate_usb_stop():
+    rear, front = usb_stop_z()
+    assert 0.0 < USB_STOP_GAP <= 0.1
+    assert USB_STOP_THICKNESS >= 1.6
+    assert USB_STOP_HALF_WIDTH >= USB_BOARD[0] / 2
+    assert USB_STOP_TOP > USB_BOARD_BOTTOM + USB_BOARD[2]
+    assert BATTERY_BOTTOM - USB_STOP_TOP >= 4.0
+    assert BATTERY_FRONT_STOP[0] - front >= 3.0
+    assert ESP_REAR_Z - ESP_RIM_CLEARANCE - ESP_RIM_WALL - front >= 3.0
+    # the third boss (under the board) stays behind the stop
+    assert usb_hole_positions()[2][1] + USB_BOSS_DIAMETER / 2 < usb_board_front_z()
 
 
 def validate_esp():
