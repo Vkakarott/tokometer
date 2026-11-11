@@ -16,9 +16,10 @@ class AssemblySpecificationTests(unittest.TestCase):
         spec.validate()
 
     def test_measured_footprints_are_not_scaled(self):
-        self.assertEqual(spec.DISPLAY_WINDOW, (40.0, 31.8))
-        self.assertEqual(spec.DISPLAY_PCB, (48.9, 33.0))
-        self.assertEqual(spec.ESP_PCB, (16.0, 20.7))
+        self.assertEqual(spec.DISPLAY_WINDOW, (38.5, 31.0))
+        self.assertEqual(spec.DISPLAY_PCB, (48.87, 33.0))
+        self.assertEqual(spec.FUNNEL_OUTER, (46.5, 39.0))
+        self.assertEqual(spec.ESP_PCB, (16.0, 20.0))
 
     def test_six_distinct_bottom_fixings(self):
         positions = spec.SHELL_SCREWS + spec.FRONT_SCREWS
@@ -40,7 +41,7 @@ class AssemblySpecificationTests(unittest.TestCase):
         self.assertGreater(spec.HEAD_POCKET_DIAMETER, 5.5)
 
     def test_unknown_measurements_remain_explicit(self):
-        self.assertEqual(len(spec.MISSING_MEASUREMENTS), 4)
+        self.assertEqual(len(spec.MISSING_MEASUREMENTS), 5)
         self.assertIn("NOT measurements", (ROOT / "stand_v5_spec.py").read_text())
 
     def test_generator_syntax(self):

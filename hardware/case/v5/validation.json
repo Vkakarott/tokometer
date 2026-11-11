@@ -6,7 +6,7 @@
   "parts": [
     {
       "name": "v5_front_frame",
-      "volume_mm3": 16066.871,
+      "volume_mm3": 16417.752,
       "size_mm": [
         67.6,
         74.333,
@@ -24,7 +24,7 @@
     },
     {
       "name": "v5_service_base",
-      "volume_mm3": 36085.187,
+      "volume_mm3": 36076.787,
       "size_mm": [
         66.0,
         15.8,
@@ -42,38 +42,38 @@
     },
     {
       "name": "v5_esp_retainer_provisional",
-      "volume_mm3": 463.684,
+      "volume_mm3": 458.308,
       "size_mm": [
         31.6,
         2.4,
-        21.7
+        21.0
       ]
     },
     {
       "name": "reference_jd9853_pcb_depth_unmeasured",
-      "volume_mm3": 2581.889,
+      "volume_mm3": 1773.96,
       "size_mm": [
-        48.9,
-        32.995,
-        4.893
+        48.87,
+        32.945,
+        4.395
       ]
     },
     {
       "name": "reference_jd9853_screen_depth_unmeasured",
-      "volume_mm3": 2861.957,
+      "volume_mm3": 3282.072,
       "size_mm": [
-        40.0,
-        31.866,
-        5.419
+        38.5,
+        31.12,
+        5.837
       ]
     },
     {
       "name": "reference_esp32c3_pcb_depth_unmeasured",
-      "volume_mm3": 529.92,
+      "volume_mm3": 512.0,
       "size_mm": [
         16.0,
         1.6,
-        20.7
+        20.0
       ]
     },
     {
@@ -279,16 +279,16 @@
     "scope": "CAD solids only; excludes unmeasured wiring, headers and connectors"
   },
   "display_window_mm": [
-    40.0,
-    31.8
+    38.5,
+    31.0
   ],
   "display_pcb_measured_mm": [
-    48.9,
+    48.87,
     33.0
   ],
   "esp_pcb_measured_mm": [
     16.0,
-    20.7
+    20.0
   ],
   "shell_screw_count": 4,
   "front_screw_count": 2,
@@ -305,7 +305,7 @@
       0.0,
       0.0
     ],
-    "pcb_thickness_mm": 1.6,
+    "pcb_thickness_mm": 1.1,
     "esp_board_bottom_mm": 14.0,
     "esp_usb_height_above_pcb_mm": 1.6
   },
@@ -313,7 +313,8 @@
     "Display visible-area margins relative to the PCB",
     "Display total stack, rear components and connector envelope",
     "ESP32-C3 PCB/component thickness, headers, USB projection and buttons",
-    "Actual cable plug envelope and printed fit tolerances"
+    "Actual cable plug envelope and printed fit tolerances",
+    "Battery and charging board: charge USB-C position, power switch and wire pass-through (42/24/16 mm envelope known)"
   ],
   "print_meshes_exported": false,
   "physical_fit_verified": false
