@@ -76,24 +76,30 @@ mm across the wide board is superseded by the user's measurement.
 The battery and charging board are expected to fit in the space left over by
 the display and the ESP32-C3 Mini; that fit is not checked yet.
 
-## Mounting holes (ESTIMATED from photos, not measured)
+## Display PCB mounting holes (MEASURED)
 
-Everything in this section is **ESTIMATED** by proportion from photos, using
-the known PCB size as the scale. None of it is a caliper measurement. Replace
-each value when it is measured; do not design final fits on these numbers.
+**Measured by the user (caliper), 2026-11-11.** Four holes in a rectangle
+near the corners of the 48.87 × 33.0 mm PCB. This replaces the earlier
+photo estimates (45.9 × 29.6 mm centres, Ø1.7), which are withdrawn.
 
-Display PCB (48.87 × 33.0 mm), 4 holes in a rectangle near the corners:
-
-| Item | ESTIMATED | Uncertainty (mm) |
+| Item | Value (mm) | Notes |
 |---|---|---|
-| Hole spacing along the long side | 45.9 | ± 0.6 |
-| Hole spacing along the short side | 29.6 | ± 0.8 |
-| Hole centre to PCB edge | 1.5 (long side), 1.7 (short side) | ± 0.4 |
-| Hole diameter | 1.7 (solder ring about 2.5) | ± 0.4 |
+| Hole diameter | 2.0 | MEASURED (approximate, "≈ 2 mm"). |
+| Long side, inner edge to inner edge | 43.0 | MEASURED, edge of one hole to the nearest edge of the other. |
+| Long side, centre to centre | 45.0 | DERIVED: 43.0 + 2.0. The user also reads ≈ 45 mm. |
+| Short side, inner edge to inner edge | 27.8 | MEASURED, same convention (confirmed by the user). |
+| Short side, centre to centre | 29.8 | DERIVED: 27.8 + 2.0. |
+| Hole centre to PCB edge | 1.935 (long side), 1.6 (short side) | DERIVED: (48.87 − 45.0) / 2 and (33.0 − 29.8) / 2, assuming the holes are symmetric about the PCB centre. |
 
-The holes are assumed symmetric about the PCB centre (offset ± 0.5 mm). The
-display has an 8-pin header on one short edge; its pin height and direction are
-unknown.
+Solder-ring diameter is still an unmeasured estimate (about 2.5 mm). The
+display has an 8-pin header on one short edge; its pin height and direction
+are unknown.
+
+## Charging-board mounting holes (ESTIMATED from photos, not measured)
+
+Everything below is **ESTIMATED** by proportion from photos, using the known
+PCB size as the scale. None of it is a caliper measurement. Replace each value
+when it is measured; do not design final fits on these numbers.
 
 Battery charging board, the USB-C tail. The two holes are in its ears. They are
 not the wing tips of the wide board, which the 42 mm width refers to:
@@ -122,8 +128,8 @@ the middle right); they are not used unless the user decides otherwise.
   connector sits on and how far it protrudes, and BOOT / RESET button
   positions.
 - USB Type-C opening the case needs for the plug.
-- Display PCB and charging-board ear holes: measured diameters and centre
-  spacing (the values above are only estimated from photos).
+- Charging-board ear holes: measured diameters and centre spacing (the
+  values above are only estimated from photos).
 - Display 8-pin header: pin height, direction and position along the edge.
 - Battery envelope: whether the USB-C tail lies inside the 24 mm dimension or
   extends beyond it.
