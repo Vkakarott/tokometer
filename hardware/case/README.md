@@ -273,7 +273,7 @@ the front face leans, so display positions are measured along it.
 |---|---|---|
 | Display window | 38.5 × 31.0 mm in the front plate | MEASURED and CONFIRMED as the **case opening**, slightly larger than the lit area (which is smaller, not measured) |
 | Display PCB 48.87 × 33.0 × 1.1 | 6.9–8.0 mm behind the front face, centred on the window | PCB measured; depth and centring ASSUMED |
-| Display posts | 4 × Ø3.2 mm, 45.9 × 29.6 mm apart, Ø1.3 × 2.7 mm pilot holes for M1.6 self-tapping screws | spacing ESTIMATED from photos (±0.6 / ±0.8); diameters ASSUMED |
+| Display posts | 4 × Ø3.0 mm at 45.0 × 29.8 mm centres (PCB holes Ø2.0), Ø1.3 × 2.7 mm pilot holes for M1.6 self-tapping screws | hole Ø2.0 and 43.0 / 27.8 mm edge-to-edge MEASURED (centres derived: +2.0); post and pilot diameters ASSUMED |
 | Battery 42 × 24 × 16 | x ±21, z −61 to −37, y 11 to 27, on two 3 mm wide ribs (x ±15) | envelope MEASURED; resting height ASSUMED |
 | Battery USB-C | 9.3 × 3.2 mm, centred (x 0), centre at y 14.0, tip 1.0 mm beyond the battery rear (z −62.0) | width and protrusion ESTIMATED; height, height above the base and x ASSUMED |
 | Rear USB opening | 13 × 7 mm, centre y 14.0 (y 10.5–17.5), x 0 | provisional cable envelope kept from v5; aligned with the USB-C |
@@ -291,7 +291,9 @@ the front face leans, so display positions are measured along it.
   sweep the whole length when the cover slides off; side stops at x 21.5–23.5
   produced a 24 mm³ collision at 20 mm travel. The 1.0 mm gap to the rear tabs
   locates the battery sideways only while the cover is on.
-- The M1.6 display screws, the display header and all wiring are not modeled.
+- Display screws: M1.6 self-tapping (0.4 mm clearance in the measured Ø2.0
+  holes; M2 would have none). The screws themselves, the display header and
+  all wiring are not modeled.
 
 ### Outputs and checks
 

@@ -20,6 +20,18 @@ class LayoutSpecificationTests(unittest.TestCase):
         self.assertEqual(spec.ESP_PCB, (16.0, 20.0))
         self.assertEqual(spec.BATTERY, (42.0, 24.0, 16.0))
 
+    def test_display_holes_are_measured_values(self):
+        self.assertEqual(spec.DISPLAY_HOLE_DIAMETER, 2.0)
+        self.assertEqual(spec.DISPLAY_HOLE_EDGE_TO_EDGE, (43.0, 27.8))
+        self.assertEqual(spec.DISPLAY_HOLE_SPACING, (45.0, 29.8))
+
+    def test_posts_and_heads_stay_on_the_pcb(self):
+        for axis in (0, 1):
+            edge = (spec.DISPLAY_PCB[axis] - spec.DISPLAY_HOLE_SPACING[axis]) / 2
+            self.assertLessEqual(spec.POST_DIAMETER / 2, edge + 1e-9)
+            self.assertLessEqual(spec.SCREW_HEAD_DIAMETER / 2, edge + 1e-9)
+        self.assertLess(spec.POST_PILOT_DIAMETER, spec.DISPLAY_HOLE_DIAMETER)
+
     def test_window_is_the_case_opening_not_pending(self):
         self.assertFalse(hasattr(spec, "DISPLAY_WINDOW_PENDING"))
         self.assertIn("CONFIRMED", (ROOT / "stand_v6_spec.py").read_text())
@@ -71,6 +83,8 @@ class NativeValidationReportTests(unittest.TestCase):
         self.assertEqual(layout["display_window_mm"], list(spec.DISPLAY_WINDOW))
         self.assertTrue(layout["display_window_is_case_opening"])
         self.assertEqual(layout["usb_c_center_height_mm"], spec.USB_CENTER_HEIGHT)
+        self.assertEqual(layout["measured_by_user"]["display_hole_centres_mm"],
+                         list(spec.DISPLAY_HOLE_SPACING))
         self.assertEqual(self.report["battery_envelope_measured_mm"], list(spec.BATTERY))
 
     def test_nothing_is_claimed_as_verified(self):

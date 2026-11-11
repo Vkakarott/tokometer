@@ -88,6 +88,9 @@ def display_references(g, s, v4, comp, front, board_front):
     glass = face_box(g, v4, comp, front, s.DISPLAY_WINDOW, 4.15,
                      board_front - 4.15, "JD9853 provisional screen stack")
     glass.name = "reference_jd9853_screen_depth_unmeasured"
+    for uv in post_positions(s):
+        face_round(g, v4, comp, front, pcb, uv, board_front, s.DISPLAY_PCB_THICKNESS,
+                   s.DISPLAY_HOLE_DIAMETER, g.CUT, "JD9853 PCB mounting hole")
     return pcb, glass
 
 
@@ -246,11 +249,14 @@ def layout_report(s):
             "wire_gap_front_stop_to_esp": s.ESP_BOARD_REAR - s.BATTERY_FRONT_STOP[1],
             "usb_opening_vs_usb_c_width_per_side": (s.USB_OPENING[0] - s.USB_C_BODY[0]) / 2,
         },
-        "estimated": {"display_hole_spacing_mm": list(s.DISPLAY_HOLE_SPACING),
-                      "usb_c_body_width_mm": s.USB_C_BODY[0],
+        "measured_by_user": {"display_hole_diameter_mm": s.DISPLAY_HOLE_DIAMETER,
+                             "display_hole_edge_to_edge_mm": list(s.DISPLAY_HOLE_EDGE_TO_EDGE),
+                             "display_hole_centres_mm": list(s.DISPLAY_HOLE_SPACING)},
+        "estimated": {"usb_c_body_width_mm": s.USB_C_BODY[0],
                       "usb_c_protrusion_mm": s.USB_C_PROTRUSION},
         "assumptions": {"display_stack_mm": s.DISPLAY_STACK,
                         "display_pcb_offset_mm": list(s.DISPLAY_BOARD_OFFSET),
+                        "display_screw": "M1.6 self-tapping, head {} mm".format(s.SCREW_HEAD_DIAMETER),
                         "post_diameter_mm": s.POST_DIAMETER,
                         "post_pilot_diameter_mm": s.POST_PILOT_DIAMETER,
                         "battery_bottom_mm": s.BATTERY_BOTTOM,

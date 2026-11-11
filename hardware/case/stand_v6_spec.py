@@ -28,9 +28,17 @@ BATTERY = (42.0, 24.0, 16.0)  # MEASURED envelope: x width, z length, y height
 # --- Display: four posts on the front plate (layout A) -------------------
 DISPLAY_STACK = 4.0  # ASSUMPTION
 DISPLAY_BOARD_OFFSET = (0.0, 0.0)  # ASSUMPTION: PCB centred on the window
-DISPLAY_HOLE_SPACING = (45.9, 29.6)  # ESTIMATED from photos, +-0.6 / +-0.8
-POST_DIAMETER = 3.2  # ASSUMPTION
-POST_PILOT_DIAMETER = 1.3  # ASSUMPTION: self-tapping M1.6, hole est. 1.7
+# MEASURED by the user: holes of 2.0 mm; 43.0 x 27.8 mm inner edge to inner
+# edge on both axes (long side, short side), so 45.0 x 29.8 mm centre to centre.
+DISPLAY_HOLE_DIAMETER = 2.0
+DISPLAY_HOLE_EDGE_TO_EDGE = (43.0, 27.8)
+DISPLAY_HOLE_SPACING = (DISPLAY_HOLE_EDGE_TO_EDGE[0] + DISPLAY_HOLE_DIAMETER,
+                        DISPLAY_HOLE_EDGE_TO_EDGE[1] + DISPLAY_HOLE_DIAMETER)
+# Screw choice: M1.6 self-tapping (clearance 0.4 mm in the 2.0 mm hole). M2 would
+# have no clearance in a 2.0 mm hole, so it is not used.
+SCREW_HEAD_DIAMETER = 3.0  # ASSUMPTION, typical M1.6 pan head
+POST_DIAMETER = 3.0  # ASSUMPTION: stays inside the PCB edge (1.6 mm short side)
+POST_PILOT_DIAMETER = 1.3  # ASSUMPTION: self-tapping M1.6 in printed plastic
 POST_PILOT_DEPTH = 2.7
 PLATE_DEPTH = 4.0  # front plate thickness inherited from v5
 
@@ -80,8 +88,8 @@ REAR_WALL_SLOPE = REAR_LEAN / BODY_HEIGHT
 
 MISSING_MEASUREMENTS = (
     "Lit area size and its margins to the 38.5 x 31.0 opening (only known smaller)",
-    "Display hole spacing/diameter (estimated from photos), total stack, "
-    "8-pin header position and connector envelope",
+    "Display total stack (glass to highest rear point), 8-pin header "
+    "position/height/direction and connector envelope",
     "ESP32-C3 thickness, USB-C edge and projection, BOOT/RESET positions",
     "Battery board: USB-C height, offset and protrusion; whether the tail "
     "lies inside the 24 mm; wire pass-through; power switch",
@@ -118,9 +126,13 @@ def validate():
     assert BATTERY[0] / 2 < 22.0  # stay inside the cover tab sweep
     assert BATTERY_FRONT_STOP[0] - battery_front_z() >= 0.5
     assert ESP_BOARD_REAR - BATTERY_FRONT_STOP[1] >= 1.5
-    # display posts sit under the PCB
-    assert DISPLAY_HOLE_SPACING[0] / 2 < DISPLAY_PCB[0] / 2
-    assert DISPLAY_HOLE_SPACING[1] / 2 < DISPLAY_PCB[1] / 2
+    # display posts and screw heads sit on the PCB, inside its edge
+    assert DISPLAY_HOLE_SPACING == (45.0, 29.8)
+    for axis in (0, 1):
+        edge = (DISPLAY_PCB[axis] - DISPLAY_HOLE_SPACING[axis]) / 2
+        assert POST_DIAMETER / 2 <= edge + 1e-9
+        assert SCREW_HEAD_DIAMETER / 2 <= edge + 1e-9
+    assert POST_PILOT_DIAMETER < DISPLAY_HOLE_DIAMETER
     assert POST_PILOT_DEPTH < DISPLAY_STACK - DISPLAY_PCB_THICKNESS
     assert all(abs(x) + HEAD_POCKET_DIAMETER / 2 < (CASE_WIDTH - 2) / 2
                for x, _ in SHELL_SCREWS + FRONT_SCREWS)
