@@ -1,0 +1,596 @@
+{
+  "design": "tokometer_stand_v7_assembly",
+  "timeline_features": 349,
+  "timeline_issues": [],
+  "parts": [
+    {
+      "name": "v7_front_frame",
+      "volume_mm3": 15485.188,
+      "size_mm": [
+        67.6,
+        74.333,
+        14.262
+      ]
+    },
+    {
+      "name": "v7_rear_cover",
+      "volume_mm3": 35058.301,
+      "size_mm": [
+        68.0,
+        75.0,
+        60.596
+      ]
+    },
+    {
+      "name": "v7_service_base",
+      "volume_mm3": 35684.386,
+      "size_mm": [
+        66.0,
+        15.6,
+        61.344
+      ]
+    },
+    {
+      "name": "reference_jd9853_pcb_depth_unmeasured",
+      "volume_mm3": 1977.706,
+      "size_mm": [
+        51.0,
+        35.432,
+        4.645
+      ]
+    },
+    {
+      "name": "reference_jd9853_screen_depth_unmeasured",
+      "volume_mm3": 2679.961,
+      "size_mm": [
+        40.0,
+        33.532,
+        5.341
+      ]
+    },
+    {
+      "name": "reference_esp32_pcb",
+      "volume_mm3": 2167.763,
+      "size_mm": [
+        28.5,
+        1.5,
+        51.7
+      ]
+    },
+    {
+      "name": "reference_cover_screw_1_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_nut_1_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_screw_2_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_nut_2_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_screw_3_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_nut_3_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_screw_4_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_cover_nut_4_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_front_screw_1_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_front_nut_1_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_front_screw_2_M3x16_unthreaded",
+      "volume_mm3": 184.372,
+      "size_mm": [
+        5.5,
+        19.0,
+        5.5
+      ]
+    },
+    {
+      "name": "reference_front_nut_2_M3_unthreaded",
+      "volume_mm3": 44.759,
+      "size_mm": [
+        6.351,
+        2.4,
+        5.5
+      ]
+    }
+  ],
+  "unexpected_interferences": [],
+  "opening_test": {
+    "direction": "rearward (-Z), unplug USB and remove four underside screws first",
+    "sampled_travel_mm": [
+      0.0,
+      0.1,
+      0.25,
+      0.5,
+      0.75,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80
+    ],
+    "collisions": [],
+    "scope": "CAD solids only; excludes unmeasured wiring, headers and connectors"
+  },
+  "display_pcb_measured_mm": [
+    51.0,
+    35.5
+  ],
+  "esp_pcb_measured_mm": [
+    28.5,
+    51.7,
+    1.5
+  ],
+  "usb_board_measured_mm": [
+    18.0,
+    20.0,
+    1.0
+  ],
+  "shell_screw_count": 4,
+  "front_screw_count": 2,
+  "layout": {
+    "display_opening_mm": [
+      40.0,
+      33.5
+    ],
+    "display_opening_margins_to_pcb_mm": [
+      5.5,
+      1.0
+    ],
+    "display_pcb_front_depth_mm": 6.15,
+    "display_posts_uv_mm": [
+      [
+        -23.75,
+        -15.85
+      ],
+      [
+        -23.75,
+        15.85
+      ],
+      [
+        23.75,
+        -15.85
+      ],
+      [
+        23.75,
+        15.85
+      ]
+    ],
+    "usb_c_center_height_mm": 14.0,
+    "usb_opening_mm": [
+      9.0,
+      3.5
+    ],
+    "usb_opening_y_range_mm": [
+      12.25,
+      15.75
+    ],
+    "clearances_mm": {
+      "opening_vs_plug_cover_per_side": -1.5,
+      "opening_vs_plug_cover_height_per_side": -1.5
+    },
+    "confirmed_by_user": {
+      "usb_board_third_hole_edge": "edge opposite the connector",
+      "usb_board_hole_pair_from_connector_edge_mm": 3.5
+    },
+    "measured_by_user": {
+      "display_pcb_mm": [
+        51.0,
+        35.5
+      ],
+      "display_stack_mm": 3.25,
+      "display_hole_diameter_mm": 2.0,
+      "display_hole_edge_to_edge_mm": [
+        45.5,
+        29.7
+      ],
+      "display_hole_centres_mm": [
+        47.5,
+        31.7
+      ],
+      "esp_pcb_mm": [
+        28.5,
+        51.7,
+        1.5
+      ],
+      "battery_envelope_mm": [
+        44.6,
+        25.0,
+        16.5
+      ],
+      "usb_board_mm": [
+        18.0,
+        20.0,
+        1.0
+      ],
+      "usb_board_hole_diameter_mm": 1.0,
+      "usb_board_holes_centres_mm": 16.9
+    },
+    "standard_not_measured": {
+      "usb_plug_metal_mm": [
+        8.4,
+        2.6
+      ],
+      "usb_plug_cover_mm": [
+        12.0,
+        6.5
+      ],
+      "opening_clearance_per_side_mm": 0.5
+    },
+    "assumptions": {
+      "display_screw": "M1.6 self-tapping, head 3.0 mm",
+      "post_diameter_mm": 3.0,
+      "post_pilot_diameter_mm": 1.3,
+      "post_pilot_depth_mm": 2.8,
+      "display_stack_taken_as_glass_front_to_pcb_back": true
+    },
+    "esp32_board": {
+      "pcb_mm": [
+        28.5,
+        51.7,
+        1.5
+      ],
+      "lying_flat": true,
+      "upside_down": true,
+      "usb_edge": "rear",
+      "components_face": "down",
+      "component_height_mm": 3.2,
+      "usb_c_body_mm": [
+        9.3,
+        3.2
+      ],
+      "usb_c_protrusion_mm": 1.0,
+      "usb_c_centre_xy_mm": [
+        0.0,
+        14.0
+      ],
+      "x_range_mm": [
+        -14.25,
+        14.25
+      ],
+      "pcb_y_range_mm": [
+        15.6,
+        17.1
+      ],
+      "components_y_range_mm": [
+        12.399999999999999,
+        15.6
+      ],
+      "z_range_mm": [
+        -62.38921610968436,
+        -10.68921610968436
+      ],
+      "usb_c_z_range_mm": [
+        -63.38921610968436,
+        -56.03921610968436
+      ],
+      "usb_c_length_mm": 7.35,
+      "bodies": [
+        "reference_esp32_pcb"
+      ],
+      "modelled": "PCB only",
+      "not_modelled": [
+        "components under the PCB",
+        "USB-C"
+      ],
+      "cradle_on_base": false,
+      "clearances_mm": {
+        "components_to_base_floor": 3.3999999999999986,
+        "pcb_underside_to_base_floor": 6.6,
+        "rear_edge_to_inner_wall_at_pcb_top": 0.3,
+        "usb_c_tip_recess_from_outer_face": 1.437473665012341,
+        "usb_c_in_opening_width_per_side": -0.15000000000000036,
+        "usb_c_in_opening_height_per_side": 0.1499999999999999
+      }
+    }
+  },
+  "missing_measurements": [
+    "Physical fit test of a printed sample: tolerances, the 0.9 mm USB-C board pins, the M1.6 display posts, the flat ESP devkit and the plug in the rear opening"
+  ],
+  "print_meshes_exported": false,
+  "physical_fit_verified": false,
+  "known_interferences": [],
+  "known_interference_totals_mm3": {},
+  "front_tab_notch": {
+    "x_range_mm": [
+      11.5,
+      14.55
+    ],
+    "mirrored_in_x": true,
+    "z_range_mm": [
+      -14.5,
+      -10.389216109684359
+    ],
+    "y_range_mm": [
+      15.299999999999999,
+      18.0
+    ],
+    "clearance_to_pcb_mm": 0.3,
+    "open_faces": [
+      "inner",
+      "rear",
+      "top"
+    ]
+  },
+  "esp_standoffs": {
+    "hole_positions_xz_mm": [
+      [
+        -11.5,
+        -59.989
+      ],
+      [
+        11.5,
+        -59.989
+      ],
+      [
+        -11.5,
+        -12.889
+      ],
+      [
+        11.5,
+        -12.889
+      ]
+    ],
+    "built_at_xz_mm": [
+      [
+        -11.5,
+        -59.989
+      ],
+      [
+        11.5,
+        -59.989
+      ]
+    ],
+    "front_holes_without_standoff": true,
+    "hole_diameter_mm": 3.0,
+    "hole_centres_x_mm_measured": 23.0,
+    "hole_inner_edges_x_mm_measured": 20.0,
+    "hole_edge_to_rear_edge_mm_measured": 0.9,
+    "hole_edge_to_front_edge_mm_measured": 0.7,
+    "hole_centres_z_from_edges_mm": [
+      2.4,
+      2.2
+    ],
+    "standoff_diameter_mm": 4.2,
+    "free_gap_x_mm": 18.8,
+    "min_free_gap_x_mm": 18.0,
+    "pilot_wall_mm": 1.0,
+    "standoff_y_range_mm": [
+      9.0,
+      15.6
+    ],
+    "screw": "M2.5 self-tapping, about 8 mm long",
+    "pilot_diameter_mm": 2.2,
+    "pilot_depth_mm": 7.0,
+    "standoff_to_rear_wall_at_top_mm": 0.6513740230361051
+  },
+  "esp_front_pad": {
+    "x_range_mm": [
+      -4.0,
+      4.0
+    ],
+    "z_range_mm": [
+      -12.089216109684358,
+      -10.889216109684359
+    ],
+    "y_range_mm": [
+      9.0,
+      15.6
+    ],
+    "front_free_strip_mm_assumed": 2.0,
+    "screw": null
+  },
+  "base": {
+    "supports_removed": [
+      "battery ribs (2)",
+      "battery front stop",
+      "USB-C board bosses (3) and locating pins (3)",
+      "USB-C board stop",
+      "ESP cradle (removed earlier)"
+    ],
+    "kept": [
+      "6 M3 screw clearance holes with head pockets (2 front frame, 4 cover)",
+      "2 ESP standoffs under the PCB's rear holes, with M2.5 pilot holes (added in v7)",
+      "1 plain pad under the ESP PCB's front edge, no screw (added in v7)"
+    ],
+    "kept_for_user_to_decide": [
+      "2 guide rails for the cover (x +-30, z -52 to -23, 1.8 wide, 2.2 tall)",
+      "2 front-frame locating pins (x +-16, z -5.5, 2.4 diameter, 1.9 tall)",
+      "decorative keyboard-port recess on the underside (cosmetic, not a support)"
+    ]
+  },
+  "omitted_references": [
+    "reference_battery_envelope",
+    "reference_usb_c_board"
+  ],
+  "unverified_without_references": [
+    "Battery and separate USB-C board: no reference bodies and no supports in v7; if either is still used, nothing checks its fit",
+    "ESP components under the PCB (3.2 assumed, y 12.4 to 15.6) are not modelled: the CAD no longer checks them against the base floor (3.4 mm gap), the front frame's screw tabs and the front M3 nuts (y 13 to 15.4, about 2.1 mm3 each when modelled)",
+    "ESP USB-C (9.3 x 3.2 x 7.35 typical) is not modelled: the CAD no longer sees its 0.15 mm per side overlap with the 9.0 rear opening (WARNING item) nor checks the cover sliding past it; the PCB height still assumes it is centred on the opening"
+  ],
+  "status": "v7: rear cover USB opening resized (v6 centre kept); ESP32 devkit lying flat upside down, USB-C in the rear opening, ESP cradle removed; other base corrections pending; front frame as in v6 plus the ESP notch in its screw tabs",
+  "pending_measurements": [
+    "ESP32 mounting holes: all MEASURED (x: 20.0 between inner edges, centres +-11.5; z: hole edge 0.9 from the rear edge and 0.7 from the front edge, read as edge distances, so centres 2.4 and 2.2 from the edges, 47.1 apart). Confirm with the user that 0.9 and 0.7 are to the hole EDGE (read to the centre they would be physically impossible)",
+    "ESP front: user's decision (option A): no screw and no pilot in the front holes; the PCB front rests on one pad (x -4 to 4, z -12.12 to -10.92). MEASURE on the underside: the free strip between the PCB's front edge and the module/antenna (2.0 assumed from the photo; the pad needs 1.4 plus clearance)",
+    "ESP32 devkit (upside down): how it is held (rear standoffs only); the real height of the components under the PCB (3.2 assumed, the USB-C body height; 3.4 mm free below them to the floor); how far its USB-C overhangs the PCB edge (1.0 typical) and its width (9.3 typical); whether header pins point down (6.6 mm from the PCB underside to the floor)",
+    "NOTE, to check in the printed fit test: the front screw tabs are notched for the ESP PCB (user's option A, x 11.5 to 14.55, z -14.5 to -10.42, y 15.3 to 18.0, mirrored). Sacrificed: the wall between the notch and the 3.4 screw hole (the notch opens up to 0.19 mm into the hole over z -11.7 to -10.42) and the roof of the nut pocket over x 11.5 to 14.55 (about a quarter of the nut's width is unroofed; the nut still bears on the pocket floor at y 13). The components under the PCB (not modelled) would also reach the front M3 nuts",
+    "Separate USB-C board: its base mount (bosses, pins, stop) was removed in v7. If the board is still used it needs a new mount, and the v6 pin problem (what failed: position, diameter or height) is still open",
+    "Base: keep or remove the v5 guide rails (x +-30) and the two front-frame locating pins (x +-16, z -5.5)? They are neither electronics nor screw supports, so they were kept for the user to decide",
+    "NOTE on v6 (its files are not changed): v6 uses the old rear-wall formula, whose inner face is about 0.03 mm too far back, so the v6 clearances to the rear wall are about 0.03 mm optimistic (its USB-C board edge: 0.33 computed, about 0.30 real)",
+    "WARNING, to be resolved by the user: the USB-C receptacle (now the ESP's; 9.3 wide, typical, not measured) is wider than the 9.0 rear opening; its tip sits inside the wall, so it overlaps the cover by 0.15 mm per side"
+  ],
+  "rear_cover_usb_opening": {
+    "center_xy_mm": [
+      0.0,
+      14.0
+    ],
+    "size_mm": [
+      9.0,
+      3.5
+    ],
+    "v6_size_mm": [
+      13.0,
+      7.5
+    ],
+    "x_range_mm": [
+      -4.5,
+      4.5
+    ],
+    "y_range_mm": [
+      12.25,
+      15.75
+    ],
+    "corner_radius_mm": 1.5,
+    "receptacle_clearance_per_side_mm": [
+      -0.15000000000000036,
+      0.1499999999999999
+    ]
+  }
+}

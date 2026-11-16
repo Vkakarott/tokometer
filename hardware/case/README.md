@@ -1,8 +1,10 @@
 # Tokometer enclosure revisions
 
-The latest revision is **v6, the layout A prototype** (display on four posts,
-battery module with its USB-C toward the rear, ESP32-C3 in front of it). It
-reuses the v5 shell, joints and fasteners; **v5 stays preserved** as the
+The latest revision is **v7** (see the last section): an ESP32 devkit lying
+upside down at the rear with its USB-C through a smaller rear opening, a base
+with only screw joints and the ESP's supports, and notched front screw tabs.
+Before it, **v6, the layout A prototype** (display on four posts, battery
+module with its USB-C toward the rear, ESP32-C3 in front of it) reuses the v5 shell, joints and fasteners; **v5 stays preserved** as the
 serviceable assembly prototype with physical guides, locating pins, screw holes
 and captive-nut pockets, and the v4 exterior study is preserved too. The
 enclosure is not yet released for final printing: measured electronics
@@ -384,3 +386,82 @@ Nothing else needs to be measured (USB-C receptacle, wiring, lit area and the
 3.25 mm stack split were closed by the user's decisions; see
 `../dimensions.md`). Only the **physical fit test of a printed sample**
 remains.
+
+## v7: ESP32 devkit at the rear, cleaned base
+
+Open **`tokometer_stand_v7_assembly`**. `stand_v7.py` and `stand_v7_spec.py`
+generate it in a new empty Fusion design and write only to `v7/`; the v6 files
+are unchanged. v7 calls the v5/v6 builders, so everything not listed here is
+as in v6. Values are tagged MEASURED / DERIVED / STANDARD / ASSUMPTION in the
+spec, as before.
+
+### What changed from v6
+
+| Part | Change |
+|---|---|
+| Rear cover | Only the USB opening: **9.0 x 3.5** (was 13.0 x 7.5), same centre (x 0, y 14.0), reduced symmetrically, 1.5 corner radius. Only the plug's metal shell passes (user's intent). |
+| Front frame | A notch in each front screw tab where the ESP PCB passes: x 11.5 to 14.55 (mirrored), z -14.5 to -10.39, y 15.3 to the tab top (18.0), open on top, 0.3 clear of the PCB. It opens up to 0.19 mm into the 3.4 screw hole and unroofs about a quarter of the nut pocket (the nut still bears on its floor). |
+| Base | All v6 electronics supports removed (battery ribs and front stop, USB-C board bosses, pins and stop, ESP32-C3 cradle). Added: two **4.2** standoffs under the ESP's rear holes, y 9.0 to 15.6, with **2.2 x 7.0** pilots for M2.5 self-tapping screws (ASSUMPTION), and one plain **8.0 x 1.2** pad under the PCB's front edge (no screw, user's decision). Kept: the six M3 screw holes and head pockets, and, for the user to decide, the v5 guide rails (x +-30) and the two front-frame locating pins (x +-16, z -5.5). |
+| References | Only the ESP PCB (28.5 x 51.7 x 1.5, four 3.0 holes), the display references and the fasteners. No battery, no separate USB-C board, no ESP components or USB-C bodies. |
+
+### ESP32 devkit
+
+The board lies flat and **upside down**: components and USB-C face down, the
+USB-C edge at the rear wall with the USB-C centred on the rear opening (its
+3.2 mm typical body fills y 12.4 to 15.6), so the PCB is at **y 15.6 to 17.1**,
+x +-14.25, z -62.39 to -10.69, 0.3 mm from the rear wall (perpendicular to it).
+Holes (MEASURED with a caliper): 20.0 between inner edges across (centres
+x +-11.5); along the long side the hole edges are 0.9 from the rear edge and
+0.7 from the front edge (read as edge distances, so centres 2.4 and 2.2 in;
+read to the centre they would be impossible). The rear standoffs leave **18.8**
+free between them (the user's limit is 18.0, checked by the spec and the
+generator). The front holes have no screw: they sit over the front frame's
+screw tabs.
+
+**Rear-wall formula fix.** The v6 spec puts the inner face of the rear wall
+about 0.03 mm too far back (its line starts at y 9 instead of y 8, where
+`stand_v5.build_shell` starts it). v7 uses the real line (tested against the
+v5 profile); v6's wall clearances are therefore about 0.03 mm optimistic. The
+v6 files are left as they are.
+
+### Checks
+
+Measured directly on the Fusion solids, independently of the generator: 349
+healthy timeline entries, 18 single-lump solids, rear opening 9.0 x 3.5 at
+(0, 14.0), both notches empty, PCB to cover **0.300** and to front frame 0.300,
+rear standoffs to cover 0.651, **no interference** between any bodies (the PCB
+only touches the tops of the standoffs and pad), and no collision while the
+cover slides back 0 to 80 mm (85 samples). Volumes (mm3): front frame
+15485.19, rear cover 35058.30, base 35684.39, ESP PCB 2167.76.
+
+Not checked by the CAD (listed in `UNVERIFIED_WITHOUT_REFERENCES` and
+`PENDING_MEASUREMENTS`): the ESP components under the PCB (3.2 mm assumed)
+against the floor, the front nuts and the standoffs' neighbourhood (BOOT/EN
+buttons); the ESP's USB-C (9.3 typical, wider than the 9.0 opening by 0.15 per
+side); the free strip at the PCB's front edge used by the pad (2.0 assumed from
+a photo; it needs at least 1.7); the battery and the separate USB-C board (not
+in v7). Still to confirm with the user: 0.9 / 0.7 as edge distances. Still to
+test on a print: the notched tabs, the M2.5 pilots and all tolerances.
+
+### STL files
+
+`stl_v7.py` reuses the `stl_v6.py` tools and orientations. With the model open
+in Fusion, run `stl_v7.export_raw(<raw folder>)` there, then
+`python3 stl_v7.py <raw folder> stl` from `hardware/case`. The files are in
+`hardware/case/stl/` (report: `stl/stl_report_v7.json`); units mm, each part
+centred on X/Y with its lowest point at Z = 0; closed and consistently oriented
+meshes, volumes within 0.11% of the solids.
+
+| File | Orientation | Bounding box X x Y x Z (mm) | Triangles | Bed contact (mm2) |
+|---|---|---|---|---|
+| `hardware/case/stl/v7_front_frame.stl` | front face down | 67.600 x 74.589 x 14.427 | 26608 | 2399 |
+| `hardware/case/stl/v7_rear_cover.stl` | upside down, top on the bed | 68.000 x 60.594 x 75.000 | 9110 | 2996 |
+| `hardware/case/stl/v7_service_base.stl` | underside on the bed | 66.000 x 61.343 x 15.600 | 8200 | 3672 |
+
+`v7/validation.json` is written by the generator before the STL step, so its
+`print_meshes_exported` stays false; `stl/stl_report_v7.json` is the record of
+the exported meshes. Four zero-area slivers were dropped from the front frame
+mesh, as in v6.
+
+Run the checks with
+`python3 -m unittest discover -s hardware/case -p 'test_*.py'`.
